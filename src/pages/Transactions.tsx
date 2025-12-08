@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle, CreditCard } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,6 +44,7 @@ export default function Transactions() {
   const [expenseAmount, setExpenseAmount] = useState("");
   const [expenseCategory, setExpenseCategory] = useState("");
   const [expenseMethod, setExpenseMethod] = useState("");
+  const [expenseCreditCardId, setExpenseCreditCardId] = useState("");
   const [expenseNotes, setExpenseNotes] = useState("");
 
   const { user } = useAuth();
@@ -72,10 +73,25 @@ export default function Transactions() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("expenses")
-        .select("*")
+        .select("*, credit_cards(name)")
         .eq("user_id", user.id)
         .order("date", { ascending: false })
         .limit(100);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: creditCards = [] } = useQuery({
+    queryKey: ["credit_cards", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("credit_cards")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("name");
       if (error) throw error;
       return data || [];
     },
@@ -116,6 +132,7 @@ export default function Transactions() {
         amount: parseFloat(expenseAmount),
         category: expenseCategory,
         payment_method: expenseMethod || null,
+        credit_card_id: expenseMethod === "credito" && expenseCreditCardId ? expenseCreditCardId : null,
         notes: expenseNotes || null,
       });
       if (error) throw error;
@@ -167,6 +184,7 @@ export default function Transactions() {
     setExpenseAmount("");
     setExpenseCategory("");
     setExpenseMethod("");
+    setExpenseCreditCardId("");
     setExpenseNotes("");
   };
 
@@ -307,7 +325,10 @@ export default function Transactions() {
                   </div>
                   <div className="space-y-2">
                     <Label>Método de pagamento</Label>
-                    <Select value={expenseMethod} onValueChange={setExpenseMethod}>
+                    <Select value={expenseMethod} onValueChange={(value) => {
+                      setExpenseMethod(value);
+                      if (value !== "credito") setExpenseCreditCardId("");
+                    }}>
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="dinheiro">Dinheiro</SelectItem>
@@ -317,6 +338,29 @@ export default function Transactions() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {expenseMethod === "credito" && creditCards.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <CreditCard className="w-4 h-4" />
+                        Selecione o cartão
+                      </Label>
+                      <Select value={expenseCreditCardId} onValueChange={setExpenseCreditCardId}>
+                        <SelectTrigger><SelectValue placeholder="Escolha um cartão cadastrado" /></SelectTrigger>
+                        <SelectContent>
+                          {creditCards.map((card) => (
+                            <SelectItem key={card.id} value={card.id}>
+                              {card.name} {card.last_digits ? `(•••• ${card.last_digits})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {expenseMethod === "credito" && creditCards.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhum cartão cadastrado. Cadastre um cartão na seção de Cartões de Crédito.
+                    </p>
+                  )}
                   <div className="space-y-2">
                     <Label>Observação (opcional)</Label>
                     <Input placeholder="Ex: Troca de óleo" value={expenseNotes} onChange={(e) => setExpenseNotes(e.target.value)} />
