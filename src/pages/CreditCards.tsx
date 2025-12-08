@@ -15,13 +15,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt } from "lucide-react";
+import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useInvalidateFinancialData } from "@/hooks/useInvalidateFinancialData";
-import { startOfMonth, endOfMonth, format } from "date-fns";
+import { startOfMonth, endOfMonth, format, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function CreditCards() {
@@ -32,15 +32,19 @@ export default function CreditCards() {
   const [creditLimit, setCreditLimit] = useState("");
   const [bestPurchaseDay, setBestPurchaseDay] = useState("");
   const [dueDay, setDueDay] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
   
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { invalidateAll } = useInvalidateFinancialData();
 
-  const currentMonth = new Date();
-  const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
-  const monthEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+  const monthStart = format(startOfMonth(selectedMonth), "yyyy-MM-dd");
+  const monthEnd = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
+
+  const goToPreviousMonth = () => setSelectedMonth(prev => subMonths(prev, 1));
+  const goToNextMonth = () => setSelectedMonth(prev => addMonths(prev, 1));
+  const goToCurrentMonth = () => setSelectedMonth(new Date());
 
   const { data: creditCards = [], isLoading } = useQuery({
     queryKey: ["credit_cards", user?.id],
@@ -164,7 +168,25 @@ export default function CreditCards() {
             Gerencie seus cartões e acompanhe suas faturas
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <div className="flex items-center gap-2">
+          {/* Month Selector */}
+          <div className="flex items-center gap-1 bg-secondary/50 rounded-lg p-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPreviousMonth}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="h-8 px-3 font-medium capitalize min-w-[120px]"
+              onClick={goToCurrentMonth}
+            >
+              <Calendar className="w-4 h-4 mr-2" />
+              {format(selectedMonth, "MMM yyyy", { locale: ptBR })}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextMonth}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="hero" size="lg">
               <Plus className="w-5 h-5" />
@@ -243,6 +265,7 @@ export default function CreditCards() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {creditCards.length === 0 ? (
@@ -368,7 +391,7 @@ export default function CreditCards() {
                           <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
                             <div className="flex items-center gap-2 text-sm">
                               <Receipt className="w-4 h-4 text-primary" />
-                              <span>Fatura de {format(currentMonth, "MMMM", { locale: ptBR })}</span>
+                              <span>Fatura de {format(selectedMonth, "MMMM", { locale: ptBR })}</span>
                               <span className="text-muted-foreground">({cardExpensesList.length} lançamentos)</span>
                             </div>
                             <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
