@@ -15,7 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt, ChevronLeft, ChevronRight, Calendar, AlertTriangle } from "lucide-react";
+import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt, ChevronLeft, ChevronRight, Calendar, AlertTriangle, CheckCircle2, Circle } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +42,7 @@ export default function CreditCards() {
   const monthStart = format(startOfMonth(selectedMonth), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
   const currentMonthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
+  const selectedMonthKey = format(selectedMonth, "yyyy-MM");
 
   const goToPreviousMonth = () => setSelectedMonth(prev => subMonths(prev, 1));
   const goToNextMonth = () => setSelectedMonth(prev => addMonths(prev, 1));
@@ -99,6 +100,80 @@ export default function CreditCards() {
     enabled: !!user,
   });
 
+  // Fetch paid bills
+  const { data: paidBills = [] } = useQuery({
+    queryKey: ["paid_bills", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("paid_bills")
+        .select("*")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Mark bill as paid mutation
+  const markAsPaid = useMutation({
+    mutationFn: async ({ cardId, amount }: { cardId: string; amount: number }) => {
+      if (!user) throw new Error("Não autenticado");
+      const { error } = await supabase.from("paid_bills").insert({
+        user_id: user.id,
+        credit_card_id: cardId,
+        month_year: selectedMonthKey,
+        amount,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      toast({ title: "Fatura marcada como paga!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao marcar fatura", variant: "destructive" });
+    },
+  });
+
+  // Unmark bill as paid mutation
+  const unmarkAsPaid = useMutation({
+    mutationFn: async (cardId: string) => {
+      if (!user) throw new Error("Não autenticado");
+      const { error } = await supabase
+        .from("paid_bills")
+        .delete()
+        .eq("credit_card_id", cardId)
+        .eq("month_year", selectedMonthKey)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      toast({ title: "Fatura desmarcada!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao desmarcar fatura", variant: "destructive" });
+    },
+  });
+
+  // Check if a bill is paid for the selected month
+  const isBillPaid = (cardId: string) => {
+    return paidBills.some(
+      (bill) => bill.credit_card_id === cardId && bill.month_year === selectedMonthKey
+    );
+  };
+
+  // Get paid bills for current month onwards to exclude from limit calculation
+  const paidBillsSet = useMemo(() => {
+    const currentMonth = format(new Date(), "yyyy-MM");
+    return new Set(
+      paidBills
+        .filter((bill) => bill.month_year >= currentMonth)
+        .map((bill) => `${bill.credit_card_id}-${bill.month_year}`)
+    );
+  }, [paidBills]);
+
   // Calculate totals using useMemo for performance
   const { expensesByCard, usedLimitByCard, totalPendingByCard } = useMemo(() => {
     // Group expenses by card for selected month display
@@ -118,16 +193,22 @@ export default function CreditCards() {
       return acc;
     }, {} as Record<string, number>);
 
-    // Calculate TOTAL pending from current month onwards (for available limit)
+    // Calculate TOTAL pending from current month onwards (excluding paid bills)
     const totalPendingByCard = allCreditCardExpenses.reduce((acc, expense) => {
       if (expense.credit_card_id) {
-        acc[expense.credit_card_id] = (acc[expense.credit_card_id] || 0) + Number(expense.amount);
+        const expenseMonth = expense.date.substring(0, 7); // YYYY-MM
+        const key = `${expense.credit_card_id}-${expenseMonth}`;
+        
+        // Only count if not paid
+        if (!paidBillsSet.has(key)) {
+          acc[expense.credit_card_id] = (acc[expense.credit_card_id] || 0) + Number(expense.amount);
+        }
       }
       return acc;
     }, {} as Record<string, number>);
 
     return { expensesByCard, usedLimitByCard, totalPendingByCard };
-  }, [cardExpenses, allCreditCardExpenses]);
+  }, [cardExpenses, allCreditCardExpenses, paidBillsSet]);
 
   const createCard = useMutation({
     mutationFn: async () => {
@@ -370,6 +451,7 @@ export default function CreditCards() {
               const cardAvailable = Math.max(0, cardLimit - cardPending);
               const cardUsedPercent = cardLimit > 0 ? (cardPending / cardLimit) * 100 : 0;
               const cardExpensesList = expensesByCard[card.id] || [];
+              const isPaid = isBillPaid(card.id);
 
               // Calculate due date alert
               const today = new Date();
@@ -378,7 +460,7 @@ export default function CreditCards() {
               let isDueSoon = false;
               let isOverdue = false;
               
-              if (card.due_day && isCurrentMonth && cardUsed > 0) {
+              if (card.due_day && isCurrentMonth && cardUsed > 0 && !isPaid) {
                 const dueDate = new Date(today.getFullYear(), today.getMonth(), card.due_day);
                 daysUntilDue = differenceInDays(dueDate, today);
                 isDueSoon = daysUntilDue >= 0 && daysUntilDue <= 5;
@@ -386,10 +468,18 @@ export default function CreditCards() {
               }
 
               return (
-                <Card key={card.id} variant="elevated" className="hover:border-primary/30 transition-colors">
+                <Card key={card.id} variant="elevated" className={`hover:border-primary/30 transition-colors ${isPaid ? 'border-success/30 bg-success/5' : ''}`}>
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{card.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg">{card.name}</CardTitle>
+                        {isPaid && (
+                          <span className="text-xs bg-success/20 text-success px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Paga
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">{card.brand || "—"}</span>
                         <Button 
@@ -408,7 +498,7 @@ export default function CreditCards() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Due date alert */}
-                    {(isDueSoon || isOverdue) && (
+                    {(isDueSoon || isOverdue) && !isPaid && (
                       <Alert variant={isOverdue ? "destructive" : "default"} className={`${isDueSoon && !isOverdue ? 'border-primary bg-primary/10' : ''}`}>
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription className="text-sm">
@@ -495,10 +585,39 @@ export default function CreditCards() {
                           ))}
                           <div className="flex justify-between pt-2 border-t border-border/50 font-medium">
                             <span>Total da fatura</span>
-                            <span className="text-destructive">
+                            <span className={isPaid ? "text-success" : "text-destructive"}>
                               R$ {cardUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                             </span>
                           </div>
+                          
+                          {/* Mark as paid/unpaid button */}
+                          <Button
+                            variant={isPaid ? "outline" : "default"}
+                            size="sm"
+                            className={`w-full mt-2 ${isPaid ? 'border-success text-success hover:bg-success/10' : ''}`}
+                            onClick={() => {
+                              if (isPaid) {
+                                unmarkAsPaid.mutate(card.id);
+                              } else {
+                                markAsPaid.mutate({ cardId: card.id, amount: cardUsed });
+                              }
+                            }}
+                            disabled={markAsPaid.isPending || unmarkAsPaid.isPending}
+                          >
+                            {markAsPaid.isPending || unmarkAsPaid.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : isPaid ? (
+                              <>
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                Fatura Paga
+                              </>
+                            ) : (
+                              <>
+                                <Circle className="w-4 h-4 mr-2" />
+                                Marcar como Paga
+                              </>
+                            )}
+                          </Button>
                         </CollapsibleContent>
                       </Collapsible>
                     )}

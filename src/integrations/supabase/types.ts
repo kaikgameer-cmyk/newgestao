@@ -165,6 +165,44 @@ export type Database = {
           },
         ]
       }
+      paid_bills: {
+        Row: {
+          amount: number
+          created_at: string
+          credit_card_id: string
+          id: string
+          month_year: string
+          paid_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          credit_card_id: string
+          id?: string
+          month_year: string
+          paid_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          credit_card_id?: string
+          id?: string
+          month_year?: string
+          paid_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paid_bills_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           apps_used: string[] | null
