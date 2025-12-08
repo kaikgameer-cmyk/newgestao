@@ -370,11 +370,14 @@ export default function AdminPage() {
       return response.data;
     },
     onSuccess: async () => {
-      // Wait a bit for profile to be created then refetch
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      invalidateAllQueries();
+      // Wait for profile to be created by edge function, then refetch
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Force invalidate and refetch all user data
+      await queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
       await refetchUsers();
-      toast({ title: "Usuário criado com sucesso!" });
+      
+      toast({ title: "Usuário criado com sucesso!", description: "O usuário já aparece na lista." });
       setCreateUserDialogOpen(false);
       setNewUserEmail("");
       setNewUserPassword("");
