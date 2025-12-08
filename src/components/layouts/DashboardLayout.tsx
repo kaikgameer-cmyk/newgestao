@@ -45,9 +45,9 @@ export default function DashboardLayout() {
   } = useSubscription();
 
   // Admin hook
-  const { isAdmin } = useIsAdmin();
+  const { isAdmin, isLoading: adminLoading, isFetched: adminFetched } = useIsAdmin();
 
-  // Build nav items dynamically based on admin status
+  // Build nav items dynamically based on admin status - only show admin link once fetched
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
     { icon: Calendar, label: "Relatórios Semanais", path: "/dashboard/semanal" },
@@ -57,7 +57,7 @@ export default function DashboardLayout() {
     { icon: Repeat, label: "Despesas Fixas", path: "/dashboard/despesas-fixas" },
     { icon: Crown, label: "Assinatura", path: "/dashboard/assinatura" },
     { icon: Settings, label: "Configurações", path: "/dashboard/configuracoes" },
-    ...(isAdmin ? [{ icon: Shield, label: "Admin", path: "/dashboard/admin" }] : []),
+    ...(adminFetched && isAdmin ? [{ icon: Shield, label: "Admin", path: "/dashboard/admin" }] : []),
   ];
 
   useEffect(() => {
