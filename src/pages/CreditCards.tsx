@@ -10,12 +10,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { startOfMonth, endOfMonth, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function CreditCards() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -49,23 +55,33 @@ export default function CreditCards() {
     enabled: !!user,
   });
 
-  // Fetch current month expenses for each credit card
+  // Fetch current month expenses for each credit card with full details
   const { data: cardExpenses = [] } = useQuery({
     queryKey: ["card_expenses", user?.id, monthStart, monthEnd],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from("expenses")
-        .select("credit_card_id, amount")
+        .select("id, credit_card_id, amount, date, category, notes, current_installment, total_installments")
         .eq("user_id", user.id)
         .gte("date", monthStart)
         .lte("date", monthEnd)
-        .not("credit_card_id", "is", null);
+        .not("credit_card_id", "is", null)
+        .order("date", { ascending: false });
       if (error) throw error;
       return data || [];
     },
     enabled: !!user,
   });
+
+  // Group expenses by card
+  const expensesByCard = cardExpenses.reduce((acc, expense) => {
+    if (expense.credit_card_id) {
+      if (!acc[expense.credit_card_id]) acc[expense.credit_card_id] = [];
+      acc[expense.credit_card_id].push(expense);
+    }
+    return acc;
+  }, {} as Record<string, typeof cardExpenses>);
 
   // Calculate used limit per card
   const usedLimitByCard = cardExpenses.reduce((acc, expense) => {
@@ -282,12 +298,13 @@ export default function CreditCards() {
           </div>
 
           {/* Cards Grid */}
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid lg:grid-cols-2 gap-6">
             {creditCards.map((card) => {
               const cardLimit = Number(card.credit_limit) || 0;
               const cardUsed = usedLimitByCard[card.id] || 0;
               const cardAvailable = cardLimit - cardUsed;
               const cardUsedPercent = cardLimit > 0 ? (cardUsed / cardLimit) * 100 : 0;
+              const cardExpensesList = expensesByCard[card.id] || [];
 
               return (
                 <Card key={card.id} variant="elevated" className="hover:border-primary/30 transition-colors">
@@ -341,6 +358,57 @@ export default function CreditCards() {
                         <p className="font-medium">{card.due_day ? `Dia ${card.due_day}` : "—"}</p>
                       </div>
                     </div>
+
+                    {/* Monthly bill breakdown */}
+                    {cardExpensesList.length > 0 && (
+                      <Collapsible className="pt-4 border-t border-border/50">
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Receipt className="w-4 h-4 text-primary" />
+                              <span>Fatura de {format(currentMonth, "MMMM", { locale: ptBR })}</span>
+                              <span className="text-muted-foreground">({cardExpensesList.length} lançamentos)</span>
+                            </div>
+                            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-3 space-y-2">
+                          {cardExpensesList.map((expense) => (
+                            <div 
+                              key={expense.id} 
+                              className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30 text-sm"
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-medium capitalize">{expense.category}</span>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{new Date(expense.date).toLocaleDateString("pt-BR")}</span>
+                                  {expense.total_installments && expense.total_installments > 1 && (
+                                    <span className="text-primary">
+                                      {expense.current_installment}/{expense.total_installments}x
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <span className="font-medium text-destructive">
+                                R$ {Number(expense.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between pt-2 border-t border-border/50 font-medium">
+                            <span>Total da fatura</span>
+                            <span className="text-destructive">
+                              R$ {cardUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {cardExpensesList.length === 0 && (
+                      <div className="pt-4 border-t border-border/50 text-center text-sm text-muted-foreground">
+                        <p>Nenhum lançamento neste mês</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
