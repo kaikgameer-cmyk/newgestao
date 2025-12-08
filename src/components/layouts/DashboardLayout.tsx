@@ -10,6 +10,7 @@ import {
   Receipt,
   CreditCard,
   Fuel,
+  Repeat,
   Settings,
   LogOut,
   Menu,
@@ -23,6 +24,7 @@ const navItems = [
   { icon: Receipt, label: "Lançamentos", path: "/dashboard/lancamentos" },
   { icon: CreditCard, label: "Cartões", path: "/dashboard/cartoes" },
   { icon: Fuel, label: "Combustível", path: "/dashboard/combustivel" },
+  { icon: Repeat, label: "Despesas Fixas", path: "/dashboard/despesas-fixas" },
   { icon: Settings, label: "Configurações", path: "/dashboard/configuracoes" },
 ];
 

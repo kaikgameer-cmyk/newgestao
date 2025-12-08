@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, DollarSign, Calendar, PlusCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Calendar, PlusCircle, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import {
@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCombinedExpenses } from "@/hooks/useCombinedExpenses";
+import { useRecurringExpenses, calculateDailyRecurringAmount } from "@/hooks/useRecurringExpenses";
 import { startOfMonth, endOfMonth, format, parseISO, eachDayOfInterval, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -63,10 +64,19 @@ export default function Dashboard() {
     monthEnd
   );
 
+  // Fetch recurring expenses
+  const { recurringExpenses } = useRecurringExpenses(user?.id);
+
+  // Calculate recurring expenses for the month (daily amount * days in month)
+  const daysInMonth = now.getDate();
+  const monthlyRecurringTotal = recurringExpenses
+    .filter((e) => e.is_active && e.start_date <= format(now, "yyyy-MM-dd") && (!e.end_date || e.end_date >= format(monthStart, "yyyy-MM-dd")))
+    .reduce((sum, e) => sum + (e.amount / 30) * daysInMonth, 0);
+
   // Calculate KPIs
   const totalRevenue = revenues.reduce((sum, r) => sum + Number(r.amount), 0);
-  const netProfit = totalRevenue - totalExpenses;
-  const daysInMonth = now.getDate();
+  const totalAllExpenses = totalExpenses + monthlyRecurringTotal;
+  const netProfit = totalRevenue - totalAllExpenses;
   const avgPerDay = daysInMonth > 0 ? netProfit / daysInMonth : 0;
 
   // Group combined expenses by category (includes fuel)
@@ -75,6 +85,11 @@ export default function Dashboard() {
     acc[category] = (acc[category] || 0) + expense.amount;
     return acc;
   }, {} as Record<string, number>);
+
+  // Add recurring expenses as a category
+  if (monthlyRecurringTotal > 0) {
+    expensesByCategory["despesas_fixas"] = monthlyRecurringTotal;
+  }
 
   const categoryLabels: Record<string, string> = {
     combustivel: "Combustível",
@@ -85,6 +100,7 @@ export default function Dashboard() {
     alimentacao: "Alimentação",
     cartao: "Cartão",
     outro: "Outro",
+    despesas_fixas: "Despesas Fixas",
   };
 
   const expenseCategoriesData = Object.entries(expensesByCategory).map(([name, value], index) => ({
@@ -93,7 +109,7 @@ export default function Dashboard() {
     color: COLORS[index % COLORS.length],
   }));
 
-  // Daily profit data
+  // Daily profit data (including recurring expenses)
   const daysInterval = eachDayOfInterval({ start: monthStart, end: now });
   const dailyData = daysInterval.map((day) => {
     const dayRevenues = revenues
@@ -102,9 +118,13 @@ export default function Dashboard() {
     const dayExpenses = combinedExpenses
       .filter((e) => isSameDay(parseISO(e.date), day))
       .reduce((sum, e) => sum + e.amount, 0);
+    
+    // Add daily recurring expenses
+    const dailyRecurring = calculateDailyRecurringAmount(recurringExpenses, day);
+    
     return {
       day: format(day, "dd"),
-      lucro: dayRevenues - dayExpenses,
+      lucro: dayRevenues - dayExpenses - dailyRecurring.total,
     };
   });
 
@@ -120,7 +140,7 @@ export default function Dashboard() {
     },
     {
       title: "Despesas",
-      value: `R$ ${totalExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+      value: `R$ ${totalAllExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
       change: "",
       changeType: "positive" as const,
       icon: TrendingDown,

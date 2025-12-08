@@ -12,6 +12,7 @@ import WeeklyReports from "./pages/WeeklyReports";
 import Transactions from "./pages/Transactions";
 import CreditCards from "./pages/CreditCards";
 import FuelControl from "./pages/FuelControl";
+import RecurringExpenses from "./pages/RecurringExpenses";
 import SettingsPage from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="lancamentos" element={<Transactions />} />
             <Route path="cartoes" element={<CreditCards />} />
             <Route path="combustivel" element={<FuelControl />} />
+            <Route path="despesas-fixas" element={<RecurringExpenses />} />
             <Route path="configuracoes" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />

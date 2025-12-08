@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, PlusCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, PlusCircle, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import {
@@ -26,6 +26,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCombinedExpenses } from "@/hooks/useCombinedExpenses";
+import { useRecurringExpenses, calculateDailyRecurringAmount } from "@/hooks/useRecurringExpenses";
 import { startOfWeek, endOfWeek, addWeeks, format, eachDayOfInterval, isSameDay, parseISO, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -48,6 +49,7 @@ const categoryLabels: Record<string, string> = {
   alimentacao: "Alimentação",
   cartao: "Cartão",
   outro: "Outro",
+  despesas_fixas: "Despesas Fixas",
 };
 
 export default function WeeklyReports() {
@@ -105,14 +107,24 @@ export default function WeeklyReports() {
     weekEnd
   );
 
+  // Fetch recurring expenses
+  const { recurringExpenses } = useRecurringExpenses(user?.id);
+
+  // Calculate recurring expenses for the week
+  const daysInWeek = eachDayOfInterval({ start: weekStart, end: weekEnd }).length;
+  const weeklyRecurringTotal = recurringExpenses
+    .filter((e) => e.is_active && e.start_date <= format(weekEnd, "yyyy-MM-dd") && (!e.end_date || e.end_date >= format(weekStart, "yyyy-MM-dd")))
+    .reduce((sum, e) => sum + (e.amount / 30) * daysInWeek, 0);
+
   // Calculate KPIs
   const totalRevenue = revenues.reduce((sum, r) => sum + Number(r.amount), 0);
-  const netProfit = totalRevenue - totalExpenses;
+  const totalAllExpenses = totalExpenses + weeklyRecurringTotal;
+  const netProfit = totalRevenue - totalAllExpenses;
   
   const daysWithRevenue = new Set(revenues.map((r) => r.date)).size;
   const avgPerDay = daysWithRevenue > 0 ? netProfit / daysWithRevenue : 0;
 
-  // Daily data for charts
+  // Daily data for charts (including recurring expenses)
   const daysInterval = eachDayOfInterval({ start: weekStart, end: weekEnd });
   const dailyData = daysInterval.map((day) => {
     const dayRevenues = revenues
@@ -121,20 +133,30 @@ export default function WeeklyReports() {
     const dayExpenses = combinedExpenses
       .filter((e) => isSameDay(parseISO(e.date), day))
       .reduce((sum, e) => sum + e.amount, 0);
+    
+    // Add daily recurring expenses
+    const dailyRecurring = calculateDailyRecurringAmount(recurringExpenses, day);
+    const totalDayExpenses = dayExpenses + dailyRecurring.total;
+    
     return {
       day: DAY_NAMES[day.getDay()],
-      lucro: dayRevenues - dayExpenses,
+      lucro: dayRevenues - totalDayExpenses,
       receita: dayRevenues,
-      despesa: dayExpenses,
+      despesa: totalDayExpenses,
     };
   });
 
-  // Expense categories (includes fuel)
+  // Expense categories (includes fuel and recurring)
   const expensesByCategory = combinedExpenses.reduce((acc, expense) => {
     const category = expense.category || "Outros";
     acc[category] = (acc[category] || 0) + expense.amount;
     return acc;
   }, {} as Record<string, number>);
+
+  // Add recurring expenses as a category
+  if (weeklyRecurringTotal > 0) {
+    expensesByCategory["despesas_fixas"] = weeklyRecurringTotal;
+  }
 
   const expenseCategoriesData = Object.entries(expensesByCategory).map(([name, value], index) => ({
     name: categoryLabels[name] || name,
@@ -142,11 +164,11 @@ export default function WeeklyReports() {
     color: COLORS[index % COLORS.length],
   }));
 
-  const hasData = revenues.length > 0 || combinedExpenses.length > 0;
+  const hasData = revenues.length > 0 || combinedExpenses.length > 0 || weeklyRecurringTotal > 0;
 
   const kpis = [
     { title: "Receita", value: `R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: DollarSign },
-    { title: "Despesas", value: `R$ ${totalExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: TrendingDown },
+    { title: "Despesas", value: `R$ ${totalAllExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: TrendingDown },
     { title: "Lucro", value: `R$ ${netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: TrendingUp, highlight: true },
     { title: "Dias rodados", value: daysWithRevenue.toString(), icon: Calendar },
     { title: "Média/dia", value: `R$ ${avgPerDay.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: Clock },
