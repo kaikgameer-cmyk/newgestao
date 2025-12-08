@@ -224,37 +224,61 @@ serve(async (req) => {
 
     // Send welcome email for new users
     if (isNewUser && resend) {
-      const loginUrl = `${Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app")}/login`;
-      
       try {
         await resend.emails.send({
           from: "Driver Control <onboarding@resend.dev>",
           to: [email],
           subject: "Bem-vindo ao Driver Control! 🚗",
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h1 style="color: #F59E0B;">Bem-vindo ao Driver Control!</h1>
-              
-              <p>Olá ${name},</p>
-              
-              <p>Sua conta foi criada com sucesso! Agora você tem acesso ao melhor sistema de controle financeiro para motoristas de aplicativo.</p>
-              
-              <div style="background-color: #1F2937; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #F59E0B; margin-top: 0;">Seus dados de acesso:</h3>
-                <p style="color: #E5E7EB;"><strong>E-mail:</strong> ${email}</p>
-                <p style="color: #E5E7EB;"><strong>Senha:</strong> ${generatedPassword}</p>
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a; color: #ffffff; margin: 0; padding: 40px 20px;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: #1a1a1a; border-radius: 16px; padding: 40px; border: 1px solid #333;">
+                <div style="text-align: center; margin-bottom: 32px;">
+                  <h1 style="color: #facc15; margin: 0; font-size: 28px;">🚗 Driver Control</h1>
+                </div>
+                
+                <h2 style="color: #ffffff; margin-bottom: 24px;">Olá${name ? `, ${name}` : ''}!</h2>
+                
+                <p style="color: #a1a1a1; line-height: 1.6; margin-bottom: 24px;">
+                  Sua assinatura foi confirmada com sucesso! Agora você pode acessar o Driver Control e começar a gerenciar suas finanças como motorista de aplicativo.
+                </p>
+                
+                <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                  <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📧 Suas credenciais de acesso:</h3>
+                  <p style="margin: 8px 0; color: #ffffff;"><strong>Email:</strong> ${email}</p>
+                  <p style="margin: 8px 0; color: #ffffff;"><strong>Senha:</strong> ${generatedPassword}</p>
+                </div>
+                
+                <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                  <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📋 Detalhes do seu plano:</h3>
+                  <p style="margin: 8px 0; color: #ffffff;"><strong>Plano:</strong> ${planName}</p>
+                  <p style="margin: 8px 0; color: #ffffff;"><strong>Status:</strong> Ativo ✅</p>
+                </div>
+                
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="https://drivercontrol.com.br/login" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                    Acessar o Painel
+                  </a>
+                </div>
+                
+                <p style="color: #a1a1a1; line-height: 1.6; font-size: 14px;">
+                  <strong>Importante:</strong> Recomendamos que você altere sua senha após o primeiro acesso para maior segurança.
+                </p>
+                
+                <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
+                
+                <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+                  © ${new Date().getFullYear()} Driver Control. Todos os direitos reservados.<br>
+                  <a href="https://drivercontrol.com.br" style="color: #facc15; text-decoration: none;">drivercontrol.com.br</a>
+                </p>
               </div>
-              
-              <p><strong>Importante:</strong> Recomendamos que você altere sua senha após o primeiro acesso.</p>
-              
-              <a href="${loginUrl}" style="display: inline-block; background-color: #F59E0B; color: #1F2937; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0;">
-                Acessar Driver Control
-              </a>
-              
-              <p>Seu plano: <strong>${planName}</strong></p>
-              
-              <p style="color: #9CA3AF; font-size: 14px;">Se você tiver alguma dúvida, responda a este e-mail.</p>
-            </div>
+            </body>
+            </html>
           `,
         });
         console.log(`Welcome email sent to ${email}`);
