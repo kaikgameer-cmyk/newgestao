@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, PlusCircle } fro
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { DatePicker } from "@/components/ui/date-picker";
 import { DateRange } from "react-day-picker";
 import {
   BarChart,
@@ -63,18 +64,15 @@ export default function WeeklyReports() {
   });
   
   // Single day selection
-  const [selectedDate, setSelectedDate] = useState<DateRange | undefined>({
-    from: now,
-    to: now,
-  });
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(now);
 
   // Determine date range based on view mode
   const periodStart = viewMode === "week" 
     ? (dateRange?.from || startOfWeek(now, { weekStartsOn: 0 }))
-    : startOfDay(selectedDate?.from || now);
+    : startOfDay(selectedDate || now);
   const periodEnd = viewMode === "week"
     ? (dateRange?.to || endOfWeek(now, { weekStartsOn: 0 }))
-    : endOfDay(selectedDate?.from || now);
+    : endOfDay(selectedDate || now);
 
   // Fetch revenues for selected period
   const { data: revenues = [] } = useQuery({
@@ -216,9 +214,9 @@ export default function WeeklyReports() {
               </div>
             </>
           ) : (
-            <DateRangePicker
-              dateRange={selectedDate}
-              onDateRangeChange={(range) => setSelectedDate(range ? { from: range.from, to: range.from } : undefined)}
+            <DatePicker
+              date={selectedDate}
+              onDateChange={setSelectedDate}
               placeholder="Selecione o dia"
             />
           )}
