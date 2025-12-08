@@ -12,34 +12,69 @@ import heroCarImage from "@/assets/hero-car.png";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      if (isSignUp) {
+        const redirectUrl = `${window.location.origin}/`;
+        
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              name: name,
+            }
+          }
+        });
 
-      if (error) {
-        toast({
-          title: "Erro ao entrar",
-          description: error.message === "Invalid login credentials" 
-            ? "Email ou senha incorretos" 
-            : error.message,
-          variant: "destructive",
-        });
+        if (error) {
+          let message = error.message;
+          if (error.message.includes("already registered")) {
+            message = "Este email já está cadastrado. Tente fazer login.";
+          }
+          toast({
+            title: "Erro ao cadastrar",
+            description: message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Conta criada!",
+            description: "Você já pode acessar o sistema",
+          });
+          navigate("/dashboard");
+        }
       } else {
-        toast({
-          title: "Bem-vindo!",
-          description: "Login realizado com sucesso",
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
         });
-        navigate("/dashboard");
+
+        if (error) {
+          toast({
+            title: "Erro ao entrar",
+            description: error.message === "Invalid login credentials" 
+              ? "Email ou senha incorretos" 
+              : error.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Bem-vindo!",
+            description: "Login realizado com sucesso",
+          });
+          navigate("/dashboard");
+        }
       }
     } catch (error) {
       toast({
@@ -121,13 +156,32 @@ export default function Login() {
           </div>
           
           <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold mb-2">Entrar</h2>
+            <h2 className="text-3xl font-bold mb-2">
+              {isSignUp ? "Criar conta" : "Entrar"}
+            </h2>
             <p className="text-muted-foreground">
-              Acesse sua conta para ver seus resultados
+              {isSignUp 
+                ? "Cadastre-se para começar a controlar suas finanças"
+                : "Acesse sua conta para ver seus resultados"
+              }
             </p>
           </div>
           
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Seu nome"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required={isSignUp}
+                />
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -149,6 +203,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
               />
             </div>
             
@@ -162,17 +217,31 @@ export default function Login() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Entrando...
+                  {isSignUp ? "Criando conta..." : "Entrando..."}
                 </>
               ) : (
-                "Entrar"
+                isSignUp ? "Criar conta" : "Entrar"
               )}
             </Button>
             
-            <div className="text-center">
-              <a href="#" className="text-sm text-primary hover:underline">
-                Esqueci minha senha
-              </a>
+            <div className="text-center space-y-2">
+              <button
+                type="button"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-sm text-primary hover:underline"
+              >
+                {isSignUp 
+                  ? "Já tem conta? Faça login"
+                  : "Não tem conta? Cadastre-se"
+                }
+              </button>
+              {!isSignUp && (
+                <div>
+                  <a href="#" className="text-sm text-muted-foreground hover:text-primary">
+                    Esqueci minha senha
+                  </a>
+                </div>
+              )}
             </div>
           </form>
           
