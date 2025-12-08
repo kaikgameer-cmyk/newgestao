@@ -35,9 +35,11 @@ import {
   Clock,
   TrendingUp,
   BadgeCheck,
-  Ban
+  Ban,
+  UserPlus
 } from "lucide-react";
 import { Navigate } from "react-router-dom";
+import { z } from "zod";
 
 interface Subscription {
   id: string;
@@ -79,6 +81,7 @@ export default function AdminPage() {
   const [editUserDialogOpen, setEditUserDialogOpen] = useState(false);
   const [createSubDialogOpen, setCreateSubDialogOpen] = useState(false);
   const [editSubDialogOpen, setEditSubDialogOpen] = useState(false);
+  const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithData | null>(null);
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
 
@@ -89,6 +92,13 @@ export default function AdminPage() {
   const [formStatus, setFormStatus] = useState<"active" | "past_due" | "canceled">("active");
   const [formMonths, setFormMonths] = useState("12");
   const [formIsAdmin, setFormIsAdmin] = useState(false);
+  
+  // Create user form states
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserCity, setNewUserCity] = useState("");
+  const [createUserErrors, setCreateUserErrors] = useState<Record<string, string>>({});
 
   // Fetch all profiles with subscriptions and admin status
   const { data: usersWithData = [], isLoading: usersLoading, refetch: refetchUsers } = useQuery({
@@ -305,6 +315,67 @@ export default function AdminPage() {
     }
   });
 
+  // Create user mutation (uses edge function with service_role)
+  const createUserSchema = z.object({
+    email: z.string().email("Email inválido"),
+    password: z.string().min(6, "Mínimo 6 caracteres"),
+    name: z.string().min(1, "Nome é obrigatório"),
+  });
+
+  const createUserMutation = useMutation({
+    mutationFn: async ({ email, password, name, city }: { email: string; password: string; name: string; city: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await supabase.functions.invoke("create-user", {
+        body: { email, password, name, city },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) throw new Error(response.data.error);
+      
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
+      toast({ title: "Usuário criado com sucesso!" });
+      setCreateUserDialogOpen(false);
+      setNewUserEmail("");
+      setNewUserPassword("");
+      setNewUserName("");
+      setNewUserCity("");
+      setCreateUserErrors({});
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao criar usuário", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const handleCreateUser = () => {
+    setCreateUserErrors({});
+    const result = createUserSchema.safeParse({
+      email: newUserEmail,
+      password: newUserPassword,
+      name: newUserName,
+    });
+
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) errors[err.path[0] as string] = err.message;
+      });
+      setCreateUserErrors(errors);
+      return;
+    }
+
+    createUserMutation.mutate({
+      email: newUserEmail,
+      password: newUserPassword,
+      name: newUserName,
+      city: newUserCity,
+    });
+  };
+
   const handleEditUser = (user: UserWithData) => {
     setSelectedUser(user);
     setFormName(user.profile?.name || "");
@@ -381,15 +452,25 @@ export default function AdminPage() {
             <p className="text-muted-foreground text-sm">Gerenciamento completo de usuários e assinaturas</p>
           </div>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => refetchUsers()}
-          className="w-fit"
-        >
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Atualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            size="sm" 
+            onClick={() => setCreateUserDialogOpen(true)}
+            className="w-fit"
+          >
+            <UserPlus className="w-4 h-4 mr-2" />
+            Novo Usuário
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => refetchUsers()}
+            className="w-fit"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -904,6 +985,81 @@ export default function AdminPage() {
             >
               {updateSubMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={createUserDialogOpen} onOpenChange={setCreateUserDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5" />
+              Criar Novo Usuário
+            </DialogTitle>
+            <DialogDescription>
+              Adicionar um novo usuário ao sistema
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                placeholder="email@exemplo.com"
+                className={createUserErrors.email ? "border-destructive" : ""}
+              />
+              {createUserErrors.email && (
+                <p className="text-sm text-destructive">{createUserErrors.email}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Senha *</Label>
+              <Input
+                type="password"
+                value={newUserPassword}
+                onChange={(e) => setNewUserPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                className={createUserErrors.password ? "border-destructive" : ""}
+              />
+              {createUserErrors.password && (
+                <p className="text-sm text-destructive">{createUserErrors.password}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Nome *</Label>
+              <Input
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
+                placeholder="Nome completo"
+                className={createUserErrors.name ? "border-destructive" : ""}
+              />
+              {createUserErrors.name && (
+                <p className="text-sm text-destructive">{createUserErrors.name}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Cidade</Label>
+              <Input
+                value={newUserCity}
+                onChange={(e) => setNewUserCity(e.target.value)}
+                placeholder="Cidade (opcional)"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button
+              onClick={handleCreateUser}
+              disabled={createUserMutation.isPending}
+            >
+              {createUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Criar Usuário
             </Button>
           </DialogFooter>
         </DialogContent>
