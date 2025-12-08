@@ -486,7 +486,14 @@ export default function Transactions() {
                           )}
                         </td>
                         <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {transaction.transactionType === "receita" ? transaction.receive_method : transaction.payment_method}
+                          <div className="flex flex-col">
+                            <span>{transaction.transactionType === "receita" ? transaction.receive_method : transaction.payment_method}</span>
+                            {transaction.transactionType === "despesa" && transaction.total_installments && transaction.total_installments > 1 && (
+                              <span className="text-xs text-primary">
+                                {transaction.current_installment}/{transaction.total_installments}x
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td
                           className={`py-3 px-4 text-sm font-medium text-right ${
