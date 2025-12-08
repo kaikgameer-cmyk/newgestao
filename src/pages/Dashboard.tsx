@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCombinedExpenses } from "@/hooks/useCombinedExpenses";
 import { useRecurringExpenses, calculateDailyRecurringAmount } from "@/hooks/useRecurringExpenses";
+import { ProfitComparisonChart } from "@/components/charts/ProfitComparisonChart";
 import { startOfMonth, endOfMonth, format, eachDayOfInterval, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseLocalDate } from "@/lib/dateUtils";
@@ -337,6 +338,11 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Profit Comparison Chart - Always show if there's any data */}
+      {hasData && (
+        <ProfitComparisonChart userId={user?.id} />
       )}
     </div>
   );
