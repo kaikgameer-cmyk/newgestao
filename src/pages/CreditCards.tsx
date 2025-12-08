@@ -15,14 +15,15 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt, ChevronLeft, ChevronRight, Calendar, AlertTriangle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useInvalidateFinancialData } from "@/hooks/useInvalidateFinancialData";
-import { startOfMonth, endOfMonth, format, addMonths, subMonths } from "date-fns";
+import { startOfMonth, endOfMonth, format, addMonths, subMonths, differenceInDays, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function CreditCards() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -331,6 +332,20 @@ export default function CreditCards() {
               const cardUsedPercent = cardLimit > 0 ? (cardUsed / cardLimit) * 100 : 0;
               const cardExpensesList = expensesByCard[card.id] || [];
 
+              // Calculate due date alert
+              const today = new Date();
+              const isCurrentMonth = isSameMonth(selectedMonth, today);
+              let daysUntilDue = 0;
+              let isDueSoon = false;
+              let isOverdue = false;
+              
+              if (card.due_day && isCurrentMonth && cardUsed > 0) {
+                const dueDate = new Date(today.getFullYear(), today.getMonth(), card.due_day);
+                daysUntilDue = differenceInDays(dueDate, today);
+                isDueSoon = daysUntilDue >= 0 && daysUntilDue <= 5;
+                isOverdue = daysUntilDue < 0;
+              }
+
               return (
                 <Card key={card.id} variant="elevated" className="hover:border-primary/30 transition-colors">
                   <CardHeader className="pb-4">
@@ -353,6 +368,21 @@ export default function CreditCards() {
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Due date alert */}
+                    {(isDueSoon || isOverdue) && (
+                      <Alert variant={isOverdue ? "destructive" : "default"} className={`${isDueSoon && !isOverdue ? 'border-primary bg-primary/10' : ''}`}>
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-sm">
+                          {isOverdue 
+                            ? `Fatura vencida há ${Math.abs(daysUntilDue)} dia(s)! Valor: R$ ${cardUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                            : daysUntilDue === 0 
+                              ? `Fatura vence hoje! Valor: R$ ${cardUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                              : `Fatura vence em ${daysUntilDue} dia(s)! Valor: R$ ${cardUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                          }
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
                     {cardLimit > 0 && (
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
