@@ -81,10 +81,8 @@ serve(async (req) => {
   }
 
   try {
-    // Validate webhook secret
-    const url = new URL(req.url);
-    const secretParam = url.searchParams.get("secret");
-    const secretHeader = req.headers.get("x-kiwify-secret");
+    // Validate webhook secret - only accept via header for security
+    const providedSecret = req.headers.get("x-kiwify-secret");
     const webhookSecret = Deno.env.get("KIWIFY_WEBHOOK_SECRET");
 
     if (!webhookSecret) {
@@ -94,8 +92,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const providedSecret = secretParam || secretHeader;
     if (providedSecret !== webhookSecret) {
       console.error("Invalid webhook secret");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
