@@ -35,7 +35,6 @@ export default function Transactions() {
   const [revenueDate, setRevenueDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [revenueAmount, setRevenueAmount] = useState("");
   const [revenueApp, setRevenueApp] = useState("");
-  const [revenueType, setRevenueType] = useState("");
   const [revenueMethod, setRevenueMethod] = useState("");
   const [revenueNotes, setRevenueNotes] = useState("");
   
@@ -106,7 +105,7 @@ export default function Transactions() {
         date: revenueDate,
         amount: parseFloat(revenueAmount),
         app: revenueApp,
-        type: revenueType,
+        type: "total_diario",
         receive_method: revenueMethod || null,
         notes: revenueNotes || null,
       });
@@ -174,7 +173,6 @@ export default function Transactions() {
     setRevenueDate(format(new Date(), "yyyy-MM-dd"));
     setRevenueAmount("");
     setRevenueApp("");
-    setRevenueType("");
     setRevenueMethod("");
     setRevenueNotes("");
   };
@@ -247,7 +245,7 @@ export default function Transactions() {
                       <Input type="date" value={revenueDate} onChange={(e) => setRevenueDate(e.target.value)} required />
                     </div>
                     <div className="space-y-2">
-                      <Label>Valor *</Label>
+                      <Label>Valor total do dia *</Label>
                       <Input type="number" step="0.01" placeholder="0.00" value={revenueAmount} onChange={(e) => setRevenueAmount(e.target.value)} required />
                     </div>
                   </div>
@@ -259,18 +257,6 @@ export default function Transactions() {
                         <SelectItem value="uber">Uber</SelectItem>
                         <SelectItem value="99">99</SelectItem>
                         <SelectItem value="indrive">InDrive</SelectItem>
-                        <SelectItem value="outro">Outro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Tipo *</Label>
-                    <Select value={revenueType} onValueChange={setRevenueType} required>
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="corrida">Corrida</SelectItem>
-                        <SelectItem value="bonus">Bônus</SelectItem>
-                        <SelectItem value="gorjeta">Gorjeta</SelectItem>
                         <SelectItem value="outro">Outro</SelectItem>
                       </SelectContent>
                     </Select>
@@ -288,7 +274,7 @@ export default function Transactions() {
                   </div>
                   <div className="space-y-2">
                     <Label>Observação (opcional)</Label>
-                    <Input placeholder="Ex: Corrida longa para aeroporto" value={revenueNotes} onChange={(e) => setRevenueNotes(e.target.value)} />
+                    <Input placeholder="Ex: Dia cheio, muitas corridas longas" value={revenueNotes} onChange={(e) => setRevenueNotes(e.target.value)} />
                   </div>
                   <Button type="submit" variant="hero" className="w-full" disabled={createRevenue.isPending}>
                     {createRevenue.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Receita"}
