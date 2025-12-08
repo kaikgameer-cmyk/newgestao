@@ -81,33 +81,66 @@ serve(async (req) => {
       });
     }
 
-    // Wait a moment for the trigger to create the profile
+    // Handle profile creation/update
     if (newUser.user) {
-      // Small delay to ensure profile trigger completes
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const userId = newUser.user.id;
       
-      // Update profile with name and city
-      const { error: profileError } = await supabaseAdmin
+      // Wait for the trigger to potentially create the profile
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Try to update the profile first
+      const { error: updateError } = await supabaseAdmin
         .from("profiles")
         .update({ 
           name: name || null,
           city: city || null,
           updated_at: new Date().toISOString()
         })
-        .eq("user_id", newUser.user.id);
+        .eq("user_id", userId);
 
-      if (profileError) {
-        console.error("Error updating profile:", profileError);
-        // If profile doesn't exist yet, create it
-        if (profileError.code === 'PGRST116') {
-          await supabaseAdmin
-            .from("profiles")
-            .insert({ 
-              user_id: newUser.user.id,
-              name: name || null,
-              city: city || null
-            });
+      // If update failed (profile doesn't exist), create it
+      if (updateError) {
+        console.log("Profile update failed, attempting insert:", updateError.message);
+        
+        const { error: insertError } = await supabaseAdmin
+          .from("profiles")
+          .insert({ 
+            user_id: userId,
+            name: name || null,
+            city: city || null
+          });
+          
+        if (insertError) {
+          console.error("Error creating profile:", insertError);
+          // Don't fail the request, user was created successfully
+        } else {
+          console.log("Profile created successfully via insert");
         }
+      } else {
+        console.log("Profile updated successfully");
+      }
+      
+      // Verify the profile exists
+      const { data: profileCheck, error: checkError } = await supabaseAdmin
+        .from("profiles")
+        .select("id, name, city")
+        .eq("user_id", userId)
+        .maybeSingle();
+        
+      if (checkError) {
+        console.error("Error checking profile:", checkError);
+      } else if (profileCheck) {
+        console.log("Profile verified:", profileCheck);
+      } else {
+        console.warn("Profile not found after creation attempts, creating now...");
+        // Final attempt to create profile
+        await supabaseAdmin
+          .from("profiles")
+          .insert({ 
+            user_id: userId,
+            name: name || null,
+            city: city || null
+          });
       }
     }
 

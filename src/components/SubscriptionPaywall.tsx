@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Zap, Shield } from "lucide-react";
+import { Check, Crown, Zap, Shield, Sparkles, TrendingUp } from "lucide-react";
 import { 
   KIWIFY_CHECKOUT_MENSAL, 
   KIWIFY_CHECKOUT_TRIMESTRAL, 
@@ -98,55 +98,81 @@ export function SubscriptionPaywall({
         </DialogHeader>
 
         <div className="grid md:grid-cols-3 gap-4 mt-6">
-          {plans.map((plan) => (
-            <Card 
-              key={plan.name} 
-              className={`relative ${plan.popular ? "border-primary shadow-lg" : ""} ${plan.bestValue ? "border-yellow-500/50" : ""}`}
-            >
-              {plan.popular && (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">
-                  Mais Popular
-                </Badge>
-              )}
-              {plan.bestValue && (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-500 text-black">
-                  Mais Economia
-                </Badge>
-              )}
-              <CardHeader className="text-center pb-2">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <Zap className="w-4 h-4 text-primary" />
-                  <CardTitle className="text-lg">{plan.name}</CardTitle>
-                </div>
-                <CardDescription>{plan.subtitle}</CardDescription>
-                <div className="mt-3">
-                  <span className="text-sm text-muted-foreground">R$ </span>
-                  <span className="text-3xl font-bold">{plan.price.replace("R$ ", "")}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
-                </div>
-                {plan.equivalent && (
-                  <p className="text-xs text-primary mt-1">{plan.equivalent}</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 mb-6">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2 text-sm">
-                      <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Button 
-                  className="w-full" 
-                  variant={plan.popular ? "default" : "outline"}
-                  onClick={() => handleSelectPlan(plan.checkoutUrl)}
-                >
-                  Assinar {plan.name === "3 Meses" ? "Plano 3 Meses" : `Plano ${plan.name}`}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+          {plans.map((plan) => {
+            // Determine the highlight badge (only show one per card)
+            const getBadge = () => {
+              if (plan.bestValue) {
+                return (
+                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground shadow-lg">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    Mais Economia
+                  </Badge>
+                );
+              }
+              if (plan.popular) {
+                return (
+                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground shadow-lg">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Mais Popular
+                  </Badge>
+                );
+              }
+              return null;
+            };
+
+            // Determine card border style
+            const getCardStyle = () => {
+              if (plan.bestValue) {
+                return "border-2 border-primary shadow-lg shadow-primary/10";
+              }
+              if (plan.popular) {
+                return "border-2 border-primary/50";
+              }
+              return "";
+            };
+            
+            return (
+              <Card 
+                key={plan.name} 
+                className={`relative overflow-hidden ${getCardStyle()}`}
+              >
+                {getBadge()}
+                
+                <CardHeader className="text-center pb-2 pt-6">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <Zap className="w-4 h-4 text-primary" />
+                    <CardTitle className="text-lg">{plan.name}</CardTitle>
+                  </div>
+                  <CardDescription>{plan.subtitle}</CardDescription>
+                  <div className="mt-3">
+                    <span className="text-sm text-muted-foreground">R$ </span>
+                    <span className="text-3xl font-bold">{plan.price.replace("R$ ", "")}</span>
+                    <span className="text-muted-foreground">{plan.period}</span>
+                  </div>
+                  {plan.equivalent && (
+                    <p className="text-xs text-primary mt-1">{plan.equivalent}</p>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 mb-6">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-center gap-2 text-sm">
+                        <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button 
+                    className="w-full" 
+                    variant={plan.popular || plan.bestValue ? "default" : "outline"}
+                    onClick={() => handleSelectPlan(plan.checkoutUrl)}
+                  >
+                    Assinar {plan.name === "3 Meses" ? "Plano 3 Meses" : `Plano ${plan.name}`}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         <div className="flex items-center justify-center gap-2 mt-6 text-sm text-muted-foreground">

@@ -14,7 +14,9 @@ import {
   XCircle,
   ExternalLink,
   Loader2,
-  Zap
+  Zap,
+  Sparkles,
+  TrendingUp
 } from "lucide-react";
 import { useSubscription, KIWIFY_CHECKOUT_MENSAL, KIWIFY_CHECKOUT_TRIMESTRAL, KIWIFY_CHECKOUT_ANUAL } from "@/hooks/useSubscription";
 import {
@@ -83,13 +85,10 @@ export default function SubscriptionPage() {
   };
 
   const handleCancelSubscription = () => {
-    // Redirect to Kiwify portal for cancellation
     toast({
       title: "Redirecionando...",
       description: "Você será direcionado para o portal da Kiwify para gerenciar sua assinatura.",
     });
-    
-    // Open Kiwify customer portal - users cancel through Kiwify
     window.open("https://dashboard.kiwify.com.br/subscriptions", "_blank");
     setCancelDialogOpen(false);
   };
@@ -216,7 +215,7 @@ export default function SubscriptionPage() {
         </CardContent>
       </Card>
 
-      {/* Available Plans */}
+      {/* Available Plans - IMPROVED DESIGN */}
       <div>
         <h2 className="text-xl font-semibold mb-4">
           {hasSubscription && isActive ? "Alterar Plano" : "Escolha seu Plano"}
@@ -225,27 +224,57 @@ export default function SubscriptionPage() {
           {plans.map((plan) => {
             const isCurrentPlan = subscription?.billing_interval === plan.interval && isActive;
             
+            // Determine the highlight badge (only show one)
+            const getBadge = () => {
+              if (isCurrentPlan) {
+                return (
+                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white shadow-lg">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Plano Atual
+                  </Badge>
+                );
+              }
+              if (plan.bestValue) {
+                return (
+                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground shadow-lg">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    Mais Economia
+                  </Badge>
+                );
+              }
+              if (plan.popular) {
+                return (
+                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground shadow-lg">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Mais Popular
+                  </Badge>
+                );
+              }
+              return null;
+            };
+
+            // Determine card border style
+            const getCardStyle = () => {
+              if (isCurrentPlan) {
+                return "border-2 border-green-500 shadow-lg shadow-green-500/10";
+              }
+              if (plan.bestValue) {
+                return "border-2 border-primary shadow-lg shadow-primary/10";
+              }
+              if (plan.popular) {
+                return "border-2 border-primary/50";
+              }
+              return "";
+            };
+            
             return (
               <Card 
                 key={plan.name} 
-                className={`relative ${plan.popular ? "border-primary shadow-lg" : ""} ${plan.bestValue ? "border-yellow-500/50" : ""} ${isCurrentPlan ? "ring-2 ring-primary" : ""}`}
+                className={`relative overflow-hidden ${getCardStyle()}`}
               >
-                {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">
-                    Mais Popular
-                  </Badge>
-                )}
-                {plan.bestValue && !plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-500 text-black">
-                    Mais Economia
-                  </Badge>
-                )}
-                {isCurrentPlan && (
-                  <Badge className="absolute -top-3 right-4 bg-green-500">
-                    Plano Atual
-                  </Badge>
-                )}
-                <CardHeader className="text-center pb-2">
+                {getBadge()}
+                
+                <CardHeader className="text-center pb-2 pt-6">
                   <CardTitle className="text-lg">{plan.name}</CardTitle>
                   <div className="mt-2">
                     <span className="text-sm text-muted-foreground">R$ </span>
@@ -259,7 +288,7 @@ export default function SubscriptionPage() {
                 <CardContent>
                   <Button 
                     className="w-full" 
-                    variant={isCurrentPlan ? "secondary" : plan.popular ? "default" : "outline"}
+                    variant={isCurrentPlan ? "secondary" : plan.popular || plan.bestValue ? "default" : "outline"}
                     disabled={isCurrentPlan}
                     onClick={() => handleUpgrade(plan.checkoutUrl)}
                   >
