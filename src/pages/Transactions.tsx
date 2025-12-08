@@ -127,18 +127,32 @@ export default function Transactions() {
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
       const installments = expenseMethod === "credito" ? parseInt(expenseInstallments) : 1;
-      const { error } = await supabase.from("expenses").insert({
-        user_id: user.id,
-        date: expenseDate,
-        amount: parseFloat(expenseAmount),
-        category: expenseCategory,
-        payment_method: expenseMethod || null,
-        credit_card_id: expenseMethod === "credito" && expenseCreditCardId ? expenseCreditCardId : null,
-        installments: installments,
-        current_installment: 1,
-        total_installments: installments,
-        notes: expenseNotes || null,
-      });
+      const totalAmount = parseFloat(expenseAmount);
+      const installmentAmount = totalAmount / installments;
+      
+      // Create an expense entry for each installment
+      const expensesToInsert = [];
+      const baseDate = new Date(expenseDate);
+      
+      for (let i = 0; i < installments; i++) {
+        const installmentDate = new Date(baseDate);
+        installmentDate.setMonth(installmentDate.getMonth() + i);
+        
+        expensesToInsert.push({
+          user_id: user.id,
+          date: format(installmentDate, "yyyy-MM-dd"),
+          amount: installmentAmount,
+          category: expenseCategory,
+          payment_method: expenseMethod || null,
+          credit_card_id: expenseMethod === "credito" && expenseCreditCardId ? expenseCreditCardId : null,
+          installments: installments,
+          current_installment: i + 1,
+          total_installments: installments,
+          notes: expenseNotes ? `${expenseNotes}${installments > 1 ? ` (${i + 1}/${installments})` : ''}` : (installments > 1 ? `Parcela ${i + 1}/${installments}` : null),
+        });
+      }
+      
+      const { error } = await supabase.from("expenses").insert(expensesToInsert);
       if (error) throw error;
     },
     onSuccess: () => {
