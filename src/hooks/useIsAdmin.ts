@@ -5,7 +5,7 @@ import { useAuth } from "./useAuth";
 export function useIsAdmin() {
   const { user } = useAuth();
 
-  const { data: isAdmin, isLoading, isFetched } = useQuery({
+  const { data: isAdmin, isLoading, isFetched, refetch } = useQuery({
     queryKey: ["isAdmin", user?.id],
     queryFn: async () => {
       if (!user?.id) return false;
@@ -21,9 +21,16 @@ export function useIsAdmin() {
       return data ?? false;
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 2, // 2 minutes - reduced for faster updates
+    gcTime: 1000 * 60 * 5,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
-  return { isAdmin: isAdmin ?? false, isLoading, isFetched };
+  return { 
+    isAdmin: isAdmin ?? false, 
+    isLoading, 
+    isFetched,
+    refetch
+  };
 }

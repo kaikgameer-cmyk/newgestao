@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, addMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { 
@@ -30,10 +29,7 @@ import {
   UserCog,
   RefreshCw,
   Calendar,
-  Mail,
   User,
-  Clock,
-  TrendingUp,
   BadgeCheck,
   Ban,
   UserPlus
@@ -70,12 +66,39 @@ interface UserWithData {
   isAdmin: boolean;
 }
 
+// Helper function to get months based on plan type
+const getMonthsForPlan = (plan: string): number => {
+  switch (plan) {
+    case "month":
+      return 1;
+    case "quarter":
+      return 3;
+    case "year":
+      return 12;
+    default:
+      return 1;
+  }
+};
+
+// Helper function to get plan name from interval
+const getPlanName = (plan: string): string => {
+  switch (plan) {
+    case "month":
+      return "Plano Mensal";
+    case "quarter":
+      return "Plano Trimestral";
+    case "year":
+      return "Plano Anual";
+    default:
+      return "Plano Mensal";
+  }
+};
+
 export default function AdminPage() {
-  const { isAdmin, isLoading: adminLoading } = useIsAdmin();
+  const { isAdmin, isLoading: adminLoading, isFetched: adminFetched } = useIsAdmin();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("users");
   
   // Dialog states
   const [editUserDialogOpen, setEditUserDialogOpen] = useState(false);
@@ -90,7 +113,6 @@ export default function AdminPage() {
   const [formCity, setFormCity] = useState("");
   const [formPlan, setFormPlan] = useState<"month" | "quarter" | "year">("year");
   const [formStatus, setFormStatus] = useState<"active" | "past_due" | "canceled">("active");
-  const [formMonths, setFormMonths] = useState("12");
   const [formIsAdmin, setFormIsAdmin] = useState(false);
   
   // Create user form states
@@ -99,6 +121,13 @@ export default function AdminPage() {
   const [newUserName, setNewUserName] = useState("");
   const [newUserCity, setNewUserCity] = useState("");
   const [createUserErrors, setCreateUserErrors] = useState<Record<string, string>>({});
+
+  // Invalidate all relevant queries
+  const invalidateAllQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
+    queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    queryClient.invalidateQueries({ queryKey: ["isAdmin"] });
+  };
 
   // Fetch all profiles with subscriptions and admin status
   const { data: usersWithData = [], isLoading: usersLoading, refetch: refetchUsers } = useQuery({
@@ -141,7 +170,9 @@ export default function AdminPage() {
 
       return Array.from(usersMap.values());
     },
-    enabled: isAdmin,
+    enabled: adminFetched && isAdmin,
+    staleTime: 0, // Always refetch
+    refetchOnMount: true,
   });
 
   // Stats calculations
@@ -163,8 +194,7 @@ export default function AdminPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      invalidateAllQueries();
       toast({ title: "Perfil atualizado!" });
       setEditUserDialogOpen(false);
     },
@@ -191,8 +221,7 @@ export default function AdminPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
-      queryClient.invalidateQueries({ queryKey: ["isAdmin"] });
+      invalidateAllQueries();
       toast({ title: "Permissão alterada!" });
     },
     onError: (error: Error) => {
@@ -200,17 +229,11 @@ export default function AdminPage() {
     }
   });
 
-  // Create subscription mutation
+  // Create subscription mutation - FIXED: Auto-calculate renewal date based on plan
   const createSubMutation = useMutation({
-    mutationFn: async ({ userId, plan, status, months }: { userId: string; plan: string; status: string; months: number }) => {
-      const periodEnd = new Date();
-      periodEnd.setMonth(periodEnd.getMonth() + months);
-
-      const planNames: Record<string, string> = {
-        month: "Plano Mensal",
-        quarter: "Plano Trimestral",
-        year: "Plano Anual"
-      };
+    mutationFn: async ({ userId, plan, status }: { userId: string; plan: string; status: string }) => {
+      const months = getMonthsForPlan(plan);
+      const periodEnd = addMonths(new Date(), months);
 
       const { error } = await supabase
         .from("subscriptions")
@@ -218,7 +241,7 @@ export default function AdminPage() {
           user_id: userId,
           kiwify_subscription_id: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           kiwify_product_id: "admin_created",
-          plan_name: planNames[plan],
+          plan_name: getPlanName(plan),
           billing_interval: plan as "month" | "quarter" | "year",
           status: status as "active" | "past_due" | "canceled",
           current_period_end: periodEnd.toISOString(),
@@ -228,8 +251,7 @@ export default function AdminPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      invalidateAllQueries();
       toast({ title: "Assinatura criada!" });
       setCreateSubDialogOpen(false);
     },
@@ -238,28 +260,36 @@ export default function AdminPage() {
     }
   });
 
-  // Update subscription mutation
+  // Update subscription mutation - FIXED: Auto-calculate renewal date when plan changes
   const updateSubMutation = useMutation({
-    mutationFn: async ({ id, status, months, plan }: { id: string; status: string; months?: number; plan?: string }) => {
+    mutationFn: async ({ id, status, plan, resetPeriod }: { id: string; status: string; plan?: string; resetPeriod?: boolean }) => {
       const updateData: Record<string, unknown> = { 
         status,
         updated_at: new Date().toISOString()
       };
       
-      if (months && months > 0) {
-        const periodEnd = new Date();
-        periodEnd.setMonth(periodEnd.getMonth() + months);
-        updateData.current_period_end = periodEnd.toISOString();
-      }
-
+      // If plan is being changed or resetPeriod is true, recalculate the period end date
       if (plan) {
-        const planNames: Record<string, string> = {
-          month: "Plano Mensal",
-          quarter: "Plano Trimestral",
-          year: "Plano Anual"
-        };
-        updateData.plan_name = planNames[plan];
+        const months = getMonthsForPlan(plan);
+        const periodEnd = addMonths(new Date(), months);
+        
+        updateData.plan_name = getPlanName(plan);
         updateData.billing_interval = plan;
+        updateData.current_period_end = periodEnd.toISOString();
+        updateData.last_event = "admin_plan_change";
+      } else if (resetPeriod) {
+        // Just reset the period based on current plan
+        const { data: currentSub } = await supabase
+          .from("subscriptions")
+          .select("billing_interval")
+          .eq("id", id)
+          .single();
+        
+        if (currentSub) {
+          const months = getMonthsForPlan(currentSub.billing_interval);
+          const periodEnd = addMonths(new Date(), months);
+          updateData.current_period_end = periodEnd.toISOString();
+        }
       }
 
       const { error } = await supabase
@@ -270,8 +300,7 @@ export default function AdminPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      invalidateAllQueries();
       toast({ title: "Assinatura atualizada!" });
       setEditSubDialogOpen(false);
     },
@@ -291,8 +320,7 @@ export default function AdminPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      invalidateAllQueries();
       toast({ title: "Assinatura removida!" });
     },
     onError: (error: Error) => {
@@ -312,9 +340,7 @@ export default function AdminPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
-      queryClient.invalidateQueries({ queryKey: ["isAdmin"] });
+      invalidateAllQueries();
       toast({ title: "Usuário removido!" });
     },
     onError: (error: Error) => {
@@ -343,9 +369,11 @@ export default function AdminPage() {
       
       return response.data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    onSuccess: async () => {
+      // Wait a bit for profile to be created then refetch
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      invalidateAllQueries();
+      await refetchUsers();
       toast({ title: "Usuário criado com sucesso!" });
       setCreateUserDialogOpen(false);
       setNewUserEmail("");
@@ -396,7 +424,6 @@ export default function AdminPage() {
     setSelectedUser(user);
     setFormPlan("year");
     setFormStatus("active");
-    setFormMonths("12");
     setCreateSubDialogOpen(true);
   };
 
@@ -404,7 +431,6 @@ export default function AdminPage() {
     setSelectedSubscription(subscription);
     setFormStatus(subscription.status as "active" | "past_due" | "canceled");
     setFormPlan(subscription.billing_interval as "month" | "quarter" | "year");
-    setFormMonths("0");
     setEditSubDialogOpen(true);
   };
 
@@ -424,6 +450,14 @@ export default function AdminPage() {
     }
   };
 
+  // Calculate days remaining for a subscription
+  const getDaysRemaining = (periodEnd: string): number => {
+    const end = new Date(periodEnd);
+    const now = new Date();
+    const diff = end.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  };
+
   const filteredUsers = usersWithData.filter(user => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
@@ -435,7 +469,8 @@ export default function AdminPage() {
     );
   });
 
-  if (adminLoading) {
+  // Show loading while checking admin status
+  if (adminLoading || !adminFetched) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -443,6 +478,7 @@ export default function AdminPage() {
     );
   }
 
+  // Redirect non-admins
   if (!isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -602,6 +638,7 @@ export default function AdminPage() {
                     <TableHead>Assinatura</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Válido até</TableHead>
+                    <TableHead>Dias Restantes</TableHead>
                     <TableHead>Permissão</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -609,121 +646,134 @@ export default function AdminPage() {
                 <TableBody>
                   {filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                         <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
                         <p>Nenhum usuário encontrado</p>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredUsers.map((user) => (
-                      <TableRow key={user.user_id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                              <User className="w-4 h-4 text-primary" />
+                    filteredUsers.map((user) => {
+                      const daysRemaining = user.subscription?.current_period_end 
+                        ? getDaysRemaining(user.subscription.current_period_end)
+                        : 0;
+                      
+                      return (
+                        <TableRow key={user.user_id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                <User className="w-4 h-4 text-primary" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">{user.profile?.name || "Sem nome"}</p>
+                                <p className="text-xs text-muted-foreground truncate max-w-[180px]">{user.user_id}</p>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <p className="font-medium truncate">{user.profile?.name || "Sem nome"}</p>
-                              <p className="text-xs text-muted-foreground truncate max-w-[180px]">{user.user_id}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">{user.profile?.city || "-"}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm">{user.subscription?.plan_name || "-"}</span>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(user.subscription?.status)}
-                        </TableCell>
-                        <TableCell>
-                          {user.subscription?.current_period_end ? (
-                            <span className="text-sm">
-                              {format(new Date(user.subscription.current_period_end), "dd/MM/yyyy", { locale: ptBR })}
-                            </span>
-                          ) : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {user.isAdmin ? (
-                            <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30">
-                              <Shield className="w-3 h-3 mr-1" />Admin
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-muted-foreground">Usuário</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end gap-1">
-                            {/* Edit User */}
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => handleEditUser(user)}
-                              title="Editar usuário"
-                            >
-                              <UserCog className="w-4 h-4" />
-                            </Button>
-
-                            {/* Create/Edit Subscription */}
-                            {user.subscription ? (
-                              <Button 
-                                variant="ghost" 
-                                size="icon"
-                                onClick={() => handleEditSubscription(user.subscription!)}
-                                title="Editar assinatura"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">{user.profile?.city || "-"}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">{user.subscription?.plan_name || "-"}</span>
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(user.subscription?.status)}
+                          </TableCell>
+                          <TableCell>
+                            {user.subscription?.current_period_end ? (
+                              <span className="text-sm">
+                                {format(new Date(user.subscription.current_period_end), "dd/MM/yyyy", { locale: ptBR })}
+                              </span>
+                            ) : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {user.subscription?.current_period_end ? (
+                              <span className={`text-sm font-medium ${daysRemaining <= 7 ? "text-yellow-500" : daysRemaining <= 0 ? "text-red-500" : ""}`}>
+                                {daysRemaining} dias
+                              </span>
+                            ) : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {user.isAdmin ? (
+                              <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30">
+                                <Shield className="w-3 h-3 mr-1" />Admin
+                              </Badge>
                             ) : (
+                              <Badge variant="outline" className="text-muted-foreground">Usuário</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end gap-1">
+                              {/* Edit User */}
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                onClick={() => handleCreateSubscription(user)}
-                                title="Criar assinatura"
+                                onClick={() => handleEditUser(user)}
+                                title="Editar usuário"
                               >
-                                <Plus className="w-4 h-4" />
+                                <UserCog className="w-4 h-4" />
                               </Button>
-                            )}
 
-                            {/* Delete User */}
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
+                              {/* Create/Edit Subscription */}
+                              {user.subscription ? (
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
-                                  className="text-destructive hover:text-destructive"
-                                  title="Excluir usuário"
+                                  onClick={() => handleEditSubscription(user.subscription!)}
+                                  title="Editar assinatura"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Edit className="w-4 h-4" />
                                 </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta ação irá remover permanentemente o perfil, assinatura e permissões do usuário "{user.profile?.name || 'Sem nome'}". Esta ação não pode ser desfeita.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    onClick={() => deleteUserMutation.mutate(user.user_id)}
+                              ) : (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => handleCreateSubscription(user)}
+                                  title="Criar assinatura"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </Button>
+                              )}
+
+                              {/* Delete User */}
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive"
+                                    title="Excluir usuário"
                                   >
-                                    {deleteUserMutation.isPending ? (
-                                      <Loader2 className="w-4 h-4 animate-spin" />
-                                    ) : (
-                                      "Excluir"
-                                    )}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta ação irá remover permanentemente o perfil, assinatura e permissões do usuário "{user.profile?.name || 'Sem nome'}". Esta ação não pode ser desfeita.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      onClick={() => deleteUserMutation.mutate(user.user_id)}
+                                    >
+                                      {deleteUserMutation.isPending ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        "Excluir"
+                                      )}
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -814,7 +864,7 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Subscription Dialog */}
+      {/* Create Subscription Dialog - SIMPLIFIED: Auto-calculates period based on plan */}
       <Dialog open={createSubDialogOpen} onOpenChange={setCreateSubDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -834,11 +884,14 @@ export default function AdminPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="month">Plano Mensal</SelectItem>
-                  <SelectItem value="quarter">Plano Trimestral</SelectItem>
-                  <SelectItem value="year">Plano Anual</SelectItem>
+                  <SelectItem value="month">Plano Mensal (1 mês)</SelectItem>
+                  <SelectItem value="quarter">Plano Trimestral (3 meses)</SelectItem>
+                  <SelectItem value="year">Plano Anual (12 meses)</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                A data de renovação será calculada automaticamente: {getMonthsForPlan(formPlan)} mês(es) a partir de hoje
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
@@ -853,15 +906,14 @@ export default function AdminPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Duração (meses)</Label>
-              <Input
-                type="number"
-                value={formMonths}
-                onChange={(e) => setFormMonths(e.target.value)}
-                min="1"
-                max="24"
-              />
+            
+            {/* Preview of calculated date */}
+            <div className="p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="w-4 h-4 text-primary" />
+                <span className="font-medium">Data de renovação:</span>
+                <span>{format(addMonths(new Date(), getMonthsForPlan(formPlan)), "dd/MM/yyyy", { locale: ptBR })}</span>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -875,7 +927,6 @@ export default function AdminPage() {
                     userId: selectedUser.user_id,
                     plan: formPlan,
                     status: formStatus,
-                    months: parseInt(formMonths) || 12
                   });
                 }
               }}
@@ -888,7 +939,7 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Subscription Dialog */}
+      {/* Edit Subscription Dialog - IMPROVED: Shows current info and auto-updates date when plan changes */}
       <Dialog open={editSubDialogOpen} onOpenChange={setEditSubDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -901,19 +952,45 @@ export default function AdminPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Current subscription info */}
+            {selectedSubscription && (
+              <div className="p-3 rounded-lg bg-muted/30 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Plano atual:</span>
+                  <span className="font-medium">{selectedSubscription.plan_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Válido até:</span>
+                  <span className="font-medium">
+                    {format(new Date(selectedSubscription.current_period_end), "dd/MM/yyyy", { locale: ptBR })}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Dias restantes:</span>
+                  <span className="font-medium">
+                    {getDaysRemaining(selectedSubscription.current_period_end)} dias
+                  </span>
+                </div>
+              </div>
+            )}
+            
             <div className="space-y-2">
-              <Label>Plano</Label>
+              <Label>Alterar Plano</Label>
               <Select value={formPlan} onValueChange={(v) => setFormPlan(v as typeof formPlan)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="month">Plano Mensal</SelectItem>
-                  <SelectItem value="quarter">Plano Trimestral</SelectItem>
-                  <SelectItem value="year">Plano Anual</SelectItem>
+                  <SelectItem value="month">Plano Mensal (1 mês)</SelectItem>
+                  <SelectItem value="quarter">Plano Trimestral (3 meses)</SelectItem>
+                  <SelectItem value="year">Plano Anual (12 meses)</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Ao mudar o plano, a data de renovação será recalculada para {getMonthsForPlan(formPlan)} mês(es) a partir de hoje
+              </p>
             </div>
+            
             <div className="space-y-2">
               <Label>Status</Label>
               <Select value={formStatus} onValueChange={(v) => setFormStatus(v as typeof formStatus)}>
@@ -927,18 +1004,17 @@ export default function AdminPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Estender por (meses)</Label>
-              <Input
-                type="number"
-                value={formMonths}
-                onChange={(e) => setFormMonths(e.target.value)}
-                min="0"
-                max="24"
-                placeholder="0 para manter data atual"
-              />
-              <p className="text-xs text-muted-foreground">Deixe 0 para manter a data atual</p>
-            </div>
+            
+            {/* Preview of new date if plan changed */}
+            {selectedSubscription && formPlan !== selectedSubscription.billing_interval && (
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  <span className="font-medium">Nova data de renovação:</span>
+                  <span className="text-primary">{format(addMonths(new Date(), getMonthsForPlan(formPlan)), "dd/MM/yyyy", { locale: ptBR })}</span>
+                </div>
+              </div>
+            )}
             
             {/* Delete subscription option */}
             <div className="pt-4 border-t">
@@ -984,8 +1060,7 @@ export default function AdminPage() {
                   updateSubMutation.mutate({
                     id: selectedSubscription.id,
                     status: formStatus,
-                    plan: formPlan,
-                    months: parseInt(formMonths) || undefined
+                    plan: formPlan !== selectedSubscription.billing_interval ? formPlan : undefined,
                   });
                 }
               }}

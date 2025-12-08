@@ -44,21 +44,8 @@ export default function DashboardLayout() {
     daysRemaining 
   } = useSubscription();
 
-  // Admin hook
+  // Admin hook - use the optimized version
   const { isAdmin, isLoading: adminLoading, isFetched: adminFetched } = useIsAdmin();
-
-  // Build nav items dynamically based on admin status - only show admin link once fetched
-  const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: Calendar, label: "Relatórios Semanais", path: "/dashboard/semanal" },
-    { icon: Receipt, label: "Lançamentos", path: "/dashboard/lancamentos" },
-    { icon: CreditCard, label: "Cartões", path: "/dashboard/cartoes" },
-    { icon: Fuel, label: "Combustível", path: "/dashboard/combustivel" },
-    { icon: Repeat, label: "Despesas Fixas", path: "/dashboard/despesas-fixas" },
-    { icon: Crown, label: "Assinatura", path: "/dashboard/assinatura" },
-    { icon: Settings, label: "Configurações", path: "/dashboard/configuracoes" },
-    ...(adminFetched && isAdmin ? [{ icon: Shield, label: "Admin", path: "/dashboard/admin" }] : []),
-  ];
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -87,11 +74,9 @@ export default function DashboardLayout() {
   // Check subscription status and show paywall if needed
   useEffect(() => {
     if (!subscriptionLoading && user) {
-      // Show paywall if no subscription, expired, or canceled
       if (!hasSubscription || (!subscriptionIsActive && !isPastDue)) {
         setShowPaywall(true);
       } else if (isPastDue) {
-        // For past due, show paywall but with different message
         setShowPaywall(true);
       } else {
         setShowPaywall(false);
@@ -121,6 +106,23 @@ export default function DashboardLayout() {
   }
 
   if (!user) return null;
+
+  // Build nav items - always include admin if user is admin (once fetched)
+  const navItems = [
+    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+    { icon: Calendar, label: "Relatórios Semanais", path: "/dashboard/semanal" },
+    { icon: Receipt, label: "Lançamentos", path: "/dashboard/lancamentos" },
+    { icon: CreditCard, label: "Cartões", path: "/dashboard/cartoes" },
+    { icon: Fuel, label: "Combustível", path: "/dashboard/combustivel" },
+    { icon: Repeat, label: "Despesas Fixas", path: "/dashboard/despesas-fixas" },
+    { icon: Crown, label: "Assinatura", path: "/dashboard/assinatura" },
+    { icon: Settings, label: "Configurações", path: "/dashboard/configuracoes" },
+  ];
+
+  // Add admin link if user is admin
+  if (adminFetched && isAdmin) {
+    navItems.push({ icon: Shield, label: "Admin", path: "/dashboard/admin" });
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
