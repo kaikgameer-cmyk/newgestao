@@ -15,6 +15,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { startOfMonth, endOfMonth, format } from "date-fns";
 
 export default function CreditCards() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -28,6 +29,10 @@ export default function CreditCards() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const currentMonth = new Date();
+  const monthStart = format(startOfMonth(currentMonth), "yyyy-MM-dd");
+  const monthEnd = format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
   const { data: creditCards = [], isLoading } = useQuery({
     queryKey: ["credit_cards", user?.id],
@@ -43,6 +48,32 @@ export default function CreditCards() {
     },
     enabled: !!user,
   });
+
+  // Fetch current month expenses for each credit card
+  const { data: cardExpenses = [] } = useQuery({
+    queryKey: ["card_expenses", user?.id, monthStart, monthEnd],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("credit_card_id, amount")
+        .eq("user_id", user.id)
+        .gte("date", monthStart)
+        .lte("date", monthEnd)
+        .not("credit_card_id", "is", null);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Calculate used limit per card
+  const usedLimitByCard = cardExpenses.reduce((acc, expense) => {
+    if (expense.credit_card_id) {
+      acc[expense.credit_card_id] = (acc[expense.credit_card_id] || 0) + Number(expense.amount);
+    }
+    return acc;
+  }, {} as Record<string, number>);
 
   const createCard = useMutation({
     mutationFn: async () => {
@@ -93,6 +124,9 @@ export default function CreditCards() {
   };
 
   const totalLimit = creditCards.reduce((acc, card) => acc + (Number(card.credit_limit) || 0), 0);
+  const totalUsed = Object.values(usedLimitByCard).reduce((acc, val) => acc + val, 0);
+  const totalAvailable = totalLimit - totalUsed;
+  const availablePercentage = totalLimit > 0 ? ((totalAvailable / totalLimit) * 100).toFixed(0) : "100";
 
   if (isLoading) {
     return (
@@ -225,12 +259,12 @@ export default function CreditCards() {
             <Card variant="elevated">
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <CardIcon className="w-5 h-5 text-primary" />
+                  <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                    <CardIcon className="w-5 h-5 text-destructive" />
                   </div>
-                  <span className="text-sm text-muted-foreground">Total de Cartões</span>
+                  <span className="text-sm text-muted-foreground">Fatura do Mês</span>
                 </div>
-                <p className="text-2xl font-bold">{creditCards.length}</p>
+                <p className="text-2xl font-bold text-destructive">R$ {totalUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
               </CardContent>
             </Card>
             <Card variant="elevated">
@@ -241,58 +275,76 @@ export default function CreditCards() {
                   </div>
                   <span className="text-sm text-muted-foreground">Limite Disponível</span>
                 </div>
-                <p className="text-2xl font-bold">100%</p>
+                <p className="text-2xl font-bold text-success">{availablePercentage}%</p>
+                <p className="text-sm text-muted-foreground">R$ {totalAvailable.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Cards Grid */}
           <div className="grid lg:grid-cols-3 gap-6">
-            {creditCards.map((card) => (
-              <Card key={card.id} variant="elevated" className="hover:border-primary/30 transition-colors">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{card.name}</CardTitle>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{card.brand || "—"}</span>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        onClick={() => deleteCard.mutate(card.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {card.last_digits ? `•••• ${card.last_digits}` : "—"}
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {card.credit_limit && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Limite</span>
-                        <span className="font-medium">R$ {Number(card.credit_limit).toLocaleString("pt-BR")}</span>
+            {creditCards.map((card) => {
+              const cardLimit = Number(card.credit_limit) || 0;
+              const cardUsed = usedLimitByCard[card.id] || 0;
+              const cardAvailable = cardLimit - cardUsed;
+              const cardUsedPercent = cardLimit > 0 ? (cardUsed / cardLimit) * 100 : 0;
+
+              return (
+                <Card key={card.id} variant="elevated" className="hover:border-primary/30 transition-colors">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{card.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{card.brand || "—"}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteCard.mutate(card.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
-                  )}
+                    <p className="text-sm text-muted-foreground">
+                      {card.last_digits ? `•••• ${card.last_digits}` : "—"}
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {cardLimit > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Limite</span>
+                          <span className="font-medium">R$ {cardLimit.toLocaleString("pt-BR")}</span>
+                        </div>
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all ${cardUsedPercent > 80 ? 'bg-destructive' : cardUsedPercent > 50 ? 'bg-primary' : 'bg-success'}`}
+                            style={{ width: `${Math.min(cardUsedPercent, 100)}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-destructive">Usado: R$ {cardUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                          <span className="text-success">Disponível: R$ {cardAvailable.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                    )}
 
-                  {/* Card details */}
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">Melhor compra</p>
-                      <p className="font-medium">{card.best_purchase_day ? `Dia ${card.best_purchase_day}` : "—"}</p>
+                    {/* Card details */}
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Melhor compra</p>
+                        <p className="font-medium">{card.best_purchase_day ? `Dia ${card.best_purchase_day}` : "—"}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Vencimento</p>
+                        <p className="font-medium">{card.due_day ? `Dia ${card.due_day}` : "—"}</p>
+                      </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">Vencimento</p>
-                      <p className="font-medium">{card.due_day ? `Dia ${card.due_day}` : "—"}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </>
       )}

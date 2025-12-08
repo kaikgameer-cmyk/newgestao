@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle, CreditCard } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle, CreditCard, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +27,7 @@ import { format } from "date-fns";
 
 export default function Transactions() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("receita");
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -46,6 +47,18 @@ export default function Transactions() {
   const [expenseCreditCardId, setExpenseCreditCardId] = useState("");
   const [expenseInstallments, setExpenseInstallments] = useState("1");
   const [expenseNotes, setExpenseNotes] = useState("");
+
+  // Edit state
+  const [editingTransaction, setEditingTransaction] = useState<{
+    id: string;
+    type: "receita" | "despesa";
+    date: string;
+    amount: string;
+    category?: string;
+    app?: string;
+    method?: string;
+    notes?: string;
+  } | null>(null);
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -157,12 +170,66 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["card_expenses"] });
       setIsDialogOpen(false);
       resetExpenseForm();
       toast({ title: "Despesa adicionada!" });
     },
     onError: () => {
       toast({ title: "Erro ao adicionar despesa", variant: "destructive" });
+    },
+  });
+
+  const updateRevenue = useMutation({
+    mutationFn: async () => {
+      if (!editingTransaction) throw new Error("Nenhuma transação selecionada");
+      const { error } = await supabase
+        .from("revenues")
+        .update({
+          date: editingTransaction.date,
+          amount: parseFloat(editingTransaction.amount),
+          app: editingTransaction.app,
+          receive_method: editingTransaction.method || null,
+          notes: editingTransaction.notes || null,
+        })
+        .eq("id", editingTransaction.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["revenues"] });
+      setIsEditDialogOpen(false);
+      setEditingTransaction(null);
+      toast({ title: "Receita atualizada!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar receita", variant: "destructive" });
+    },
+  });
+
+  const updateExpense = useMutation({
+    mutationFn: async () => {
+      if (!editingTransaction) throw new Error("Nenhuma transação selecionada");
+      const { error } = await supabase
+        .from("expenses")
+        .update({
+          date: editingTransaction.date,
+          amount: parseFloat(editingTransaction.amount),
+          category: editingTransaction.category,
+          payment_method: editingTransaction.method || null,
+          notes: editingTransaction.notes || null,
+        })
+        .eq("id", editingTransaction.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["card_expenses"] });
+      setIsEditDialogOpen(false);
+      setEditingTransaction(null);
+      toast({ title: "Despesa atualizada!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar despesa", variant: "destructive" });
     },
   });
 
@@ -184,6 +251,7 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: ["card_expenses"] });
       toast({ title: "Despesa removida!" });
     },
   });
@@ -204,6 +272,40 @@ export default function Transactions() {
     setExpenseCreditCardId("");
     setExpenseInstallments("1");
     setExpenseNotes("");
+  };
+
+  const handleEditClick = (transaction: any) => {
+    if (transaction.transactionType === "receita") {
+      setEditingTransaction({
+        id: transaction.id,
+        type: "receita",
+        date: transaction.date,
+        amount: String(transaction.amount),
+        app: transaction.app,
+        method: transaction.receive_method,
+        notes: transaction.notes,
+      });
+    } else {
+      setEditingTransaction({
+        id: transaction.id,
+        type: "despesa",
+        date: transaction.date,
+        amount: String(transaction.amount),
+        category: transaction.category,
+        method: transaction.payment_method,
+        notes: transaction.notes,
+      });
+    }
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingTransaction?.type === "receita") {
+      updateRevenue.mutate();
+    } else {
+      updateExpense.mutate();
+    }
   };
 
   // Combine and filter transactions
@@ -403,6 +505,136 @@ export default function Transactions() {
         </Dialog>
       </div>
 
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              Editar {editingTransaction?.type === "receita" ? "Receita" : "Despesa"}
+            </DialogTitle>
+          </DialogHeader>
+          {editingTransaction && (
+            <form onSubmit={handleEditSubmit} className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Data *</Label>
+                  <Input 
+                    type="date" 
+                    value={editingTransaction.date} 
+                    onChange={(e) => setEditingTransaction({ ...editingTransaction, date: e.target.value })} 
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Valor *</Label>
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    placeholder="0.00" 
+                    value={editingTransaction.amount} 
+                    onChange={(e) => setEditingTransaction({ ...editingTransaction, amount: e.target.value })} 
+                    required 
+                  />
+                </div>
+              </div>
+              
+              {editingTransaction.type === "receita" ? (
+                <>
+                  <div className="space-y-2">
+                    <Label>App *</Label>
+                    <Select 
+                      value={editingTransaction.app || ""} 
+                      onValueChange={(value) => setEditingTransaction({ ...editingTransaction, app: value })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="uber">Uber</SelectItem>
+                        <SelectItem value="99">99</SelectItem>
+                        <SelectItem value="indrive">InDrive</SelectItem>
+                        <SelectItem value="outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Método de recebimento</Label>
+                    <Select 
+                      value={editingTransaction.method || ""} 
+                      onValueChange={(value) => setEditingTransaction({ ...editingTransaction, method: value })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="conta">Conta</SelectItem>
+                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="pix">PIX</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label>Categoria *</Label>
+                    <Select 
+                      value={editingTransaction.category || ""} 
+                      onValueChange={(value) => setEditingTransaction({ ...editingTransaction, category: value })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="combustivel">Combustível</SelectItem>
+                        <SelectItem value="manutencao">Manutenção</SelectItem>
+                        <SelectItem value="lavagem">Lavagem</SelectItem>
+                        <SelectItem value="pedagio">Pedágio</SelectItem>
+                        <SelectItem value="estacionamento">Estacionamento</SelectItem>
+                        <SelectItem value="alimentacao">Alimentação</SelectItem>
+                        <SelectItem value="cartao">Cartão de Crédito</SelectItem>
+                        <SelectItem value="outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Método de pagamento</Label>
+                    <Select 
+                      value={editingTransaction.method || ""} 
+                      onValueChange={(value) => setEditingTransaction({ ...editingTransaction, method: value })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="debito">Débito</SelectItem>
+                        <SelectItem value="credito">Cartão de Crédito</SelectItem>
+                        <SelectItem value="pix">PIX</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+              
+              <div className="space-y-2">
+                <Label>Observação (opcional)</Label>
+                <Input 
+                  placeholder="Observação" 
+                  value={editingTransaction.notes || ""} 
+                  onChange={(e) => setEditingTransaction({ ...editingTransaction, notes: e.target.value })} 
+                />
+              </div>
+              
+              <Button 
+                type="submit" 
+                variant="hero" 
+                className="w-full" 
+                disabled={updateRevenue.isPending || updateExpense.isPending}
+              >
+                {(updateRevenue.isPending || updateExpense.isPending) ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Salvar Alterações"
+                )}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -465,7 +697,7 @@ export default function Transactions() {
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Categoria</th>
                       <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Método</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Valor</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground"></th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -517,20 +749,30 @@ export default function Transactions() {
                           {transaction.transactionType === "receita" ? "+" : "-"}R$ {Number(transaction.amount).toFixed(2)}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => {
-                              if (transaction.transactionType === "receita") {
-                                deleteRevenue.mutate(transaction.id);
-                              } else {
-                                deleteExpense.mutate(transaction.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              onClick={() => handleEditClick(transaction)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => {
+                                if (transaction.transactionType === "receita") {
+                                  deleteRevenue.mutate(transaction.id);
+                                } else {
+                                  deleteExpense.mutate(transaction.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
