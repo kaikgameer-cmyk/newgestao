@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,23 +10,136 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, Settings as SettingsIcon, Calendar, DollarSign } from "lucide-react";
+import { User, Settings as SettingsIcon, Calendar, DollarSign, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const [name, setName] = useState("João Silva");
-  const [city, setCity] = useState("São Paulo");
-  const [appsUsed, setAppsUsed] = useState("Uber, 99, InDrive");
-  const [startWeekDay, setStartWeekDay] = useState("segunda");
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const [name, setName] = useState("");
+  const [city, setCity] = useState("");
+  const [appsUsed, setAppsUsed] = useState("");
+  const [startWeekDay, setStartWeekDay] = useState("monday");
   const [currency, setCurrency] = useState("BRL");
 
+  // Fetch profile
+  const { data: profile, isLoading: loadingProfile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch stats
+  const { data: stats } = useQuery({
+    queryKey: ["settings-stats", user?.id],
+    queryFn: async () => {
+      if (!user) return { totalTransactions: 0, totalProfit: 0 };
+      
+      const [revenuesRes, expensesRes] = await Promise.all([
+        supabase.from("revenues").select("amount").eq("user_id", user.id),
+        supabase.from("expenses").select("amount").eq("user_id", user.id),
+      ]);
+
+      const totalRevenues = (revenuesRes.data || []).reduce((sum, r) => sum + Number(r.amount), 0);
+      const totalExpenses = (expensesRes.data || []).reduce((sum, e) => sum + Number(e.amount), 0);
+      const totalTransactions = (revenuesRes.data?.length || 0) + (expensesRes.data?.length || 0);
+
+      return {
+        totalTransactions,
+        totalProfit: totalRevenues - totalExpenses,
+      };
+    },
+    enabled: !!user,
+  });
+
+  // Update form when profile loads
+  useEffect(() => {
+    if (profile) {
+      setName(profile.name || "");
+      setCity(profile.city || "");
+      setAppsUsed(profile.apps_used?.join(", ") || "");
+      setStartWeekDay(profile.start_week_day || "monday");
+      setCurrency(profile.currency || "BRL");
+    }
+  }, [profile]);
+
+  // Save profile mutation
+  const saveProfile = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Não autenticado");
+      
+      const appsArray = appsUsed
+        .split(",")
+        .map((app) => app.trim())
+        .filter((app) => app.length > 0);
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          name,
+          city: city || null,
+          apps_used: appsArray.length > 0 ? appsArray : null,
+          start_week_day: startWeekDay,
+          currency,
+        })
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast({
+        title: "Configurações salvas",
+        description: "Suas preferências foram atualizadas com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar suas configurações.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSave = () => {
-    toast({
-      title: "Configurações salvas",
-      description: "Suas preferências foram atualizadas com sucesso.",
-    });
+    saveProfile.mutate();
   };
+
+  const memberSince = user?.created_at
+    ? format(new Date(user.created_at), "MMMM yyyy", { locale: ptBR })
+    : "—";
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: currency || "BRL",
+    }).format(value);
+  };
+
+  if (loadingProfile) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -97,8 +210,8 @@ export default function SettingsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="segunda">Segunda-feira</SelectItem>
-                  <SelectItem value="domingo">Domingo</SelectItem>
+                  <SelectItem value="monday">Segunda-feira</SelectItem>
+                  <SelectItem value="sunday">Domingo</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
@@ -135,7 +248,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Membro desde</p>
-                <p className="font-semibold">Janeiro 2024</p>
+                <p className="font-semibold capitalize">{memberSince}</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -144,7 +257,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total lançamentos</p>
-                <p className="font-semibold">247</p>
+                <p className="font-semibold">{stats?.totalTransactions || 0}</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -153,7 +266,9 @@ export default function SettingsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Lucro total</p>
-                <p className="font-semibold text-success">R$ 12.450</p>
+                <p className={`font-semibold ${(stats?.totalProfit || 0) >= 0 ? "text-success" : "text-destructive"}`}>
+                  {formatCurrency(stats?.totalProfit || 0)}
+                </p>
               </div>
             </div>
           </div>
@@ -162,8 +277,8 @@ export default function SettingsPage() {
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button variant="hero" size="lg" onClick={handleSave}>
-          Salvar Configurações
+        <Button variant="hero" size="lg" onClick={handleSave} disabled={saveProfile.isPending}>
+          {saveProfile.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Configurações"}
         </Button>
       </div>
     </div>
