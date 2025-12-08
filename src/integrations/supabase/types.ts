@@ -314,6 +314,48 @@ export type Database = {
         }
         Relationships: []
       }
+      subscriptions: {
+        Row: {
+          billing_interval: Database["public"]["Enums"]["billing_interval"]
+          created_at: string
+          current_period_end: string
+          id: string
+          kiwify_product_id: string
+          kiwify_subscription_id: string
+          last_event: string | null
+          plan_name: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          billing_interval?: Database["public"]["Enums"]["billing_interval"]
+          created_at?: string
+          current_period_end: string
+          id?: string
+          kiwify_product_id: string
+          kiwify_subscription_id: string
+          last_event?: string | null
+          plan_name: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          billing_interval?: Database["public"]["Enums"]["billing_interval"]
+          created_at?: string
+          current_period_end?: string
+          id?: string
+          kiwify_product_id?: string
+          kiwify_subscription_id?: string
+          last_event?: string | null
+          plan_name?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -322,7 +364,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      billing_interval: "month" | "quarter" | "year"
+      subscription_status: "active" | "past_due" | "canceled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -449,6 +492,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      billing_interval: ["month", "quarter", "year"],
+      subscription_status: ["active", "past_due", "canceled"],
+    },
   },
 } as const
