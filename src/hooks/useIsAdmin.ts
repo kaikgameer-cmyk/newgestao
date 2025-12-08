@@ -5,7 +5,7 @@ import { useAuth } from "./useAuth";
 export function useIsAdmin() {
   const { user } = useAuth();
 
-  const { data: isAdmin, isLoading } = useQuery({
+  const { data: isAdmin, isLoading, isFetched } = useQuery({
     queryKey: ["isAdmin", user?.id],
     queryFn: async () => {
       if (!user?.id) return false;
@@ -21,8 +21,9 @@ export function useIsAdmin() {
       return data ?? false;
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 10, // 10 minutes
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10,
   });
 
-  return { isAdmin: isAdmin ?? false, isLoading };
+  return { isAdmin: isAdmin ?? false, isLoading, isFetched };
 }

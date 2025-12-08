@@ -81,12 +81,34 @@ serve(async (req) => {
       });
     }
 
-    // Update profile with city if provided
-    if (city && newUser.user) {
-      await supabaseAdmin
+    // Wait a moment for the trigger to create the profile
+    if (newUser.user) {
+      // Small delay to ensure profile trigger completes
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update profile with name and city
+      const { error: profileError } = await supabaseAdmin
         .from("profiles")
-        .update({ city })
+        .update({ 
+          name: name || null,
+          city: city || null,
+          updated_at: new Date().toISOString()
+        })
         .eq("user_id", newUser.user.id);
+
+      if (profileError) {
+        console.error("Error updating profile:", profileError);
+        // If profile doesn't exist yet, create it
+        if (profileError.code === 'PGRST116') {
+          await supabaseAdmin
+            .from("profiles")
+            .insert({ 
+              user_id: newUser.user.id,
+              name: name || null,
+              city: city || null
+            });
+        }
+      }
     }
 
     // Send welcome email with credentials

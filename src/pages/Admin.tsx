@@ -164,6 +164,7 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
       toast({ title: "Perfil atualizado!" });
       setEditUserDialogOpen(false);
     },
@@ -191,6 +192,7 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
+      queryClient.invalidateQueries({ queryKey: ["isAdmin"] });
       toast({ title: "Permissão alterada!" });
     },
     onError: (error: Error) => {
@@ -227,6 +229,7 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
       toast({ title: "Assinatura criada!" });
       setCreateSubDialogOpen(false);
     },
@@ -268,6 +271,7 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
       toast({ title: "Assinatura atualizada!" });
       setEditSubDialogOpen(false);
     },
@@ -288,6 +292,7 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
       toast({ title: "Assinatura removida!" });
     },
     onError: (error: Error) => {
@@ -308,6 +313,8 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["isAdmin"] });
       toast({ title: "Usuário removido!" });
     },
     onError: (error: Error) => {
@@ -338,6 +345,7 @@ export default function AdminPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
       toast({ title: "Usuário criado com sucesso!" });
       setCreateUserDialogOpen(false);
       setNewUserEmail("");

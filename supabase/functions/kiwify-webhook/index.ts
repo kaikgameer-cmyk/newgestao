@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // Kiwify checkout links
-const KIWIFY_CHECKOUT_MENSAL = "https://pay.kiwify.com.br/uFtH74A";
+const KIWIFY_CHECKOUT_MENSAL = "https://pay.kiwify.com.br/3XUXdMS";
 const KIWIFY_CHECKOUT_TRIMESTRAL = "https://pay.kiwify.com.br/LPmRPJG";
 const KIWIFY_CHECKOUT_ANUAL = "https://pay.kiwify.com.br/vQFj0v8";
 
