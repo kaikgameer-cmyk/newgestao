@@ -59,10 +59,13 @@ export type Database = {
           category: string
           created_at: string
           credit_card_id: string | null
+          current_installment: number | null
           date: string
           id: string
+          installments: number | null
           notes: string | null
           payment_method: string | null
+          total_installments: number | null
           updated_at: string
           user_id: string
           vehicle: string | null
@@ -72,10 +75,13 @@ export type Database = {
           category: string
           created_at?: string
           credit_card_id?: string | null
+          current_installment?: number | null
           date: string
           id?: string
+          installments?: number | null
           notes?: string | null
           payment_method?: string | null
+          total_installments?: number | null
           updated_at?: string
           user_id: string
           vehicle?: string | null
@@ -85,10 +91,13 @@ export type Database = {
           category?: string
           created_at?: string
           credit_card_id?: string | null
+          current_installment?: number | null
           date?: string
           id?: string
+          installments?: number | null
           notes?: string | null
           payment_method?: string | null
+          total_installments?: number | null
           updated_at?: string
           user_id?: string
           vehicle?: string | null

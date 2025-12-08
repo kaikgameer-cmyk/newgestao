@@ -44,6 +44,7 @@ export default function Transactions() {
   const [expenseCategory, setExpenseCategory] = useState("");
   const [expenseMethod, setExpenseMethod] = useState("");
   const [expenseCreditCardId, setExpenseCreditCardId] = useState("");
+  const [expenseInstallments, setExpenseInstallments] = useState("1");
   const [expenseNotes, setExpenseNotes] = useState("");
 
   const { user } = useAuth();
@@ -125,6 +126,7 @@ export default function Transactions() {
   const createExpense = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
+      const installments = expenseMethod === "credito" ? parseInt(expenseInstallments) : 1;
       const { error } = await supabase.from("expenses").insert({
         user_id: user.id,
         date: expenseDate,
@@ -132,6 +134,9 @@ export default function Transactions() {
         category: expenseCategory,
         payment_method: expenseMethod || null,
         credit_card_id: expenseMethod === "credito" && expenseCreditCardId ? expenseCreditCardId : null,
+        installments: installments,
+        current_installment: 1,
+        total_installments: installments,
         notes: expenseNotes || null,
       });
       if (error) throw error;
@@ -183,6 +188,7 @@ export default function Transactions() {
     setExpenseCategory("");
     setExpenseMethod("");
     setExpenseCreditCardId("");
+    setExpenseInstallments("1");
     setExpenseNotes("");
   };
 
@@ -325,22 +331,44 @@ export default function Transactions() {
                     </Select>
                   </div>
                   {expenseMethod === "credito" && creditCards.length > 0 && (
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <CreditCard className="w-4 h-4" />
-                        Selecione o cartão
-                      </Label>
-                      <Select value={expenseCreditCardId} onValueChange={setExpenseCreditCardId}>
-                        <SelectTrigger><SelectValue placeholder="Escolha um cartão cadastrado" /></SelectTrigger>
-                        <SelectContent>
-                          {creditCards.map((card) => (
-                            <SelectItem key={card.id} value={card.id}>
-                              {card.name} {card.last_digits ? `(•••• ${card.last_digits})` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <CreditCard className="w-4 h-4" />
+                          Selecione o cartão
+                        </Label>
+                        <Select value={expenseCreditCardId} onValueChange={setExpenseCreditCardId}>
+                          <SelectTrigger><SelectValue placeholder="Escolha um cartão cadastrado" /></SelectTrigger>
+                          <SelectContent>
+                            {creditCards.map((card) => (
+                              <SelectItem key={card.id} value={card.id}>
+                                {card.name} {card.last_digits ? `(•••• ${card.last_digits})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Parcelamento</Label>
+                        <Select value={expenseInstallments} onValueChange={setExpenseInstallments}>
+                          <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">À vista (1x)</SelectItem>
+                            <SelectItem value="2">2x</SelectItem>
+                            <SelectItem value="3">3x</SelectItem>
+                            <SelectItem value="4">4x</SelectItem>
+                            <SelectItem value="5">5x</SelectItem>
+                            <SelectItem value="6">6x</SelectItem>
+                            <SelectItem value="7">7x</SelectItem>
+                            <SelectItem value="8">8x</SelectItem>
+                            <SelectItem value="9">9x</SelectItem>
+                            <SelectItem value="10">10x</SelectItem>
+                            <SelectItem value="11">11x</SelectItem>
+                            <SelectItem value="12">12x</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
                   )}
                   {expenseMethod === "credito" && creditCards.length === 0 && (
                     <p className="text-sm text-muted-foreground">
