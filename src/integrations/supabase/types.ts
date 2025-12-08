@@ -14,7 +14,223 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      credit_cards: {
+        Row: {
+          best_purchase_day: number | null
+          brand: string | null
+          created_at: string
+          credit_limit: number | null
+          due_day: number | null
+          id: string
+          last_digits: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_purchase_day?: number | null
+          brand?: string | null
+          created_at?: string
+          credit_limit?: number | null
+          due_day?: number | null
+          id?: string
+          last_digits?: string | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_purchase_day?: number | null
+          brand?: string | null
+          created_at?: string
+          credit_limit?: number | null
+          due_day?: number | null
+          id?: string
+          last_digits?: string | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          credit_card_id: string | null
+          date: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          updated_at: string
+          user_id: string
+          vehicle: string | null
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string
+          credit_card_id?: string | null
+          date: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          updated_at?: string
+          user_id: string
+          vehicle?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          credit_card_id?: string | null
+          date?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          updated_at?: string
+          user_id?: string
+          vehicle?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fuel_logs: {
+        Row: {
+          created_at: string
+          credit_card_id: string | null
+          date: string
+          fuel_type: string
+          id: string
+          liters: number
+          odometer_km: number | null
+          payment_method: string | null
+          station: string | null
+          total_value: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credit_card_id?: string | null
+          date: string
+          fuel_type: string
+          id?: string
+          liters: number
+          odometer_km?: number | null
+          payment_method?: string | null
+          station?: string | null
+          total_value: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credit_card_id?: string | null
+          date?: string
+          fuel_type?: string
+          id?: string
+          liters?: number
+          odometer_km?: number | null
+          payment_method?: string | null
+          station?: string | null
+          total_value?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fuel_logs_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          apps_used: string[] | null
+          city: string | null
+          created_at: string
+          currency: string | null
+          id: string
+          name: string | null
+          start_week_day: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          apps_used?: string[] | null
+          city?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          name?: string | null
+          start_week_day?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          apps_used?: string[] | null
+          city?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          name?: string | null
+          start_week_day?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      revenues: {
+        Row: {
+          amount: number
+          app: string
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          receive_method: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          app: string
+          created_at?: string
+          date: string
+          id?: string
+          notes?: string | null
+          receive_method?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          app?: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          receive_method?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
