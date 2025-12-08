@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, Settings as SettingsIcon, Calendar, DollarSign, Loader2 } from "lucide-react";
+import { User, Settings as SettingsIcon, Calendar, DollarSign, Loader2, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,9 +18,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+import { useNavigate } from "react-router-dom";
+
 export default function SettingsPage() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [name, setName] = useState("");
@@ -120,6 +123,15 @@ export default function SettingsPage() {
 
   const handleSave = () => {
     saveProfile.mutate();
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+    toast({
+      title: "Logout realizado",
+      description: "Você saiu da sua conta.",
+    });
   };
 
   const memberSince = user?.created_at
@@ -276,7 +288,11 @@ export default function SettingsPage() {
       </Card>
 
       {/* Save Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        <Button variant="outline" onClick={handleLogout} className="gap-2 text-destructive hover:text-destructive">
+          <LogOut className="w-4 h-4" />
+          Sair da conta
+        </Button>
         <Button variant="hero" size="lg" onClick={handleSave} disabled={saveProfile.isPending}>
           {saveProfile.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Configurações"}
         </Button>
