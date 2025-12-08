@@ -15,7 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt, ChevronLeft, ChevronRight, Calendar, AlertTriangle, CheckCircle2, Circle } from "lucide-react";
+import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt, ChevronLeft, ChevronRight, Calendar, AlertTriangle, CheckCircle2, Circle, Fuel } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -100,6 +100,42 @@ export default function CreditCards() {
     enabled: !!user,
   });
 
+  // Fetch ALL fuel logs with credit card from current month onwards (for limit calculation)
+  const { data: allFuelLogsWithCard = [] } = useQuery({
+    queryKey: ["all_fuel_logs_with_card", user?.id, currentMonthStart],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("fuel_logs")
+        .select("id, credit_card_id, total_value, date")
+        .eq("user_id", user.id)
+        .gte("date", currentMonthStart)
+        .not("credit_card_id", "is", null);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Fetch fuel logs for selected month (for display in card bills)
+  const { data: fuelLogsForMonth = [] } = useQuery({
+    queryKey: ["fuel_logs_for_month", user?.id, monthStart, monthEnd],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("fuel_logs")
+        .select("id, credit_card_id, total_value, date, station, fuel_type, liters")
+        .eq("user_id", user.id)
+        .gte("date", monthStart)
+        .lte("date", monthEnd)
+        .not("credit_card_id", "is", null)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   // Fetch paid bills
   const { data: paidBills = [] } = useQuery({
     queryKey: ["paid_bills", user?.id],
@@ -175,7 +211,7 @@ export default function CreditCards() {
   }, [paidBills]);
 
   // Calculate totals using useMemo for performance
-  const { expensesByCard, usedLimitByCard, totalPendingByCard } = useMemo(() => {
+  const { expensesByCard, fuelLogsByCard, usedLimitByCard, totalPendingByCard } = useMemo(() => {
     // Group expenses by card for selected month display
     const expensesByCard = cardExpenses.reduce((acc, expense) => {
       if (expense.credit_card_id) {
@@ -185,30 +221,59 @@ export default function CreditCards() {
       return acc;
     }, {} as Record<string, typeof cardExpenses>);
 
-    // Calculate used limit per card for selected month (for bill display)
-    const usedLimitByCard = cardExpenses.reduce((acc, expense) => {
-      if (expense.credit_card_id) {
-        acc[expense.credit_card_id] = (acc[expense.credit_card_id] || 0) + Number(expense.amount);
+    // Group fuel logs by card for selected month display
+    const fuelLogsByCard = fuelLogsForMonth.reduce((acc, log) => {
+      if (log.credit_card_id) {
+        if (!acc[log.credit_card_id]) acc[log.credit_card_id] = [];
+        acc[log.credit_card_id].push(log);
       }
       return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<string, typeof fuelLogsForMonth>);
 
-    // Calculate TOTAL pending from current month onwards (excluding paid bills)
-    const totalPendingByCard = allCreditCardExpenses.reduce((acc, expense) => {
+    // Calculate used limit per card for selected month (for bill display) - includes expenses AND fuel
+    const usedLimitByCard: Record<string, number> = {};
+    
+    cardExpenses.forEach((expense) => {
+      if (expense.credit_card_id) {
+        usedLimitByCard[expense.credit_card_id] = (usedLimitByCard[expense.credit_card_id] || 0) + Number(expense.amount);
+      }
+    });
+    
+    fuelLogsForMonth.forEach((log) => {
+      if (log.credit_card_id) {
+        usedLimitByCard[log.credit_card_id] = (usedLimitByCard[log.credit_card_id] || 0) + Number(log.total_value);
+      }
+    });
+
+    // Calculate TOTAL pending from current month onwards (excluding paid bills) - includes expenses AND fuel
+    const totalPendingByCard: Record<string, number> = {};
+    
+    allCreditCardExpenses.forEach((expense) => {
       if (expense.credit_card_id) {
         const expenseMonth = expense.date.substring(0, 7); // YYYY-MM
         const key = `${expense.credit_card_id}-${expenseMonth}`;
         
         // Only count if not paid
         if (!paidBillsSet.has(key)) {
-          acc[expense.credit_card_id] = (acc[expense.credit_card_id] || 0) + Number(expense.amount);
+          totalPendingByCard[expense.credit_card_id] = (totalPendingByCard[expense.credit_card_id] || 0) + Number(expense.amount);
         }
       }
-      return acc;
-    }, {} as Record<string, number>);
+    });
+    
+    allFuelLogsWithCard.forEach((log) => {
+      if (log.credit_card_id) {
+        const logMonth = log.date.substring(0, 7); // YYYY-MM
+        const key = `${log.credit_card_id}-${logMonth}`;
+        
+        // Only count if not paid
+        if (!paidBillsSet.has(key)) {
+          totalPendingByCard[log.credit_card_id] = (totalPendingByCard[log.credit_card_id] || 0) + Number(log.total_value);
+        }
+      }
+    });
 
-    return { expensesByCard, usedLimitByCard, totalPendingByCard };
-  }, [cardExpenses, allCreditCardExpenses, paidBillsSet]);
+    return { expensesByCard, fuelLogsByCard, usedLimitByCard, totalPendingByCard };
+  }, [cardExpenses, fuelLogsForMonth, allCreditCardExpenses, allFuelLogsWithCard, paidBillsSet]);
 
   const createCard = useMutation({
     mutationFn: async () => {
@@ -447,6 +512,7 @@ export default function CreditCards() {
             {creditCards.map((card) => {
               const cardLimit = Number(card.credit_limit) || 0;
               const cardUsed = usedLimitByCard[card.id] || 0;
+              const cardFuelLogs = fuelLogsByCard[card.id] || [];
               const cardPending = totalPendingByCard[card.id] || 0;
               const cardAvailable = Math.max(0, cardLimit - cardPending);
               const cardUsedPercent = cardLimit > 0 ? (cardPending / cardLimit) * 100 : 0;
@@ -549,14 +615,14 @@ export default function CreditCards() {
                     </div>
 
                     {/* Monthly bill breakdown */}
-                    {cardExpensesList.length > 0 && (
+                    {(cardExpensesList.length > 0 || cardFuelLogs.length > 0) && (
                       <Collapsible className="pt-4 border-t border-border/50">
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
                             <div className="flex items-center gap-2 text-sm">
                               <Receipt className="w-4 h-4 text-primary" />
                               <span>Fatura de {format(selectedMonth, "MMMM", { locale: ptBR })}</span>
-                              <span className="text-muted-foreground">({cardExpensesList.length} lançamentos)</span>
+                              <span className="text-muted-foreground">({cardExpensesList.length + cardFuelLogs.length} lançamentos)</span>
                             </div>
                             <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
                           </Button>
@@ -580,6 +646,26 @@ export default function CreditCards() {
                               </div>
                               <span className="font-medium text-destructive">
                                 R$ {Number(expense.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                          ))}
+                          {cardFuelLogs.map((log) => (
+                            <div 
+                              key={log.id} 
+                              className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30 text-sm"
+                            >
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  <Fuel className="w-3 h-3 text-primary" />
+                                  <span className="font-medium">Combustível</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{new Date(log.date).toLocaleDateString("pt-BR")}</span>
+                                  <span>{log.station || ""} {Number(log.liters).toFixed(1)}L {log.fuel_type}</span>
+                                </div>
+                              </div>
+                              <span className="font-medium text-destructive">
+                                R$ {Number(log.total_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                               </span>
                             </div>
                           ))}
@@ -622,7 +708,7 @@ export default function CreditCards() {
                       </Collapsible>
                     )}
 
-                    {cardExpensesList.length === 0 && (
+                    {cardExpensesList.length === 0 && cardFuelLogs.length === 0 && (
                       <div className="pt-4 border-t border-border/50 text-center text-sm text-muted-foreground">
                         <p>Nenhum lançamento neste mês</p>
                       </div>

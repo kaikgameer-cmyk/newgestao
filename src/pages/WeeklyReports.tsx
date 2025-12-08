@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, PlusCircle, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -27,7 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCombinedExpenses } from "@/hooks/useCombinedExpenses";
 import { useRecurringExpenses, calculateDailyRecurringAmount } from "@/hooks/useRecurringExpenses";
-import { startOfWeek, endOfWeek, addWeeks, format, eachDayOfInterval, isSameDay, parseISO, startOfMonth } from "date-fns";
+import { startOfWeek, endOfWeek, addWeeks, format, eachDayOfInterval, isSameDay, parseISO, startOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const COLORS = [
@@ -57,6 +58,9 @@ export default function WeeklyReports() {
   const now = new Date();
   const monthStart = startOfMonth(now);
   
+  // View mode: "week" or "day"
+  const [viewMode, setViewMode] = useState<"week" | "day">("week");
+  
   // Generate weeks for the current month
   const weeks = useMemo(() => {
     const result = [];
@@ -77,55 +81,79 @@ export default function WeeklyReports() {
     return result;
   }, [now]);
 
+  // Generate days for the current month
+  const days = useMemo(() => {
+    const result = [];
+    const daysInMonth = eachDayOfInterval({ start: monthStart, end: now });
+    
+    daysInMonth.forEach((day) => {
+      result.push({
+        value: format(day, "yyyy-MM-dd"),
+        label: format(day, "EEEE, dd 'de' MMMM", { locale: ptBR }),
+        start: startOfDay(day),
+        end: endOfDay(day),
+      });
+    });
+    return result.reverse(); // Most recent first
+  }, [now]);
+
   const [selectedWeek, setSelectedWeek] = useState(weeks[weeks.length - 1]?.value || "1");
+  const [selectedDay, setSelectedDay] = useState(days[0]?.value || format(now, "yyyy-MM-dd"));
 
+  // Determine date range based on view mode
   const selectedWeekData = weeks.find((w) => w.value === selectedWeek);
-  const weekStart = selectedWeekData?.start || startOfWeek(now, { weekStartsOn: 0 });
-  const weekEnd = selectedWeekData?.end || now;
+  const selectedDayData = days.find((d) => d.value === selectedDay);
+  
+  const periodStart = viewMode === "week" 
+    ? (selectedWeekData?.start || startOfWeek(now, { weekStartsOn: 0 }))
+    : (selectedDayData?.start || startOfDay(now));
+  const periodEnd = viewMode === "week"
+    ? (selectedWeekData?.end || now)
+    : (selectedDayData?.end || endOfDay(now));
 
-  // Fetch revenues for selected week
+  // Fetch revenues for selected period
   const { data: revenues = [] } = useQuery({
-    queryKey: ["revenues", user?.id, format(weekStart, "yyyy-MM-dd"), format(weekEnd, "yyyy-MM-dd")],
+    queryKey: ["revenues", user?.id, format(periodStart, "yyyy-MM-dd"), format(periodEnd, "yyyy-MM-dd")],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from("revenues")
         .select("*")
         .eq("user_id", user.id)
-        .gte("date", format(weekStart, "yyyy-MM-dd"))
-        .lte("date", format(weekEnd, "yyyy-MM-dd"));
+        .gte("date", format(periodStart, "yyyy-MM-dd"))
+        .lte("date", format(periodEnd, "yyyy-MM-dd"));
       if (error) throw error;
       return data || [];
     },
     enabled: !!user,
   });
 
-  // Fetch combined expenses (expenses + fuel logs) for selected week
+  // Fetch combined expenses (expenses + fuel logs) for selected period
   const { combinedExpenses, totalExpenses } = useCombinedExpenses(
     user?.id,
-    weekStart,
-    weekEnd
+    periodStart,
+    periodEnd
   );
 
   // Fetch recurring expenses
   const { recurringExpenses } = useRecurringExpenses(user?.id);
 
-  // Calculate recurring expenses for the week
-  const daysInWeek = eachDayOfInterval({ start: weekStart, end: weekEnd }).length;
-  const weeklyRecurringTotal = recurringExpenses
-    .filter((e) => e.is_active && e.start_date <= format(weekEnd, "yyyy-MM-dd") && (!e.end_date || e.end_date >= format(weekStart, "yyyy-MM-dd")))
-    .reduce((sum, e) => sum + (e.amount / 30) * daysInWeek, 0);
+  // Calculate recurring expenses for the period
+  const daysInPeriod = eachDayOfInterval({ start: periodStart, end: periodEnd }).length;
+  const periodRecurringTotal = recurringExpenses
+    .filter((e) => e.is_active && e.start_date <= format(periodEnd, "yyyy-MM-dd") && (!e.end_date || e.end_date >= format(periodStart, "yyyy-MM-dd")))
+    .reduce((sum, e) => sum + (e.amount / 30) * daysInPeriod, 0);
 
   // Calculate KPIs
   const totalRevenue = revenues.reduce((sum, r) => sum + Number(r.amount), 0);
-  const totalAllExpenses = totalExpenses + weeklyRecurringTotal;
+  const totalAllExpenses = totalExpenses + periodRecurringTotal;
   const netProfit = totalRevenue - totalAllExpenses;
   
   const daysWithRevenue = new Set(revenues.map((r) => r.date)).size;
   const avgPerDay = daysWithRevenue > 0 ? netProfit / daysWithRevenue : 0;
 
   // Daily data for charts (including recurring expenses)
-  const daysInterval = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  const daysInterval = eachDayOfInterval({ start: periodStart, end: periodEnd });
   const dailyData = daysInterval.map((day) => {
     const dayRevenues = revenues
       .filter((r) => isSameDay(parseISO(r.date), day))
@@ -154,8 +182,8 @@ export default function WeeklyReports() {
   }, {} as Record<string, number>);
 
   // Add recurring expenses as a category
-  if (weeklyRecurringTotal > 0) {
-    expensesByCategory["despesas_fixas"] = weeklyRecurringTotal;
+  if (periodRecurringTotal > 0) {
+    expensesByCategory["despesas_fixas"] = periodRecurringTotal;
   }
 
   const expenseCategoriesData = Object.entries(expensesByCategory).map(([name, value], index) => ({
@@ -164,7 +192,7 @@ export default function WeeklyReports() {
     color: COLORS[index % COLORS.length],
   }));
 
-  const hasData = revenues.length > 0 || combinedExpenses.length > 0 || weeklyRecurringTotal > 0;
+  const hasData = revenues.length > 0 || combinedExpenses.length > 0 || periodRecurringTotal > 0;
 
   const kpis = [
     { title: "Receita", value: `R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: DollarSign },
@@ -179,23 +207,47 @@ export default function WeeklyReports() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Relatórios Semanais</h1>
+          <h1 className="text-2xl font-bold">Relatórios</h1>
           <p className="text-muted-foreground">
-            Acompanhe seu desempenho semana a semana
+            Acompanhe seu desempenho por período
           </p>
         </div>
-        <Select value={selectedWeek} onValueChange={setSelectedWeek}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Selecione a semana" />
-          </SelectTrigger>
-          <SelectContent>
-            {weeks.map((week) => (
-              <SelectItem key={week.value} value={week.value}>
-                {week.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "week" | "day")}>
+            <TabsList>
+              <TabsTrigger value="week">Semana</TabsTrigger>
+              <TabsTrigger value="day">Dia</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          
+          {viewMode === "week" ? (
+            <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Selecione a semana" />
+              </SelectTrigger>
+              <SelectContent>
+                {weeks.map((week) => (
+                  <SelectItem key={week.value} value={week.value}>
+                    {week.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Select value={selectedDay} onValueChange={setSelectedDay}>
+              <SelectTrigger className="w-[260px]">
+                <SelectValue placeholder="Selecione o dia" />
+              </SelectTrigger>
+              <SelectContent>
+                {days.map((day) => (
+                  <SelectItem key={day.value} value={day.value}>
+                    {day.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -226,9 +278,9 @@ export default function WeeklyReports() {
               <PlusCircle className="w-8 h-8 text-primary" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-xl font-semibold">Sem dados nesta semana</h3>
+              <h3 className="text-xl font-semibold">Sem dados neste {viewMode === "week" ? "período" : "dia"}</h3>
               <p className="text-muted-foreground max-w-md">
-                Adicione lançamentos para ver seus relatórios semanais.
+                Adicione lançamentos para ver seus relatórios.
               </p>
             </div>
             <Button variant="hero" size="lg" asChild>
@@ -241,8 +293,9 @@ export default function WeeklyReports() {
         </Card>
       ) : (
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Daily Profit Bar Chart */}
-          <Card variant="elevated">
+          {/* Daily Profit Bar Chart - only show for weekly view */}
+          {viewMode === "week" && (
+            <Card variant="elevated">
             <CardHeader>
               <CardTitle className="text-lg">Lucro por Dia</CardTitle>
             </CardHeader>
@@ -278,10 +331,12 @@ export default function WeeklyReports() {
                 </ResponsiveContainer>
               </div>
             </CardContent>
-          </Card>
+            </Card>
+          )}
 
-          {/* Revenue vs Expense Stacked Bar */}
-          <Card variant="elevated">
+          {/* Revenue vs Expense Stacked Bar - only show for weekly view */}
+          {viewMode === "week" && (
+            <Card variant="elevated">
             <CardHeader>
               <CardTitle className="text-lg">Receitas vs Despesas</CardTitle>
             </CardHeader>
@@ -312,10 +367,92 @@ export default function WeeklyReports() {
                 </ResponsiveContainer>
               </div>
             </CardContent>
-          </Card>
+            </Card>
+          )}
 
-          {/* Expense Distribution */}
-          {expenseCategoriesData.length > 0 && (
+          {/* Daily Summary for day view */}
+          {viewMode === "day" && (
+            <Card variant="elevated" className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-lg">Resumo do Dia</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="p-4 rounded-lg bg-success/10 border border-success/20 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Receita</p>
+                    <p className="text-xl font-bold text-success">
+                      R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Despesas</p>
+                    <p className="text-xl font-bold text-destructive">
+                      R$ {totalAllExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Lucro</p>
+                    <p className={`text-xl font-bold ${netProfit >= 0 ? "text-primary" : "text-destructive"}`}>
+                      R$ {netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* List of transactions for the day */}
+                {combinedExpenses.length > 0 && (
+                  <div className="pt-4 border-t border-border">
+                    <h4 className="text-sm font-medium mb-3">Despesas do dia</h4>
+                    <div className="space-y-2">
+                      {combinedExpenses.map((expense) => (
+                        <div 
+                          key={expense.id} 
+                          className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30 text-sm"
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-medium capitalize">
+                              {expense.source === "fuel" ? "Combustível" : categoryLabels[expense.category] || expense.category}
+                            </span>
+                            {expense.notes && (
+                              <span className="text-xs text-muted-foreground">{expense.notes}</span>
+                            )}
+                          </div>
+                          <span className="font-medium text-destructive">
+                            R$ {expense.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {revenues.length > 0 && (
+                  <div className="pt-4 border-t border-border">
+                    <h4 className="text-sm font-medium mb-3">Receitas do dia</h4>
+                    <div className="space-y-2">
+                      {revenues.map((revenue) => (
+                        <div 
+                          key={revenue.id} 
+                          className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30 text-sm"
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-medium capitalize">{revenue.app}</span>
+                            {revenue.notes && (
+                              <span className="text-xs text-muted-foreground">{revenue.notes}</span>
+                            )}
+                          </div>
+                          <span className="font-medium text-success">
+                            R$ {Number(revenue.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+          {/* Expense Distribution - only show for weekly view */}
+          {expenseCategoriesData.length > 0 && viewMode === "week" && (
             <Card variant="elevated" className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="text-lg">Distribuição de Despesas da Semana</CardTitle>
