@@ -4,18 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Car, TrendingUp, Fuel, Loader2 } from "lucide-react";
+import { TrendingUp, Fuel, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import heroCarImage from "@/assets/hero-car.png";
+import logo from "@/assets/logo.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading } = useAuth();
@@ -32,58 +31,25 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      if (isSignUp) {
-        const redirectUrl = `${window.location.origin}/`;
-        
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl,
-            data: {
-              name: name,
-            }
-          }
-        });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) {
-          let message = error.message;
-          if (error.message.includes("already registered")) {
-            message = "Este email já está cadastrado. Tente fazer login.";
-          }
-          toast({
-            title: "Erro ao cadastrar",
-            description: message,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Conta criada!",
-            description: "Você já pode acessar o sistema",
-          });
-          navigate("/dashboard");
-        }
+      if (error) {
+        toast({
+          title: "Erro ao entrar",
+          description: error.message === "Invalid login credentials" 
+            ? "Email ou senha incorretos" 
+            : error.message,
+          variant: "destructive",
+        });
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+        toast({
+          title: "Bem-vindo!",
+          description: "Login realizado com sucesso",
         });
-
-        if (error) {
-          toast({
-            title: "Erro ao entrar",
-            description: error.message === "Invalid login credentials" 
-              ? "Email ou senha incorretos" 
-              : error.message,
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Bem-vindo!",
-            description: "Login realizado com sucesso",
-          });
-          navigate("/dashboard");
-        }
+        navigate("/dashboard");
       }
     } catch (error) {
       toast({
@@ -111,10 +77,8 @@ export default function Login() {
         
         <div className="relative z-10 flex flex-col justify-center p-12">
           <Link to="/" className="flex items-center gap-2 mb-12">
-            <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <Car className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-semibold">DriverFinance</span>
+            <img src={logo} alt="Driver Control" className="w-10 h-10" />
+            <span className="text-xl font-semibold">Driver Control</span>
           </Link>
           
           <h1 className="text-4xl font-bold mb-4">
@@ -158,39 +122,18 @@ export default function Login() {
         <div className="w-full max-w-md space-y-8">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
-            <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <Car className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-semibold">DriverFinance</span>
+            <img src={logo} alt="Driver Control" className="w-10 h-10" />
+            <span className="text-xl font-semibold">Driver Control</span>
           </div>
           
           <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold mb-2">
-              {isSignUp ? "Criar conta" : "Entrar"}
-            </h2>
+            <h2 className="text-3xl font-bold mb-2">Entrar</h2>
             <p className="text-muted-foreground">
-              {isSignUp 
-                ? "Cadastre-se para começar a controlar suas finanças"
-                : "Acesse sua conta para ver seus resultados"
-              }
+              Acesse sua conta para ver seus resultados
             </p>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
-            {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Seu nome"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required={isSignUp}
-                />
-              </div>
-            )}
-            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -226,31 +169,17 @@ export default function Login() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  {isSignUp ? "Criando conta..." : "Entrando..."}
+                  Entrando...
                 </>
               ) : (
-                isSignUp ? "Criar conta" : "Entrar"
+                "Entrar"
               )}
             </Button>
             
-            <div className="text-center space-y-2">
-              <button
-                type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-sm text-primary hover:underline"
-              >
-                {isSignUp 
-                  ? "Já tem conta? Faça login"
-                  : "Não tem conta? Cadastre-se"
-                }
-              </button>
-              {!isSignUp && (
-                <div>
-                  <a href="#" className="text-sm text-muted-foreground hover:text-primary">
-                    Esqueci minha senha
-                  </a>
-                </div>
-              )}
+            <div className="text-center">
+              <a href="#" className="text-sm text-muted-foreground hover:text-primary">
+                Esqueci minha senha
+              </a>
             </div>
           </form>
           
