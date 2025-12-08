@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -8,7 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, PlusCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import {
   BarChart,
   Bar,
@@ -21,52 +22,133 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { startOfWeek, endOfWeek, addWeeks, format, eachDayOfInterval, isSameDay, parseISO, startOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-// Mock data
-const weeklyProfitData = [
-  { day: "Seg", lucro: 180 },
-  { day: "Ter", lucro: 220 },
-  { day: "Qua", lucro: 150 },
-  { day: "Qui", lucro: 280 },
-  { day: "Sex", lucro: 320 },
-  { day: "Sáb", lucro: 380 },
-  { day: "Dom", lucro: 250 },
+const COLORS = [
+  "hsl(48, 96%, 53%)",
+  "hsl(142, 76%, 36%)",
+  "hsl(0, 84%, 60%)",
+  "hsl(217, 91%, 60%)",
+  "hsl(0, 0%, 50%)",
 ];
 
-const revenueExpenseData = [
-  { day: "Seg", receita: 280, despesa: 100 },
-  { day: "Ter", receita: 350, despesa: 130 },
-  { day: "Qua", receita: 250, despesa: 100 },
-  { day: "Qui", receita: 400, despesa: 120 },
-  { day: "Sex", receita: 450, despesa: 130 },
-  { day: "Sáb", receita: 520, despesa: 140 },
-  { day: "Dom", receita: 380, despesa: 130 },
-];
-
-const expenseCategories = [
-  { name: "Combustível", value: 380, color: "hsl(48, 96%, 53%)" },
-  { name: "Manutenção", value: 80, color: "hsl(142, 76%, 36%)" },
-  { name: "Taxas App", value: 150, color: "hsl(0, 84%, 60%)" },
-  { name: "Pedágio", value: 40, color: "hsl(217, 91%, 60%)" },
-  { name: "Outros", value: 100, color: "hsl(0, 0%, 50%)" },
-];
-
-const weeks = [
-  { value: "1", label: "Semana 1 (01–07)" },
-  { value: "2", label: "Semana 2 (08–14)" },
-  { value: "3", label: "Semana 3 (15–21)" },
-  { value: "4", label: "Semana 4 (22–28)" },
-];
+const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export default function WeeklyReports() {
-  const [selectedWeek, setSelectedWeek] = useState("4");
+  const { user } = useAuth();
+  const now = new Date();
+  const monthStart = startOfMonth(now);
+  
+  // Generate weeks for the current month
+  const weeks = useMemo(() => {
+    const result = [];
+    let weekStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+    let weekNum = 1;
+    
+    while (weekStart <= now) {
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 });
+      result.push({
+        value: weekNum.toString(),
+        label: `Semana ${weekNum} (${format(weekStart, "dd")}–${format(weekEnd, "dd")})`,
+        start: weekStart,
+        end: weekEnd > now ? now : weekEnd,
+      });
+      weekStart = addWeeks(weekStart, 1);
+      weekNum++;
+    }
+    return result;
+  }, [now]);
+
+  const [selectedWeek, setSelectedWeek] = useState(weeks[weeks.length - 1]?.value || "1");
+
+  const selectedWeekData = weeks.find((w) => w.value === selectedWeek);
+  const weekStart = selectedWeekData?.start || startOfWeek(now, { weekStartsOn: 0 });
+  const weekEnd = selectedWeekData?.end || now;
+
+  // Fetch revenues for selected week
+  const { data: revenues = [] } = useQuery({
+    queryKey: ["revenues", user?.id, format(weekStart, "yyyy-MM-dd"), format(weekEnd, "yyyy-MM-dd")],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("revenues")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("date", format(weekStart, "yyyy-MM-dd"))
+        .lte("date", format(weekEnd, "yyyy-MM-dd"));
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Fetch expenses for selected week
+  const { data: expenses = [] } = useQuery({
+    queryKey: ["expenses", user?.id, format(weekStart, "yyyy-MM-dd"), format(weekEnd, "yyyy-MM-dd")],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("date", format(weekStart, "yyyy-MM-dd"))
+        .lte("date", format(weekEnd, "yyyy-MM-dd"));
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Calculate KPIs
+  const totalRevenue = revenues.reduce((sum, r) => sum + Number(r.amount), 0);
+  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+  const netProfit = totalRevenue - totalExpenses;
+  
+  const daysWithRevenue = new Set(revenues.map((r) => r.date)).size;
+  const avgPerDay = daysWithRevenue > 0 ? netProfit / daysWithRevenue : 0;
+
+  // Daily data for charts
+  const daysInterval = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  const dailyData = daysInterval.map((day) => {
+    const dayRevenues = revenues
+      .filter((r) => isSameDay(parseISO(r.date), day))
+      .reduce((sum, r) => sum + Number(r.amount), 0);
+    const dayExpenses = expenses
+      .filter((e) => isSameDay(parseISO(e.date), day))
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+    return {
+      day: DAY_NAMES[day.getDay()],
+      lucro: dayRevenues - dayExpenses,
+      receita: dayRevenues,
+      despesa: dayExpenses,
+    };
+  });
+
+  // Expense categories
+  const expensesByCategory = expenses.reduce((acc, expense) => {
+    const category = expense.category || "Outros";
+    acc[category] = (acc[category] || 0) + Number(expense.amount);
+    return acc;
+  }, {} as Record<string, number>);
+
+  const expenseCategoriesData = Object.entries(expensesByCategory).map(([name, value], index) => ({
+    name,
+    value,
+    color: COLORS[index % COLORS.length],
+  }));
+
+  const hasData = revenues.length > 0 || expenses.length > 0;
 
   const kpis = [
-    { title: "Receita", value: "R$ 2.630", icon: DollarSign },
-    { title: "Despesas", value: "R$ 750", icon: TrendingDown },
-    { title: "Lucro", value: "R$ 1.880", icon: TrendingUp, highlight: true },
-    { title: "Dias rodados", value: "7", icon: Calendar },
-    { title: "Média/dia", value: "R$ 268", icon: Clock },
+    { title: "Receita", value: `R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: DollarSign },
+    { title: "Despesas", value: `R$ ${totalExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: TrendingDown },
+    { title: "Lucro", value: `R$ ${netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: TrendingUp, highlight: true },
+    { title: "Dias rodados", value: daysWithRevenue.toString(), icon: Calendar },
+    { title: "Média/dia", value: `R$ ${avgPerDay.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: Clock },
   ];
 
   return (
@@ -114,138 +196,161 @@ export default function WeeklyReports() {
         ))}
       </div>
 
-      {/* Charts Grid */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Daily Profit Bar Chart */}
-        <Card variant="elevated">
-          <CardHeader>
-            <CardTitle className="text-lg">Lucro por Dia</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weeklyProfitData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 20%)" />
-                  <XAxis
-                    dataKey="day"
-                    stroke="hsl(0, 0%, 50%)"
-                    tick={{ fill: "hsl(0, 0%, 60%)" }}
-                  />
-                  <YAxis
-                    stroke="hsl(0, 0%, 50%)"
-                    tick={{ fill: "hsl(0, 0%, 60%)" }}
-                    tickFormatter={(value) => `R$${value}`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(0, 0%, 10%)",
-                      border: "1px solid hsl(0, 0%, 20%)",
-                      borderRadius: "8px",
-                    }}
-                    formatter={(value: number) => [`R$ ${value}`, "Lucro"]}
-                  />
-                  <Bar
-                    dataKey="lucro"
-                    fill="hsl(48, 96%, 53%)"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+      {!hasData ? (
+        <Card variant="elevated" className="p-12">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <PlusCircle className="w-8 h-8 text-primary" />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Revenue vs Expense Stacked Bar */}
-        <Card variant="elevated">
-          <CardHeader>
-            <CardTitle className="text-lg">Receitas vs Despesas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[280px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={revenueExpenseData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 20%)" />
-                  <XAxis
-                    dataKey="day"
-                    stroke="hsl(0, 0%, 50%)"
-                    tick={{ fill: "hsl(0, 0%, 60%)" }}
-                  />
-                  <YAxis
-                    stroke="hsl(0, 0%, 50%)"
-                    tick={{ fill: "hsl(0, 0%, 60%)" }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(0, 0%, 10%)",
-                      border: "1px solid hsl(0, 0%, 20%)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                  <Bar dataKey="receita" fill="hsl(142, 76%, 36%)" stackId="a" radius={[0, 0, 0, 0]} name="Receita" />
-                  <Bar dataKey="despesa" fill="hsl(0, 84%, 60%)" stackId="a" radius={[4, 4, 0, 0]} name="Despesa" />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold">Sem dados nesta semana</h3>
+              <p className="text-muted-foreground max-w-md">
+                Adicione lançamentos para ver seus relatórios semanais.
+              </p>
             </div>
-          </CardContent>
+            <Button variant="hero" size="lg" asChild>
+              <Link to="/dashboard/lancamentos">
+                <PlusCircle className="w-5 h-5 mr-2" />
+                Adicionar Lançamento
+              </Link>
+            </Button>
+          </div>
         </Card>
-
-        {/* Expense Distribution */}
-        <Card variant="elevated" className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg">Distribuição de Despesas da Semana</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row items-center gap-8">
-              <div className="w-full md:w-1/2 h-[250px]">
+      ) : (
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Daily Profit Bar Chart */}
+          <Card variant="elevated">
+            <CardHeader>
+              <CardTitle className="text-lg">Lucro por Dia</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={expenseCategories}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={100}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {expenseCategories.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
+                  <BarChart data={dailyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 20%)" />
+                    <XAxis
+                      dataKey="day"
+                      stroke="hsl(0, 0%, 50%)"
+                      tick={{ fill: "hsl(0, 0%, 60%)" }}
+                    />
+                    <YAxis
+                      stroke="hsl(0, 0%, 50%)"
+                      tick={{ fill: "hsl(0, 0%, 60%)" }}
+                      tickFormatter={(value) => `R$${value}`}
+                    />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: "hsl(0, 0%, 10%)",
                         border: "1px solid hsl(0, 0%, 20%)",
                         borderRadius: "8px",
                       }}
-                      formatter={(value: number) => [`R$ ${value}`, ""]}
+                      formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Lucro"]}
                     />
-                  </PieChart>
+                    <Bar
+                      dataKey="lucro"
+                      fill="hsl(48, 96%, 53%)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
-              <div className="w-full md:w-1/2 grid grid-cols-2 gap-4">
-                {expenseCategories.map((category, index) => (
-                  <div
-                    key={index}
-                    className="p-4 rounded-lg bg-secondary/30 border border-border/50"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: category.color }}
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        {category.name}
-                      </span>
-                    </div>
-                    <p className="text-lg font-semibold">R$ {category.value}</p>
-                  </div>
-                ))}
+            </CardContent>
+          </Card>
+
+          {/* Revenue vs Expense Stacked Bar */}
+          <Card variant="elevated">
+            <CardHeader>
+              <CardTitle className="text-lg">Receitas vs Despesas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dailyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 0%, 20%)" />
+                    <XAxis
+                      dataKey="day"
+                      stroke="hsl(0, 0%, 50%)"
+                      tick={{ fill: "hsl(0, 0%, 60%)" }}
+                    />
+                    <YAxis
+                      stroke="hsl(0, 0%, 50%)"
+                      tick={{ fill: "hsl(0, 0%, 60%)" }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(0, 0%, 10%)",
+                        border: "1px solid hsl(0, 0%, 20%)",
+                        borderRadius: "8px",
+                      }}
+                    />
+                    <Bar dataKey="receita" fill="hsl(142, 76%, 36%)" stackId="a" radius={[0, 0, 0, 0]} name="Receita" />
+                    <Bar dataKey="despesa" fill="hsl(0, 84%, 60%)" stackId="a" radius={[4, 4, 0, 0]} name="Despesa" />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+
+          {/* Expense Distribution */}
+          {expenseCategoriesData.length > 0 && (
+            <Card variant="elevated" className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-lg">Distribuição de Despesas da Semana</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col md:flex-row items-center gap-8">
+                  <div className="w-full md:w-1/2 h-[250px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={expenseCategoriesData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={70}
+                          outerRadius={100}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
+                          {expenseCategoriesData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(0, 0%, 10%)",
+                            border: "1px solid hsl(0, 0%, 20%)",
+                            borderRadius: "8px",
+                          }}
+                          formatter={(value: number) => [`R$ ${value.toFixed(2)}`, ""]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="w-full md:w-1/2 grid grid-cols-2 gap-4">
+                    {expenseCategoriesData.map((category, index) => (
+                      <div
+                        key={index}
+                        className="p-4 rounded-lg bg-secondary/30 border border-border/50"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: category.color }}
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            {category.name}
+                          </span>
+                        </div>
+                        <p className="text-lg font-semibold">R$ {category.value.toFixed(2)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }
