@@ -14,9 +14,13 @@ import {
   LogOut,
   Menu,
   X,
+  Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
+import { useSubscription } from "@/hooks/useSubscription";
+import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
+import { Badge } from "@/components/ui/badge";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -33,8 +37,20 @@ export default function DashboardLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Subscription hook
+  const { 
+    subscription, 
+    isActive: subscriptionIsActive, 
+    isPastDue, 
+    isCanceled, 
+    hasSubscription, 
+    isLoading: subscriptionLoading,
+    daysRemaining 
+  } = useSubscription();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -59,6 +75,29 @@ export default function DashboardLayout() {
       navigate("/login");
     }
   }, [user, loading, navigate]);
+
+  // Check subscription status and show paywall if needed
+  useEffect(() => {
+    if (!subscriptionLoading && user) {
+      // Show paywall if no subscription, expired, or canceled
+      if (!hasSubscription || (!subscriptionIsActive && !isPastDue)) {
+        setShowPaywall(true);
+      } else if (isPastDue) {
+        // For past due, show paywall but with different message
+        setShowPaywall(true);
+      } else {
+        setShowPaywall(false);
+      }
+    }
+  }, [subscriptionLoading, hasSubscription, subscriptionIsActive, isPastDue, isCanceled, user]);
+
+  // Get paywall reason
+  const getPaywallReason = (): "expired" | "past_due" | "canceled" | "no_subscription" => {
+    if (!hasSubscription) return "no_subscription";
+    if (isCanceled) return "canceled";
+    if (isPastDue) return "past_due";
+    return "expired";
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -112,7 +151,7 @@ export default function DashboardLayout() {
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
             {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const isItemActive = location.pathname === item.path;
               return (
                 <Link
                   key={item.path}
@@ -120,7 +159,7 @@ export default function DashboardLayout() {
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                    isActive
+                    isItemActive
                       ? "bg-sidebar-accent text-sidebar-primary"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
@@ -131,6 +170,23 @@ export default function DashboardLayout() {
               );
             })}
           </nav>
+
+          {/* Subscription status */}
+          {!subscriptionLoading && hasSubscription && subscriptionIsActive && (
+            <div className="px-4 py-2 border-t border-sidebar-border">
+              <div className="flex items-center gap-2 text-xs">
+                <Crown className="w-3.5 h-3.5 text-primary" />
+                <span className="text-sidebar-foreground">
+                  {subscription?.plan_name}
+                </span>
+                {daysRemaining <= 7 && (
+                  <Badge variant="outline" className="text-xs px-1.5 py-0 border-yellow-500 text-yellow-500">
+                    {daysRemaining}d
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* User section */}
           <div className="p-4 border-t border-sidebar-border">
@@ -157,6 +213,12 @@ export default function DashboardLayout() {
           </div>
         </div>
       </aside>
+
+      {/* Subscription Paywall */}
+      <SubscriptionPaywall 
+        open={showPaywall} 
+        reason={getPaywallReason()}
+      />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
