@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt, ChevronLeft, ChevronRight, Calendar, AlertTriangle } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -37,16 +37,17 @@ export default function CreditCards() {
   
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { invalidateAll } = useInvalidateFinancialData();
 
   const monthStart = format(startOfMonth(selectedMonth), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
+  const currentMonthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
 
   const goToPreviousMonth = () => setSelectedMonth(prev => subMonths(prev, 1));
   const goToNextMonth = () => setSelectedMonth(prev => addMonths(prev, 1));
   const goToCurrentMonth = () => setSelectedMonth(new Date());
 
+  // Fetch all credit cards
   const { data: creditCards = [], isLoading } = useQuery({
     queryKey: ["credit_cards", user?.id],
     queryFn: async () => {
@@ -62,7 +63,7 @@ export default function CreditCards() {
     enabled: !!user,
   });
 
-  // Fetch current month expenses for each credit card with full details (for display)
+  // Fetch expenses for selected month (for display)
   const { data: cardExpenses = [] } = useQuery({
     queryKey: ["card_expenses", user?.id, monthStart, monthEnd],
     queryFn: async () => {
@@ -81,17 +82,16 @@ export default function CreditCards() {
     enabled: !!user,
   });
 
-  // Fetch ALL pending installments (current and future) to calculate accurate available limit
-  const { data: allPendingExpenses = [] } = useQuery({
-    queryKey: ["all_pending_expenses", user?.id],
+  // Fetch ALL credit card expenses from current month onwards (for limit calculation)
+  const { data: allCreditCardExpenses = [] } = useQuery({
+    queryKey: ["all_credit_card_expenses", user?.id, currentMonthStart],
     queryFn: async () => {
       if (!user) return [];
-      const today = format(new Date(), "yyyy-MM-dd");
       const { data, error } = await supabase
         .from("expenses")
         .select("id, credit_card_id, amount, date, current_installment, total_installments")
         .eq("user_id", user.id)
-        .gte("date", today) // Only future and current pending
+        .gte("date", currentMonthStart)
         .not("credit_card_id", "is", null);
       if (error) throw error;
       return data || [];
@@ -99,30 +99,35 @@ export default function CreditCards() {
     enabled: !!user,
   });
 
-  // Group expenses by card (for selected month display)
-  const expensesByCard = cardExpenses.reduce((acc, expense) => {
-    if (expense.credit_card_id) {
-      if (!acc[expense.credit_card_id]) acc[expense.credit_card_id] = [];
-      acc[expense.credit_card_id].push(expense);
-    }
-    return acc;
-  }, {} as Record<string, typeof cardExpenses>);
+  // Calculate totals using useMemo for performance
+  const { expensesByCard, usedLimitByCard, totalPendingByCard } = useMemo(() => {
+    // Group expenses by card for selected month display
+    const expensesByCard = cardExpenses.reduce((acc, expense) => {
+      if (expense.credit_card_id) {
+        if (!acc[expense.credit_card_id]) acc[expense.credit_card_id] = [];
+        acc[expense.credit_card_id].push(expense);
+      }
+      return acc;
+    }, {} as Record<string, typeof cardExpenses>);
 
-  // Calculate used limit per card for selected month (display)
-  const usedLimitByCard = cardExpenses.reduce((acc, expense) => {
-    if (expense.credit_card_id) {
-      acc[expense.credit_card_id] = (acc[expense.credit_card_id] || 0) + Number(expense.amount);
-    }
-    return acc;
-  }, {} as Record<string, number>);
+    // Calculate used limit per card for selected month (for bill display)
+    const usedLimitByCard = cardExpenses.reduce((acc, expense) => {
+      if (expense.credit_card_id) {
+        acc[expense.credit_card_id] = (acc[expense.credit_card_id] || 0) + Number(expense.amount);
+      }
+      return acc;
+    }, {} as Record<string, number>);
 
-  // Calculate TOTAL pending debt per card (all future installments) for available limit
-  const totalPendingByCard = allPendingExpenses.reduce((acc, expense) => {
-    if (expense.credit_card_id) {
-      acc[expense.credit_card_id] = (acc[expense.credit_card_id] || 0) + Number(expense.amount);
-    }
-    return acc;
-  }, {} as Record<string, number>);
+    // Calculate TOTAL pending from current month onwards (for available limit)
+    const totalPendingByCard = allCreditCardExpenses.reduce((acc, expense) => {
+      if (expense.credit_card_id) {
+        acc[expense.credit_card_id] = (acc[expense.credit_card_id] || 0) + Number(expense.amount);
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    return { expensesByCard, usedLimitByCard, totalPendingByCard };
+  }, [cardExpenses, allCreditCardExpenses]);
 
   const createCard = useMutation({
     mutationFn: async () => {
@@ -172,11 +177,16 @@ export default function CreditCards() {
     setDueDay("");
   };
 
-  const totalLimit = creditCards.reduce((acc, card) => acc + (Number(card.credit_limit) || 0), 0);
-  const totalUsed = Object.values(usedLimitByCard).reduce((acc, val) => acc + val, 0);
-  const totalPending = Object.values(totalPendingByCard).reduce((acc, val) => acc + val, 0);
-  const totalAvailable = totalLimit - totalPending;
-  const availablePercentage = totalLimit > 0 ? ((totalAvailable / totalLimit) * 100).toFixed(0) : "100";
+  // Calculate summary totals
+  const { totalLimit, totalPending, totalAvailable, availablePercentage, totalUsed } = useMemo(() => {
+    const totalLimit = creditCards.reduce((acc, card) => acc + (Number(card.credit_limit) || 0), 0);
+    const totalPending = Object.values(totalPendingByCard).reduce((acc, val) => acc + val, 0);
+    const totalUsed = Object.values(usedLimitByCard).reduce((acc, val) => acc + val, 0);
+    const totalAvailable = Math.max(0, totalLimit - totalPending);
+    const availablePercentage = totalLimit > 0 ? ((totalAvailable / totalLimit) * 100).toFixed(0) : "100";
+    
+    return { totalLimit, totalPending, totalAvailable, availablePercentage, totalUsed };
+  }, [creditCards, totalPendingByCard, usedLimitByCard]);
 
   if (isLoading) {
     return (
@@ -322,7 +332,7 @@ export default function CreditCards() {
                   </div>
                   <span className="text-sm text-muted-foreground">Limite Total</span>
                 </div>
-                <p className="text-2xl font-bold">R$ {totalLimit.toLocaleString("pt-BR")}</p>
+                <p className="text-2xl font-bold">R$ {totalLimit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
               </CardContent>
             </Card>
             <Card variant="elevated">
@@ -355,9 +365,9 @@ export default function CreditCards() {
           <div className="grid lg:grid-cols-2 gap-6">
             {creditCards.map((card) => {
               const cardLimit = Number(card.credit_limit) || 0;
-              const cardUsed = usedLimitByCard[card.id] || 0; // Current month bill
-              const cardPending = totalPendingByCard[card.id] || 0; // Total pending (all future installments)
-              const cardAvailable = cardLimit - cardPending;
+              const cardUsed = usedLimitByCard[card.id] || 0;
+              const cardPending = totalPendingByCard[card.id] || 0;
+              const cardAvailable = Math.max(0, cardLimit - cardPending);
               const cardUsedPercent = cardLimit > 0 ? (cardPending / cardLimit) * 100 : 0;
               const cardExpensesList = expensesByCard[card.id] || [];
 
@@ -416,7 +426,7 @@ export default function CreditCards() {
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Limite</span>
-                          <span className="font-medium">R$ {cardLimit.toLocaleString("pt-BR")}</span>
+                          <span className="font-medium">R$ {cardLimit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="h-2 bg-secondary rounded-full overflow-hidden">
                           <div 
