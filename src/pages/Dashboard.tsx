@@ -77,7 +77,10 @@ export default function Dashboard() {
   const totalRevenue = revenues.reduce((sum, r) => sum + Number(r.amount), 0);
   const totalAllExpenses = totalExpenses + monthlyRecurringTotal;
   const netProfit = totalRevenue - totalAllExpenses;
-  const avgPerDay = daysInMonth > 0 ? netProfit / daysInMonth : 0;
+  
+  // Calculate average per day based on days with revenue
+  const daysWithRevenue = new Set(revenues.map((r) => r.date)).size;
+  const avgPerDay = daysWithRevenue > 0 ? netProfit / daysWithRevenue : 0;
 
   // Group combined expenses by category (includes fuel)
   const expensesByCategory = combinedExpenses.reduce((acc, expense) => {
