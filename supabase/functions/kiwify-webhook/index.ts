@@ -270,128 +270,141 @@ serve(async (req) => {
       try {
         console.log("Preparing to send email to:", email);
         
-        if (isNewUser) {
-          // New user - send welcome email with credentials
-          console.log("Sending WELCOME email with credentials...");
-          await resend.emails.send({
-            from: "Driver Control <onboarding@resend.dev>",
-            to: [email],
-            subject: "Bem-vindo ao Driver Control! 🚗",
-            html: `
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              </head>
-              <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a; color: #ffffff; margin: 0; padding: 40px 20px;">
-                <div style="max-width: 600px; margin: 0 auto; background-color: #1a1a1a; border-radius: 16px; padding: 40px; border: 1px solid #333;">
-                  <div style="text-align: center; margin-bottom: 32px;">
-                    <h1 style="color: #facc15; margin: 0; font-size: 28px;">🚗 Driver Control</h1>
-                  </div>
-                  
-                  <h2 style="color: #ffffff; margin-bottom: 24px;">Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}!</h2>
-                  
-                  <p style="color: #a1a1a1; line-height: 1.6; margin-bottom: 24px;">
-                    Sua assinatura foi confirmada com sucesso! Agora você pode acessar o Driver Control e começar a gerenciar suas finanças como motorista de aplicativo.
-                  </p>
-                  
-                  <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                    <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📧 Suas credenciais de acesso:</h3>
-                    <p style="margin: 8px 0; color: #ffffff;"><strong>Email:</strong> ${email}</p>
-                    <p style="margin: 8px 0; color: #ffffff;"><strong>Senha:</strong> ${generatedPassword}</p>
-                  </div>
-                  
-                  <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                    <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📋 Detalhes do seu plano:</h3>
-                    <p style="margin: 8px 0; color: #ffffff;"><strong>Plano:</strong> ${planName}</p>
-                    <p style="margin: 8px 0; color: #ffffff;"><strong>Status:</strong> Ativo ✅</p>
-                  </div>
-                  
-                  <div style="text-align: center; margin: 32px 0;">
-                    <a href="${APP_URL}/login" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                      Acessar o Painel
-                    </a>
-                  </div>
-                  
-                  <p style="color: #a1a1a1; line-height: 1.6; font-size: 14px;">
-                    <strong>Importante:</strong> Recomendamos que você altere sua senha após o primeiro acesso para maior segurança.
-                  </p>
-                  
-                  <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
-                  
-                  <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
-                    © ${new Date().getFullYear()} Driver Control. Todos os direitos reservados.<br>
-                    <a href="${APP_URL}" style="color: #facc15; text-decoration: none;">${APP_URL}</a>
-                  </p>
+        const emailPayload = {
+          from: "Driver Control <onboarding@resend.dev>",
+          to: [email],
+          subject: isNewUser ? "Bem-vindo ao Driver Control! 🚗" : "Sua assinatura está ativa! 🚗",
+          html: isNewUser ? `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a; color: #ffffff; margin: 0; padding: 40px 20px;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: #1a1a1a; border-radius: 16px; padding: 40px; border: 1px solid #333;">
+                <div style="text-align: center; margin-bottom: 32px;">
+                  <h1 style="color: #facc15; margin: 0; font-size: 28px;">🚗 Driver Control</h1>
                 </div>
-              </body>
-              </html>
-            `,
-          });
-          console.log(`✅ Welcome email sent to ${email}`);
+                
+                <h2 style="color: #ffffff; margin-bottom: 24px;">Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}!</h2>
+                
+                <p style="color: #a1a1a1; line-height: 1.6; margin-bottom: 24px;">
+                  Sua assinatura foi confirmada com sucesso! Agora você pode acessar o Driver Control e começar a gerenciar suas finanças como motorista de aplicativo.
+                </p>
+                
+                <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                  <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📧 Suas credenciais de acesso:</h3>
+                  <p style="margin: 8px 0; color: #ffffff;"><strong>Email:</strong> ${email}</p>
+                  <p style="margin: 8px 0; color: #ffffff;"><strong>Senha:</strong> ${generatedPassword}</p>
+                </div>
+                
+                <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                  <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📋 Detalhes do seu plano:</h3>
+                  <p style="margin: 8px 0; color: #ffffff;"><strong>Plano:</strong> ${planName}</p>
+                  <p style="margin: 8px 0; color: #ffffff;"><strong>Status:</strong> Ativo ✅</p>
+                </div>
+                
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="${APP_URL}/login" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                    Acessar o Painel
+                  </a>
+                </div>
+                
+                <p style="color: #a1a1a1; line-height: 1.6; font-size: 14px;">
+                  <strong>Importante:</strong> Recomendamos que você altere sua senha após o primeiro acesso para maior segurança.
+                </p>
+                
+                <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
+                
+                <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+                  © ${new Date().getFullYear()} Driver Control. Todos os direitos reservados.<br>
+                  <a href="${APP_URL}" style="color: #facc15; text-decoration: none;">${APP_URL}</a>
+                </p>
+              </div>
+            </body>
+            </html>
+          ` : `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a; color: #ffffff; margin: 0; padding: 40px 20px;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: #1a1a1a; border-radius: 16px; padding: 40px; border: 1px solid #333;">
+                <div style="text-align: center; margin-bottom: 32px;">
+                  <h1 style="color: #facc15; margin: 0; font-size: 28px;">🚗 Driver Control</h1>
+                </div>
+                
+                <h2 style="color: #ffffff; margin-bottom: 24px;">Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}!</h2>
+                
+                <p style="color: #a1a1a1; line-height: 1.6; margin-bottom: 24px;">
+                  Sua assinatura do Driver Control está ativa! Continue gerenciando suas finanças com facilidade.
+                </p>
+                
+                <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                  <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📋 Detalhes do seu plano:</h3>
+                  <p style="margin: 8px 0; color: #ffffff;"><strong>Plano:</strong> ${planName}</p>
+                  <p style="margin: 8px 0; color: #ffffff;"><strong>Status:</strong> Ativo ✅</p>
+                  <p style="margin: 8px 0; color: #ffffff;"><strong>Próxima renovação:</strong> ${currentPeriodEnd.toLocaleDateString('pt-BR')}</p>
+                </div>
+                
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="${APP_URL}/login" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                    Acessar o Painel
+                  </a>
+                </div>
+                
+                <p style="color: #a1a1a1; line-height: 1.6; font-size: 14px;">
+                  Use seu e-mail e senha cadastrados para acessar.
+                </p>
+                
+                <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
+                
+                <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+                  © ${new Date().getFullYear()} Driver Control. Todos os direitos reservados.<br>
+                  <a href="${APP_URL}" style="color: #facc15; text-decoration: none;">${APP_URL}</a>
+                </p>
+              </div>
+            </body>
+            </html>
+          `,
+        };
+        
+        // Send email and extract only safe data from response
+        const emailResult = await resend!.emails.send(emailPayload);
+        
+        // Only extract safe, serializable properties
+        const safeResult = emailResult && typeof emailResult === 'object' 
+          ? { id: (emailResult as any).id || 'sent', error: (emailResult as any).error ? String((emailResult as any).error) : null }
+          : { id: 'sent', error: null };
+        
+        if (safeResult.error) {
+          console.log(`⚠️ Email may have failed: ${safeResult.error}`);
         } else {
-          // Existing user - send subscription activation/renewal email
-          console.log("Sending ACTIVATION/RENEWAL email...");
-          await resend.emails.send({
-            from: "Driver Control <onboarding@resend.dev>",
-            to: [email],
-            subject: "Sua assinatura está ativa! 🚗",
-            html: `
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              </head>
-              <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a; color: #ffffff; margin: 0; padding: 40px 20px;">
-                <div style="max-width: 600px; margin: 0 auto; background-color: #1a1a1a; border-radius: 16px; padding: 40px; border: 1px solid #333;">
-                  <div style="text-align: center; margin-bottom: 32px;">
-                    <h1 style="color: #facc15; margin: 0; font-size: 28px;">🚗 Driver Control</h1>
-                  </div>
-                  
-                  <h2 style="color: #ffffff; margin-bottom: 24px;">Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}!</h2>
-                  
-                  <p style="color: #a1a1a1; line-height: 1.6; margin-bottom: 24px;">
-                    Sua assinatura do Driver Control está ativa! Continue gerenciando suas finanças com facilidade.
-                  </p>
-                  
-                  <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                    <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📋 Detalhes do seu plano:</h3>
-                    <p style="margin: 8px 0; color: #ffffff;"><strong>Plano:</strong> ${planName}</p>
-                    <p style="margin: 8px 0; color: #ffffff;"><strong>Status:</strong> Ativo ✅</p>
-                    <p style="margin: 8px 0; color: #ffffff;"><strong>Próxima renovação:</strong> ${currentPeriodEnd.toLocaleDateString('pt-BR')}</p>
-                  </div>
-                  
-                  <div style="text-align: center; margin: 32px 0;">
-                    <a href="${APP_URL}/login" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                      Acessar o Painel
-                    </a>
-                  </div>
-                  
-                  <p style="color: #a1a1a1; line-height: 1.6; font-size: 14px;">
-                    Use seu e-mail e senha cadastrados para acessar.
-                  </p>
-                  
-                  <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
-                  
-                  <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
-                    © ${new Date().getFullYear()} Driver Control. Todos os direitos reservados.<br>
-                    <a href="${APP_URL}" style="color: #facc15; text-decoration: none;">${APP_URL}</a>
-                  </p>
-                </div>
-              </body>
-              </html>
-            `,
-          });
-          console.log(`✅ Activation email sent to ${email}`);
+          console.log(`✅ Email sent successfully (ID: ${safeResult.id}) to ${email}`);
         }
-      } catch (emailError: any) {
-        // Safely log email error without circular references
-        const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
-        const errorName = emailError instanceof Error ? emailError.name : "Unknown";
-        console.error("❌ Error sending email - Name:", errorName, "- Message:", errorMessage);
-        // Don't fail the webhook if email fails - log it but continue
+        
+      } catch (emailError: unknown) {
+        // Safely extract error information without any circular references
+        let errorMessage = "Unknown error";
+        let errorName = "Unknown";
+        
+        if (emailError instanceof Error) {
+          errorMessage = emailError.message;
+          errorName = emailError.name;
+        } else if (emailError && typeof emailError === 'object') {
+          // Handle Resend's special error objects
+          const errObj = emailError as Record<string, unknown>;
+          errorMessage = String(errObj.message || errObj.error || errObj.statusText || JSON.stringify(Object.keys(errObj)));
+          errorName = String(errObj.name || errObj.code || 'ResendError');
+        } else {
+          errorMessage = String(emailError);
+        }
+        
+        console.error(`❌ Email error - ${errorName}: ${errorMessage}`);
+        // Don't fail the webhook if email fails - just log and continue
       }
     } else {
       console.log("Skipping email - either status is not 'active' or Resend not configured");
