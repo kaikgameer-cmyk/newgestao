@@ -144,13 +144,36 @@ serve(async (req) => {
       }
     }
 
-    // Send welcome email with credentials
+    // Send welcome email with password reset link (no plain text password)
     if (sendWelcomeEmail && newUser.user && resendApiKey) {
       try {
+        // Generate password reset link instead of sending plain text password
+        const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'recovery',
+          email: email,
+          options: {
+            redirectTo: 'https://drivercontrol1.lovable.app/login',
+          },
+        });
+
+        if (resetError) {
+          console.error("Error generating password reset link:", resetError);
+          throw resetError;
+        }
+
+        const resetLink = resetData?.properties?.action_link || '';
+        console.log("Generated password reset link for user");
+
+        // Email configuration from environment
+        const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "Driver Control <kaikgivaldodias@gmail.com>";
+        const isTestMode = Deno.env.get("RESEND_TEST_MODE") === "true";
+        const testEmail = "kaikgivaldodias@gmail.com";
+        const recipientEmail = isTestMode ? testEmail : email;
+
         const resend = new Resend(resendApiKey);
         const emailResponse = await resend.emails.send({
-          from: "Driver Control <onboarding@resend.dev>",
-          to: [email],
+          from: resendFromEmail,
+          to: [recipientEmail],
           subject: "Bem-vindo ao Driver Control! 🚗",
           html: `
             <!DOCTYPE html>
@@ -168,30 +191,29 @@ serve(async (req) => {
                 <h2 style="color: #ffffff; margin-bottom: 24px;">Olá${name ? `, ${name}` : ''}!</h2>
                 
                 <p style="color: #a1a1a1; line-height: 1.6; margin-bottom: 24px;">
-                  Sua conta foi criada com sucesso! Agora você pode acessar o Driver Control e começar a gerenciar suas finanças como motorista de aplicativo.
+                  Sua conta foi criada com sucesso! Clique no botão abaixo para definir sua senha e começar a gerenciar suas finanças como motorista de aplicativo.
                 </p>
                 
                 <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                  <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📧 Suas credenciais de acesso:</h3>
+                  <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📧 Seu email de acesso:</h3>
                   <p style="margin: 8px 0; color: #ffffff;"><strong>Email:</strong> ${email}</p>
-                  <p style="margin: 8px 0; color: #ffffff;"><strong>Senha:</strong> ${password}</p>
                 </div>
                 
                 <div style="text-align: center; margin: 32px 0;">
-                  <a href="https://drivercontrol.com.br/login" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                    Acessar o Painel
+                  <a href="${resetLink}" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                    Definir Minha Senha
                   </a>
                 </div>
                 
                 <p style="color: #a1a1a1; line-height: 1.6; font-size: 14px;">
-                  <strong>Importante:</strong> Recomendamos que você altere sua senha após o primeiro acesso para maior segurança.
+                  <strong>Importante:</strong> Este link expira em 24 horas. Se você não solicitou esta conta, ignore este email.
                 </p>
                 
                 <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
                 
                 <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
                   © ${new Date().getFullYear()} Driver Control. Todos os direitos reservados.<br>
-                  <a href="https://drivercontrol.com.br" style="color: #facc15; text-decoration: none;">drivercontrol.com.br</a>
+                  <a href="https://drivercontrol1.lovable.app" style="color: #facc15; text-decoration: none;">drivercontrol1.lovable.app</a>
                 </p>
               </div>
             </body>

@@ -63,7 +63,7 @@ function calculatePeriodEnd(interval: "month" | "quarter" | "year"): Date {
   }
 }
 
-// Generate random password
+// Generate random password (still needed for user creation, but not sent in email)
 function generateRandomPassword(length: number = 16): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
   let password = "";
@@ -208,13 +208,12 @@ serve(async (req) => {
 
     let userId: string;
     let isNewUser = false;
-    let generatedPassword = "";
 
     const existingUser = existingUsers.users.find(u => u.email?.toLowerCase() === email);
 
     if (!existingUser) {
-      // Create new user
-      generatedPassword = generateRandomPassword();
+      // Create new user with random password (not sent to user)
+      const generatedPassword = generateRandomPassword();
       console.log("Creating new user...");
       
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
@@ -284,6 +283,29 @@ serve(async (req) => {
           const recipientEmail = isTestMode ? testEmail : email;
           console.log("Preparing to send email to:", recipientEmail, isTestMode ? "(TEST MODE - original:" + email + ")" : "");
           
+          // For new users, generate password reset link instead of sending plain text password
+          let resetLink = '';
+          if (isNewUser) {
+            try {
+              const { data: resetData, error: resetError } = await supabase.auth.admin.generateLink({
+                type: 'recovery',
+                email: email,
+                options: {
+                  redirectTo: `${APP_URL}/login`,
+                },
+              });
+
+              if (resetError) {
+                console.error("Error generating password reset link:", resetError);
+              } else {
+                resetLink = resetData?.properties?.action_link || '';
+                console.log("Generated password reset link for new user");
+              }
+            } catch (linkError) {
+              console.error("Exception generating password reset link:", linkError);
+            }
+          }
+
           const emailPayload = {
             from: resendFromEmail,
             to: [recipientEmail],
@@ -304,13 +326,12 @@ serve(async (req) => {
                 <h2 style="color: #ffffff; margin-bottom: 24px;">Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}!</h2>
                 
                 <p style="color: #a1a1a1; line-height: 1.6; margin-bottom: 24px;">
-                  Sua assinatura foi confirmada com sucesso! Agora você pode acessar o Driver Control e começar a gerenciar suas finanças como motorista de aplicativo.
+                  Sua assinatura foi confirmada com sucesso! Clique no botão abaixo para definir sua senha e começar a gerenciar suas finanças como motorista de aplicativo.
                 </p>
                 
                 <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                  <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📧 Suas credenciais de acesso:</h3>
+                  <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📧 Seu email de acesso:</h3>
                   <p style="margin: 8px 0; color: #ffffff;"><strong>Email:</strong> ${email}</p>
-                  <p style="margin: 8px 0; color: #ffffff;"><strong>Senha:</strong> ${generatedPassword}</p>
                 </div>
                 
                 <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
@@ -320,13 +341,13 @@ serve(async (req) => {
                 </div>
                 
                 <div style="text-align: center; margin: 32px 0;">
-                  <a href="${APP_URL}/login" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                    Acessar o Painel
+                  <a href="${resetLink || APP_URL + '/login'}" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                    ${resetLink ? 'Definir Minha Senha' : 'Acessar o Painel'}
                   </a>
                 </div>
                 
                 <p style="color: #a1a1a1; line-height: 1.6; font-size: 14px;">
-                  <strong>Importante:</strong> Recomendamos que você altere sua senha após o primeiro acesso para maior segurança.
+                  <strong>Importante:</strong> ${resetLink ? 'Este link expira em 24 horas. Se você não solicitou esta conta, ignore este email.' : 'Use a opção "Esqueci minha senha" para definir sua senha de acesso.'}
                 </p>
                 
                 <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
