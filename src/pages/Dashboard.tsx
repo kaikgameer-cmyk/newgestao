@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, DollarSign, Calendar, PlusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { GlobalDateFilter } from "@/components/GlobalDateFilter";
+import { DatePreset, useDateFilterPresets } from "@/hooks/useDateFilterPresets";
 import { DateRange } from "react-day-picker";
 import {
   AreaChart,
@@ -13,9 +14,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,8 +21,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCombinedExpenses } from "@/hooks/useCombinedExpenses";
 import { useRecurringExpenses, calculateDailyRecurringAmount } from "@/hooks/useRecurringExpenses";
 import { ProfitComparisonChart } from "@/components/charts/ProfitComparisonChart";
-import { startOfMonth, endOfMonth, format, eachDayOfInterval, isSameDay } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { ExpensesByCategoryChart } from "@/components/charts/ExpensesByCategoryChart";
+import { format, eachDayOfInterval, isSameDay } from "date-fns";
 import { parseLocalDate } from "@/lib/dateUtils";
 
 const COLORS = [
@@ -37,32 +35,30 @@ const COLORS = [
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const now = new Date();
   
-  // Date range state - defaults to current month
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: startOfMonth(now),
-    to: endOfMonth(now),
-  });
+  // Global date filter state
+  const [preset, setPreset] = useState<DatePreset>("thisMonth");
+  const [customRange, setCustomRange] = useState<DateRange>();
+  const { dateRange, formattedRange } = useDateFilterPresets(preset, customRange);
 
-  const periodStart = dateRange?.from || startOfMonth(now);
-  const periodEnd = dateRange?.to || endOfMonth(now);
+  const periodStart = dateRange.from!;
+  const periodEnd = dateRange.to || dateRange.from!;
 
   // Fetch revenues for selected period
   const { data: revenues = [] } = useQuery({
-    queryKey: ["revenues", user?.id, format(periodStart, "yyyy-MM-dd"), format(periodEnd, "yyyy-MM-dd")],
+    queryKey: ["revenues", user?.id, formattedRange.from, formattedRange.to],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from("revenues")
         .select("*")
         .eq("user_id", user.id)
-        .gte("date", format(periodStart, "yyyy-MM-dd"))
-        .lte("date", format(periodEnd, "yyyy-MM-dd"));
+        .gte("date", formattedRange.from)
+        .lte("date", formattedRange.to);
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user && !!formattedRange.from,
   });
 
   // Fetch combined expenses (expenses + fuel logs)
@@ -78,7 +74,7 @@ export default function Dashboard() {
   // Calculate recurring expenses for the period
   const daysInPeriod = eachDayOfInterval({ start: periodStart, end: periodEnd }).length;
   const periodRecurringTotal = recurringExpenses
-    .filter((e) => e.is_active && e.start_date <= format(periodEnd, "yyyy-MM-dd") && (!e.end_date || e.end_date >= format(periodStart, "yyyy-MM-dd")))
+    .filter((e) => e.is_active && e.start_date <= formattedRange.to && (!e.end_date || e.end_date >= formattedRange.from))
     .reduce((sum, e) => sum + (e.amount / 30) * daysInPeriod, 0);
 
   // Calculate KPIs
@@ -173,34 +169,36 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground">
             Acompanhe seus resultados financeiros
           </p>
         </div>
-        <DateRangePicker
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          placeholder="Selecione o período"
+        <GlobalDateFilter
+          preset={preset}
+          onPresetChange={setPreset}
+          customRange={customRange}
+          onCustomRangeChange={setCustomRange}
+          className="flex-wrap"
         />
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {kpis.map((kpi, index) => (
           <Card key={index} variant="elevated" className="hover:border-primary/20 transition-colors">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <kpi.icon className="w-5 h-5 text-primary" />
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <kpi.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 </div>
               </div>
-              <p className="text-2xl font-bold">{kpi.value}</p>
-              <p className="text-sm text-muted-foreground">{kpi.title}</p>
+              <p className="text-lg sm:text-2xl font-bold truncate">{kpi.value}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{kpi.title}</p>
             </CardContent>
           </Card>
         ))}
@@ -208,7 +206,7 @@ export default function Dashboard() {
 
       {/* Empty State or Charts */}
       {!hasData ? (
-        <Card variant="elevated" className="p-12">
+        <Card variant="elevated" className="p-8 sm:p-12">
           <div className="flex flex-col items-center justify-center text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
               <PlusCircle className="w-8 h-8 text-primary" />
@@ -236,7 +234,7 @@ export default function Dashboard() {
               <CardTitle className="text-lg">Lucro Diário</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
+              <div className="h-[250px] sm:h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={dailyData}>
                     <defs>
@@ -249,17 +247,20 @@ export default function Dashboard() {
                     <XAxis
                       dataKey="day"
                       stroke="hsl(0, 0%, 50%)"
-                      tick={{ fill: "hsl(0, 0%, 60%)" }}
+                      tick={{ fill: "hsl(0, 0%, 60%)", fontSize: 12 }}
+                      tickLine={false}
                     />
                     <YAxis
                       stroke="hsl(0, 0%, 50%)"
-                      tick={{ fill: "hsl(0, 0%, 60%)" }}
+                      tick={{ fill: "hsl(0, 0%, 60%)", fontSize: 12 }}
                       tickFormatter={(value) => `R$${value}`}
+                      tickLine={false}
+                      width={60}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: "hsl(0, 0%, 10%)",
-                        border: "1px solid hsl(0, 0%, 20%)",
+                        backgroundColor: "hsl(var(--popover))",
+                        border: "1px solid hsl(var(--border))",
                         borderRadius: "8px",
                       }}
                       formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Lucro"]}
@@ -278,65 +279,8 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Pie Chart - Expense Categories */}
-          <Card variant="elevated">
-            <CardHeader>
-              <CardTitle className="text-lg">Despesas por Categoria</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {expenseCategoriesData.length > 0 ? (
-                <div className="h-[300px] flex items-center">
-                  <div className="w-1/2">
-                    <ResponsiveContainer width="100%" height={250}>
-                      <PieChart>
-                        <Pie
-                          data={expenseCategoriesData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={90}
-                          paddingAngle={3}
-                          dataKey="value"
-                        >
-                          {expenseCategoriesData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(0, 0%, 10%)",
-                            border: "1px solid hsl(0, 0%, 20%)",
-                            borderRadius: "8px",
-                          }}
-                          formatter={(value: number) => [`R$ ${value.toFixed(2)}`, ""]}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="w-1/2 space-y-3">
-                    {expenseCategoriesData.map((category, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: category.color }}
-                          />
-                          <span className="text-sm text-muted-foreground">
-                            {category.name}
-                          </span>
-                        </div>
-                        <span className="text-sm font-medium">R$ {category.value.toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                  Nenhuma despesa registrada
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* Pie Chart - Expense Categories (Responsive Component) */}
+          <ExpensesByCategoryChart data={expenseCategoriesData} />
         </div>
       )}
 
