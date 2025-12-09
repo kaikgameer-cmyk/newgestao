@@ -266,15 +266,29 @@ serve(async (req) => {
     const shouldSendEmail = status === "active" && resend;
     console.log("Should send email?", shouldSendEmail ? "yes" : "no", `(status: ${status}, resend configured: ${resend ? 'yes' : 'no'})`);
 
+    // Email configuration from environment
+    const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "Driver Control <kaikgivaldodias@gmail.com>";
+    const isTestMode = Deno.env.get("RESEND_TEST_MODE") === "true";
+    const testEmail = "kaikgivaldodias@gmail.com";
+    
+    console.log("Email config - From:", resendFromEmail);
+    console.log("Email config - Test mode:", isTestMode ? "yes" : "no");
+
     if (shouldSendEmail) {
-      try {
-        console.log("Preparing to send email to:", email);
-        
-        const emailPayload = {
-          from: "Driver Control <onboarding@resend.dev>",
-          to: [email],
-          subject: isNewUser ? "Bem-vindo ao Driver Control! 🚗" : "Sua assinatura está ativa! 🚗",
-          html: isNewUser ? `
+      // Validate customer email exists
+      if (!email) {
+        console.log("⚠️ Skipping email - no customer email in payload");
+      } else {
+        try {
+          // Determine recipient: use test email in test mode, real customer email otherwise
+          const recipientEmail = isTestMode ? testEmail : email;
+          console.log("Preparing to send email to:", recipientEmail, isTestMode ? "(TEST MODE - original:" + email + ")" : "");
+          
+          const emailPayload = {
+            from: resendFromEmail,
+            to: [recipientEmail],
+            subject: isNewUser ? "Bem-vindo ao Driver Control! 🚗" : "Sua assinatura está ativa! 🚗",
+            html: isNewUser ? `
             <!DOCTYPE html>
             <html>
             <head>
@@ -405,6 +419,7 @@ serve(async (req) => {
         
         console.error(`❌ Email error - ${errorName}: ${errorMessage}`);
         // Don't fail the webhook if email fails - just log and continue
+      }
       }
     } else {
       console.log("Skipping email - either status is not 'active' or Resend not configured");
