@@ -386,8 +386,11 @@ serve(async (req) => {
           });
           console.log(`✅ Activation email sent to ${email}`);
         }
-      } catch (emailError) {
-        console.error("❌ Error sending email:", emailError);
+      } catch (emailError: any) {
+        // Safely log email error without circular references
+        const errorMessage = emailError instanceof Error ? emailError.message : String(emailError);
+        const errorName = emailError instanceof Error ? emailError.name : "Unknown";
+        console.error("❌ Error sending email - Name:", errorName, "- Message:", errorMessage);
         // Don't fail the webhook if email fails - log it but continue
       }
     } else {
@@ -408,10 +411,13 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
-  } catch (error) {
-    console.error("❌ WEBHOOK ERROR:", error);
+  } catch (error: any) {
+    // Safely log error without circular references
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorName = error instanceof Error ? error.name : "Unknown";
+    console.error("❌ WEBHOOK ERROR - Name:", errorName, "- Message:", errorMessage);
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
+      error: errorMessage
     }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
