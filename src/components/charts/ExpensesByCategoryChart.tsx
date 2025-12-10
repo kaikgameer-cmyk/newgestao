@@ -59,19 +59,19 @@ export function ExpensesByCategoryChart({ data }: ExpensesByCategoryChartProps) 
       <CardHeader>
         <CardTitle className="text-lg">Despesas por Categoria</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-3 sm:p-6">
         {/* Container responsivo - empilha em mobile, lado a lado em tablet+ */}
-        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-          {/* Gráfico - tamanho adaptativo */}
-          <div className="w-full sm:w-1/2 h-[180px] sm:h-[200px] lg:h-[250px] min-w-0">
+        <div className="flex flex-col md:flex-row items-center gap-3 sm:gap-6">
+          {/* Gráfico - tamanho adaptativo com aspect ratio fixo */}
+          <div className="w-full md:w-1/2 aspect-square max-h-[200px] sm:max-h-[220px] md:max-h-[250px] flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+              <PieChart margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                 <Pie
                   data={chartData}
                   cx="50%"
                   cy="50%"
-                  innerRadius="40%"
-                  outerRadius="75%"
+                  innerRadius="35%"
+                  outerRadius="70%"
                   paddingAngle={2}
                   dataKey="value"
                 >
@@ -85,6 +85,7 @@ export function ExpensesByCategoryChart({ data }: ExpensesByCategoryChartProps) 
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "8px",
                     boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                    fontSize: "12px",
                   }}
                   labelStyle={{ color: "hsl(var(--popover-foreground))" }}
                   formatter={(value: number, name: string) => [
@@ -96,30 +97,30 @@ export function ExpensesByCategoryChart({ data }: ExpensesByCategoryChartProps) 
             </ResponsiveContainer>
           </div>
 
-          {/* Legenda - responsiva */}
-          <div className="w-full sm:w-1/2 space-y-2 sm:space-y-3 overflow-auto max-h-[200px] sm:max-h-[250px]">
+          {/* Legenda - responsiva com grid em mobile */}
+          <div className="w-full md:w-1/2 grid grid-cols-1 xs:grid-cols-2 md:grid-cols-1 gap-2 sm:gap-3 overflow-auto max-h-[180px] sm:max-h-[220px] md:max-h-[250px] px-1">
             {chartData.map((category, index) => {
               const percentage = ((category.value / totalValue) * 100).toFixed(1);
               return (
                 <div
                   key={index}
-                  className="flex items-center justify-between gap-2 text-sm"
+                  className="flex items-center justify-between gap-1.5 sm:gap-2 text-xs sm:text-sm py-1 px-2 rounded-md bg-muted/30"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
                     <div
-                      className="w-3 h-3 rounded-full shrink-0"
+                      className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shrink-0"
                       style={{ backgroundColor: category.color }}
                     />
-                    <span className="text-muted-foreground truncate">
+                    <span className="text-muted-foreground truncate text-xs sm:text-sm">
                       {category.name}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                    <span className="text-[10px] sm:text-xs text-muted-foreground hidden xs:inline">
                       {percentage}%
                     </span>
-                    <span className="font-medium text-foreground">
-                      R$ {category.value.toFixed(2)}
+                    <span className="font-medium text-foreground text-xs sm:text-sm whitespace-nowrap">
+                      R$ {category.value.toFixed(0)}
                     </span>
                   </div>
                 </div>
