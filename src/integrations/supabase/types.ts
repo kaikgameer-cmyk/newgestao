@@ -53,6 +53,33 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_goals: {
+        Row: {
+          created_at: string
+          daily_goal: number
+          date: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_goal: number
+          date: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_goal?: number
+          date?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number

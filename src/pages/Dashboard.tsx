@@ -22,8 +22,12 @@ import { useCombinedExpenses } from "@/hooks/useCombinedExpenses";
 import { useRecurringExpenses, calculateDailyRecurringAmount } from "@/hooks/useRecurringExpenses";
 import { ProfitComparisonChart } from "@/components/charts/ProfitComparisonChart";
 import { ExpensesByCategoryChart } from "@/components/charts/ExpensesByCategoryChart";
+import { DailyGoalCard } from "@/components/goals/DailyGoalCard";
+import { PeriodGoalCard } from "@/components/goals/PeriodGoalCard";
+import { GoalEditor } from "@/components/goals/GoalEditor";
+import { useDailyGoals } from "@/hooks/useDailyGoals";
 import { format, eachDayOfInterval, isSameDay } from "date-fns";
-import { parseLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 
 const COLORS = [
   "hsl(48, 96%, 53%)",
@@ -71,6 +75,9 @@ export default function Dashboard() {
   // Fetch recurring expenses
   const { recurringExpenses } = useRecurringExpenses(user?.id);
 
+  // Fetch daily goals
+  const { getGoalForDate, getGoalsForPeriod } = useDailyGoals();
+
   // Calculate recurring expenses for the period
   const daysInPeriod = eachDayOfInterval({ start: periodStart, end: periodEnd }).length;
   const periodRecurringTotal = recurringExpenses
@@ -85,6 +92,25 @@ export default function Dashboard() {
   // Calculate average per day based on days with revenue
   const daysWithRevenue = new Set(revenues.map((r) => r.date)).size;
   const avgPerDay = daysWithRevenue > 0 ? netProfit / daysWithRevenue : 0;
+
+  // Determine if single day or period view for goals
+  const isSingleDay = isSameDay(periodStart, periodEnd);
+  const currentDayGoal = isSingleDay ? getGoalForDate(periodStart) : null;
+
+  // Build period goals data for multi-day view
+  const periodGoalsData = !isSingleDay
+    ? eachDayOfInterval({ start: periodStart, end: periodEnd }).map((day) => {
+        const dateStr = formatLocalDate(day);
+        const dayRevenue = revenues
+          .filter((r) => r.date === dateStr)
+          .reduce((sum, r) => sum + Number(r.amount), 0);
+        return {
+          date: dateStr,
+          goal: getGoalForDate(day),
+          revenue: dayRevenue,
+        };
+      })
+    : [];
 
   // Group combined expenses by category (includes fuel)
   const expensesByCategory = combinedExpenses.reduce((acc, expense) => {
@@ -178,13 +204,42 @@ export default function Dashboard() {
             Acompanhe seus resultados financeiros
           </p>
         </div>
-        <GlobalDateFilter
-          preset={preset}
-          onPresetChange={setPreset}
-          customRange={customRange}
-          onCustomRangeChange={setCustomRange}
-          className="flex-wrap"
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <GlobalDateFilter
+            preset={preset}
+            onPresetChange={setPreset}
+            customRange={customRange}
+            onCustomRangeChange={setCustomRange}
+            className="flex-wrap"
+          />
+          {isSingleDay && (
+            <GoalEditor date={periodStart} currentGoal={currentDayGoal} />
+          )}
+        </div>
+      </div>
+
+      {/* Goals Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {isSingleDay ? (
+          <DailyGoalCard
+            goal={currentDayGoal}
+            revenue={totalRevenue}
+            label={`Meta de ${format(periodStart, "dd/MM/yyyy")}`}
+          />
+        ) : (
+          <PeriodGoalCard
+            days={periodGoalsData}
+            periodLabel={
+              preset === "last7days"
+                ? "Últimos 7 dias"
+                : preset === "last30days"
+                ? "Últimos 30 dias"
+                : preset === "thisMonth"
+                ? "Este mês"
+                : "Período selecionado"
+            }
+          />
+        )}
       </div>
 
       {/* KPI Cards */}
