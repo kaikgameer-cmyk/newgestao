@@ -16,6 +16,7 @@ import {
   X,
   Crown,
   Shield,
+  Book,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
@@ -116,6 +117,7 @@ export default function DashboardLayout() {
     { icon: Fuel, label: "Combustível", path: "/dashboard/combustivel" },
     { icon: Repeat, label: "Despesas Fixas", path: "/dashboard/despesas-fixas" },
     { icon: Crown, label: "Assinatura", path: "/dashboard/assinatura" },
+    { icon: Book, label: "Guia da Plataforma", path: "/dashboard/guia" },
     { icon: Settings, label: "Configurações", path: "/dashboard/configuracoes" },
   ];
 

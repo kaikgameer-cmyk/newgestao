@@ -16,6 +16,7 @@ import RecurringExpenses from "./pages/RecurringExpenses";
 import SettingsPage from "./pages/Settings";
 import SubscriptionPage from "./pages/Subscription";
 import AdminPage from "./pages/Admin";
+import PlatformGuide from "./pages/PlatformGuide";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="despesas-fixas" element={<RecurringExpenses />} />
             <Route path="configuracoes" element={<SettingsPage />} />
             <Route path="assinatura" element={<SubscriptionPage />} />
+            <Route path="guia" element={<PlatformGuide />} />
             <Route path="admin" element={<AdminPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
