@@ -17,7 +17,7 @@ export interface Subscription {
 }
 
 // Kiwify checkout links
-export const KIWIFY_CHECKOUT_MENSAL = "https://pay.kiwify.com.br/3XUXdMS";
+export const KIWIFY_CHECKOUT_MENSAL = "https://pay.kiwify.com.br/YLOKFH1";
 export const KIWIFY_CHECKOUT_TRIMESTRAL = "https://pay.kiwify.com.br/LPmRPJG";
 export const KIWIFY_CHECKOUT_ANUAL = "https://pay.kiwify.com.br/vQFj0v8";
 

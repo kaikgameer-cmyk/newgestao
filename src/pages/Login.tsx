@@ -12,10 +12,41 @@ import heroCarImage from "@/assets/hero-car.png";
 import logo from "@/assets/logo.png";
 import { z } from "zod";
 
+// Zod schema for input validation
 const loginSchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(6, "Mínimo 6 caracteres"),
+  email: z.string()
+    .trim()
+    .min(1, "Email é obrigatório")
+    .max(255, "Email deve ter no máximo 255 caracteres")
+    .email("Formato de email inválido"),
+  password: z.string()
+    .min(8, "Senha deve ter no mínimo 8 caracteres")
+    .max(128, "Senha deve ter no máximo 128 caracteres"),
 });
+
+// Simple client-side rate limiting for login attempts
+const LOGIN_RATE_LIMIT = {
+  maxAttempts: 5,
+  windowMs: 60000, // 1 minute
+  attempts: [] as number[],
+};
+
+function checkLoginRateLimit(): { allowed: boolean; waitTime: number } {
+  const now = Date.now();
+  // Remove old attempts outside the window
+  LOGIN_RATE_LIMIT.attempts = LOGIN_RATE_LIMIT.attempts.filter(
+    (t) => now - t < LOGIN_RATE_LIMIT.windowMs
+  );
+  
+  if (LOGIN_RATE_LIMIT.attempts.length >= LOGIN_RATE_LIMIT.maxAttempts) {
+    const oldestAttempt = LOGIN_RATE_LIMIT.attempts[0];
+    const waitTime = Math.ceil((LOGIN_RATE_LIMIT.windowMs - (now - oldestAttempt)) / 1000);
+    return { allowed: false, waitTime };
+  }
+  
+  LOGIN_RATE_LIMIT.attempts.push(now);
+  return { allowed: true, waitTime: 0 };
+}
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -48,20 +79,40 @@ export default function Login() {
       return;
     }
 
+    // Check rate limit before attempting login
+    const rateLimit = checkLoginRateLimit();
+    if (!rateLimit.allowed) {
+      toast({
+        title: "Muitas tentativas",
+        description: `Aguarde ${rateLimit.waitTime} segundos antes de tentar novamente.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email: result.data.email,
+        email: result.data.email.toLowerCase().trim(),
         password: result.data.password,
       });
 
       if (error) {
+        // Handle specific error types
+        let errorMessage = "Email ou senha incorretos";
+        
+        if (error.message.includes("rate limit")) {
+          errorMessage = "Muitas tentativas de login. Tente novamente em alguns minutos.";
+        } else if (error.message === "Invalid login credentials") {
+          errorMessage = "Email ou senha incorretos";
+        } else if (error.message.includes("Email not confirmed")) {
+          errorMessage = "Email não confirmado. Verifique sua caixa de entrada.";
+        }
+        
         toast({
           title: "Erro ao entrar",
-          description: error.message === "Invalid login credentials" 
-            ? "Email ou senha incorretos" 
-            : error.message,
+          description: errorMessage,
           variant: "destructive",
         });
       } else {

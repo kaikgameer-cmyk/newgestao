@@ -7,6 +7,77 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Email validation regex (RFC 5322 simplified)
+const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+/**
+ * Input validation for user creation
+ * Defense-in-depth: validate all inputs before processing
+ */
+function validateInput(data: Record<string, unknown>): { valid: boolean; error?: string; sanitized?: Record<string, unknown> } {
+  // Validate email (required)
+  if (!data.email || typeof data.email !== 'string') {
+    return { valid: false, error: 'Email é obrigatório' };
+  }
+  
+  const email = data.email.trim().toLowerCase();
+  if (email.length === 0) {
+    return { valid: false, error: 'Email é obrigatório' };
+  }
+  if (email.length > 255) {
+    return { valid: false, error: 'Email deve ter no máximo 255 caracteres' };
+  }
+  if (!EMAIL_REGEX.test(email)) {
+    return { valid: false, error: 'Formato de email inválido' };
+  }
+  
+  // Validate password (required)
+  if (!data.password || typeof data.password !== 'string') {
+    return { valid: false, error: 'Senha é obrigatória' };
+  }
+  if (data.password.length < 8) {
+    return { valid: false, error: 'Senha deve ter no mínimo 8 caracteres' };
+  }
+  if (data.password.length > 128) {
+    return { valid: false, error: 'Senha deve ter no máximo 128 caracteres' };
+  }
+  
+  // Validate name (optional)
+  let name: string | null = null;
+  if (data.name !== undefined && data.name !== null && data.name !== '') {
+    if (typeof data.name !== 'string') {
+      return { valid: false, error: 'Nome deve ser uma string' };
+    }
+    name = data.name.trim();
+    if (name.length > 100) {
+      return { valid: false, error: 'Nome deve ter no máximo 100 caracteres' };
+    }
+  }
+  
+  // Validate city (optional)
+  let city: string | null = null;
+  if (data.city !== undefined && data.city !== null && data.city !== '') {
+    if (typeof data.city !== 'string') {
+      return { valid: false, error: 'Cidade deve ser uma string' };
+    }
+    city = data.city.trim();
+    if (city.length > 100) {
+      return { valid: false, error: 'Cidade deve ter no máximo 100 caracteres' };
+    }
+  }
+  
+  return {
+    valid: true,
+    sanitized: {
+      email,
+      password: data.password,
+      name,
+      city,
+      sendWelcomeEmail: data.sendWelcomeEmail !== false,
+    },
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -52,15 +123,27 @@ serve(async (req) => {
       });
     }
 
-    // Parse request body
-    const { email, password, name, city, sendWelcomeEmail = true } = await req.json();
-
-    if (!email || !password) {
-      return new Response(JSON.stringify({ error: "Email and password are required" }), {
+    // Parse and validate request body
+    const rawData = await req.json();
+    const validation = validateInput(rawData);
+    
+    if (!validation.valid) {
+      console.log("Input validation failed:", validation.error);
+      return new Response(JSON.stringify({ error: validation.error }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { email, password, name, city, sendWelcomeEmail } = validation.sanitized as {
+      email: string;
+      password: string;
+      name: string | null;
+      city: string | null;
+      sendWelcomeEmail: boolean;
+    };
+
+    console.log("Creating user with validated input:", { email, name, city });
 
     // Use service role client to create user
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
@@ -112,7 +195,6 @@ serve(async (req) => {
           
         if (insertError) {
           console.error("Error creating profile:", insertError);
-          // Don't fail the request, user was created successfully
         } else {
           console.log("Profile created successfully via insert");
         }
@@ -133,7 +215,6 @@ serve(async (req) => {
         console.log("Profile verified:", profileCheck);
       } else {
         console.warn("Profile not found after creation attempts, creating now...");
-        // Final attempt to create profile
         await supabaseAdmin
           .from("profiles")
           .insert({ 
@@ -147,7 +228,6 @@ serve(async (req) => {
     // Send welcome email with password reset link (no plain text password)
     if (sendWelcomeEmail && newUser.user && resendApiKey) {
       try {
-        // Generate password reset link instead of sending plain text password
         const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
           type: 'recovery',
           email: email,
@@ -164,7 +244,6 @@ serve(async (req) => {
         const resetLink = resetData?.properties?.action_link || '';
         console.log("Generated password reset link for user");
 
-        // Email configuration from environment
         const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "Driver Control <kaikgivaldodias@gmail.com>";
         const isTestMode = Deno.env.get("RESEND_TEST_MODE") === "true";
         const testEmail = "kaikgivaldodias@gmail.com";
@@ -223,7 +302,6 @@ serve(async (req) => {
         console.log("Welcome email sent:", emailResponse);
       } catch (emailError) {
         console.error("Error sending welcome email:", emailError);
-        // Don't fail the request if email fails, user was created successfully
       }
     }
 
