@@ -16,19 +16,7 @@ export function GuideSectionCard({ section }: GuideSectionCardProps) {
   const Icon = section.icon;
 
   return (
-    <Card className="bg-card border-border overflow-hidden" id={section.id}>
-      {/* Imagem ilustrativa da seção */}
-      {section.image && (
-        <div className="relative w-full h-40 sm:h-52 bg-muted/30 overflow-hidden">
-          <img
-            src={section.image}
-            alt={section.imageAlt || section.title}
-            className="w-full h-full object-cover object-top opacity-90"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
-        </div>
-      )}
-
+    <Card className="bg-card border-border" id={section.id}>
       <CardHeader className="pb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">

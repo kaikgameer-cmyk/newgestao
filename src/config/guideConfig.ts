@@ -27,26 +27,13 @@ export interface GuideSection {
   description: string;
   features: GuideFeature[];
   tips?: GuideTip[];
-  /** Caminho da imagem importada para ilustrar a seção */
-  image?: string;
-  imageAlt?: string;
 }
-
-// Importar imagens do guia
-import dashboardPreview from "@/assets/guide/dashboard-preview.png";
-import expensesChart from "@/assets/guide/expenses-chart.png";
-import transactionsList from "@/assets/guide/transactions-list.png";
-import fuelControl from "@/assets/guide/fuel-control.png";
-import dailyGoal from "@/assets/guide/daily-goal.png";
-import subscriptionPlans from "@/assets/guide/subscription-plans.png";
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
     id: "dashboard",
     title: "Dashboard",
     icon: LayoutDashboard,
-    image: dashboardPreview,
-    imageAlt: "Visão geral do Dashboard com KPIs e gráficos",
     description:
       "O Dashboard é a página principal onde você acompanha todos os seus resultados financeiros de forma visual e intuitiva.",
     features: [
@@ -85,8 +72,6 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     id: "lancamentos",
     title: "Lançamentos",
     icon: Receipt,
-    image: transactionsList,
-    imageAlt: "Lista de lançamentos com receitas e despesas",
     description:
       "Aqui você registra todas as suas receitas (ganhos com corridas) e despesas do dia a dia.",
     features: [
@@ -125,8 +110,6 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     id: "combustivel",
     title: "Combustível",
     icon: Fuel,
-    image: fuelControl,
-    imageAlt: "Controle de combustível com consumo e gastos",
     description:
       "Controle detalhado dos seus abastecimentos com cálculo automático de consumo médio.",
     features: [
@@ -160,8 +143,6 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     id: "despesas-fixas",
     title: "Despesas Fixas",
     icon: Repeat,
-    image: expensesChart,
-    imageAlt: "Gráfico de despesas por categoria",
     description:
       "Cadastre despesas que se repetem todo mês, como aluguel do carro, seguro, financiamento, etc.",
     features: [
@@ -195,8 +176,6 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     id: "metas",
     title: "Metas Diárias",
     icon: Target,
-    image: dailyGoal,
-    imageAlt: "Card de meta diária com progresso",
     description:
       "Sistema de metas para acompanhar se você está atingindo seus objetivos de faturamento.",
     features: [
@@ -230,8 +209,6 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     id: "assinatura",
     title: "Assinatura",
     icon: Crown,
-    image: subscriptionPlans,
-    imageAlt: "Planos de assinatura disponíveis",
     description:
       "Gerencie seu plano de assinatura do Driver Control.",
     features: [
