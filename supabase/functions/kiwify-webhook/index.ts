@@ -264,11 +264,23 @@ serve(async (req) => {
     let emailSent = false;
 
     if (shouldSendEmail) {
+      // Log pre-email info for debugging
+      console.log("=== PRE-EMAIL SEND INFO ===");
+      console.log("  - User ID:", userId);
+      console.log("  - User Email:", email);
+      console.log("  - User Name:", name);
+      console.log("  - Is New User:", isNewUser);
+      console.log("  - Plan:", planName);
+      console.log("  - Billing Interval:", billingInterval);
+      console.log("  - Event Type:", eventName);
+      console.log("  - App Base URL:", appBaseUrl);
+      
       try {
         // For new users, generate password reset link
         let resetLink = '';
         if (isNewUser) {
           try {
+            console.log("Generating password reset link for new user...");
             const { data: resetData, error: resetError } = await supabase.auth.admin.generateLink({
               type: 'recovery',
               email: email,
@@ -278,13 +290,13 @@ serve(async (req) => {
             });
 
             if (resetError) {
-              console.error("Error generating password reset link:", resetError);
+              console.error("Error generating password reset link:", resetError.message || resetError);
             } else {
               resetLink = resetData?.properties?.action_link || '';
               console.log("Generated password reset link for new user");
             }
-          } catch (linkError) {
-            console.error("Exception generating password reset link:", linkError);
+          } catch (linkError: any) {
+            console.error("Exception generating password reset link:", linkError?.message || String(linkError));
           }
         }
 
@@ -316,6 +328,7 @@ serve(async (req) => {
                 <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📋 Detalhes do seu plano:</h3>
                 <p style="margin: 8px 0; color: #ffffff;"><strong>Plano:</strong> ${planName}</p>
                 <p style="margin: 8px 0; color: #ffffff;"><strong>Status:</strong> Ativo ✅</p>
+                <p style="margin: 8px 0; color: #ffffff;"><strong>Próxima renovação:</strong> ${currentPeriodEnd.toLocaleDateString('pt-BR')}</p>
               </div>
               
               <div style="text-align: center; margin: 32px 0;">
@@ -384,7 +397,11 @@ serve(async (req) => {
           </html>
         `;
 
-        await sendAppEmail({
+        console.log("Attempting to send email via Resend...");
+        console.log("  - To:", email);
+        console.log("  - Subject:", isNewUser ? "Bem-vindo ao Driver Control! 🚗" : "Sua assinatura está ativa! 🚗");
+
+        const emailResult = await sendAppEmail({
           to: email,
           subject: isNewUser ? "Bem-vindo ao Driver Control! 🚗" : "Sua assinatura está ativa! 🚗",
           html: emailHtml,
@@ -392,8 +409,12 @@ serve(async (req) => {
 
         emailSent = true;
         console.log("✅ Email sent successfully");
+        console.log("  - Resend response:", JSON.stringify(emailResult));
       } catch (emailError: any) {
-        console.error("⚠️ Failed to send email:", emailError?.message || String(emailError));
+        console.error("=== EMAIL SEND ERROR ===");
+        console.error("  - Error name:", emailError?.name || "Unknown");
+        console.error("  - Error message:", emailError?.message || String(emailError));
+        console.error("  - Error stack:", emailError?.stack || "No stack trace");
         // Don't throw - email failure shouldn't fail the webhook
       }
     }
