@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, PlusCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, PlusCircle, Target, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -24,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCombinedExpenses } from "@/hooks/useCombinedExpenses";
 import { useRecurringExpenses, calculateDailyRecurringAmount } from "@/hooks/useRecurringExpenses";
+import { useDailyGoals } from "@/hooks/useDailyGoals";
 import { startOfWeek, endOfWeek, format, eachDayOfInterval, isSameDay, startOfDay, endOfDay, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseLocalDate } from "@/lib/dateUtils";
@@ -52,6 +53,7 @@ const categoryLabels: Record<string, string> = {
 
 export default function WeeklyReports() {
   const { user } = useAuth();
+  const { getGoalsForPeriod, getTotalGoalsForPeriod } = useDailyGoals();
   const now = new Date();
   
   // View mode: "week" or "day"
@@ -157,6 +159,14 @@ export default function WeeklyReports() {
   }));
 
   const hasData = revenues.length > 0 || combinedExpenses.length > 0 || periodRecurringTotal > 0;
+
+  // Goals calculations for the period
+  const goalsForPeriod = getGoalsForPeriod(periodStart, periodEnd);
+  const totalGoalForPeriod = getTotalGoalsForPeriod(periodStart, periodEnd);
+  const daysWithGoal = goalsForPeriod.size;
+  const daysWithoutGoal = daysInPeriod - daysWithGoal;
+  const goalPercentage = totalGoalForPeriod > 0 ? (totalRevenue / totalGoalForPeriod) * 100 : 0;
+  const hasGoalsInPeriod = daysWithGoal > 0;
 
   const kpis = [
     { title: "Receita", value: `R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, icon: DollarSign },
@@ -340,6 +350,91 @@ export default function WeeklyReports() {
                 </ResponsiveContainer>
               </div>
             </CardContent>
+            </Card>
+          )}
+
+          {/* Goals Summary Card - fills the empty space below "Receitas vs Despesas" */}
+          {viewMode === "week" && (
+            <Card variant="elevated">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Target className="w-5 h-5 text-primary" />
+                  Metas do Período
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {hasGoalsInPeriod ? (
+                  <div className="space-y-4">
+                    {/* Main metrics */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-center">
+                        <p className="text-xs text-muted-foreground mb-1">Meta Total</p>
+                        <p className="text-lg font-bold text-primary">
+                          R$ {totalGoalForPeriod.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-center">
+                        <p className="text-xs text-muted-foreground mb-1">Faturado</p>
+                        <p className="text-lg font-bold text-success">
+                          R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Progress indicator */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Progresso</span>
+                        <div className="flex items-center gap-1">
+                          {goalPercentage >= 100 ? (
+                            <CheckCircle2 className="w-4 h-4 text-success" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-muted-foreground" />
+                          )}
+                          <span className={`font-bold ${goalPercentage >= 100 ? "text-success" : "text-foreground"}`}>
+                            {goalPercentage.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-secondary rounded-full h-2.5">
+                        <div
+                          className={`h-2.5 rounded-full transition-all ${goalPercentage >= 100 ? "bg-success" : "bg-primary"}`}
+                          style={{ width: `${Math.min(goalPercentage, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Days breakdown */}
+                    <div className="flex items-center justify-between pt-2 border-t border-border text-sm">
+                      <span className="text-muted-foreground">Dias com meta</span>
+                      <span className="font-medium">
+                        {daysWithGoal} / {daysInPeriod} dias
+                      </span>
+                    </div>
+                    {daysWithoutGoal > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {daysWithoutGoal} {daysWithoutGoal === 1 ? "dia" : "dias"} sem meta definida
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-6 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
+                      <Target className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-muted-foreground">
+                        Nenhuma meta definida para esse período.
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to="/dashboard/metas">
+                        Definir Metas
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
             </Card>
           )}
 
