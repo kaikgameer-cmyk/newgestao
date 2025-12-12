@@ -276,30 +276,35 @@ serve(async (req) => {
       console.log("  - App Base URL:", appBaseUrl);
       
       try {
-        // For new users, generate password reset link
+        // For new users, generate password reset link so they can define their password
         let resetLink = '';
         if (isNewUser) {
           try {
-            console.log("Generating password reset link for new user...");
+            console.log("[WEBHOOK] Novo cliente - gerando link de definição de senha...");
             const { data: resetData, error: resetError } = await supabase.auth.admin.generateLink({
               type: 'recovery',
               email: email,
               options: {
-                redirectTo: `${appBaseUrl}/login`,
+                // Redirect to reset-password page after email link is clicked
+                redirectTo: `${appBaseUrl}/reset-password`,
               },
             });
 
             if (resetError) {
-              console.error("Error generating password reset link:", resetError.message || resetError);
+              console.error("[WEBHOOK] Erro ao gerar link de senha:", resetError.message || resetError);
             } else {
               resetLink = resetData?.properties?.action_link || '';
-              console.log("Generated password reset link for new user");
+              console.log("[WEBHOOK] Link de senha gerado com sucesso");
+              console.log("  - Reset Link:", resetLink ? "presente (length: " + resetLink.length + ")" : "vazio");
             }
           } catch (linkError: any) {
-            console.error("Exception generating password reset link:", linkError?.message || String(linkError));
+            console.error("[WEBHOOK] Exceção ao gerar link de senha:", linkError?.message || String(linkError));
           }
+        } else {
+          console.log("[WEBHOOK] Cliente existente - apenas confirmação de renovação/reativação");
         }
 
+        // Build email HTML based on user state
         const emailHtml = isNewUser ? `
           <!DOCTYPE html>
           <html>
@@ -313,16 +318,11 @@ serve(async (req) => {
                 <h1 style="color: #facc15; margin: 0; font-size: 28px;">🚗 Driver Control</h1>
               </div>
               
-              <h2 style="color: #ffffff; margin-bottom: 24px;">Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}!</h2>
+              <h2 style="color: #ffffff; margin-bottom: 24px;">Sua assinatura do Driver Control está ativa! 🚗</h2>
               
               <p style="color: #a1a1a1; line-height: 1.6; margin-bottom: 24px;">
-                Sua assinatura foi confirmada com sucesso! Clique no botão abaixo para definir sua senha e começar a gerenciar suas finanças como motorista de aplicativo.
+                Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}! Sua assinatura foi confirmada com sucesso.
               </p>
-              
-              <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📧 Seu email de acesso:</h3>
-                <p style="margin: 8px 0; color: #ffffff;"><strong>Email:</strong> ${email}</p>
-              </div>
               
               <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
                 <h3 style="color: #facc15; margin: 0 0 16px 0; font-size: 16px;">📋 Detalhes do seu plano:</h3>
@@ -331,14 +331,37 @@ serve(async (req) => {
                 <p style="margin: 8px 0; color: #ffffff;"><strong>Próxima renovação:</strong> ${currentPeriodEnd.toLocaleDateString('pt-BR')}</p>
               </div>
               
-              <div style="text-align: center; margin: 32px 0;">
-                <a href="${resetLink || appBaseUrl + '/login'}" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                  ${resetLink ? 'Definir Minha Senha' : 'Acessar o Painel'}
+              <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                <h3 style="color: #facc15; margin: 0 0 12px 0; font-size: 16px;">🔐 Acesso ao Driver Control</h3>
+                <p style="margin: 4px 0; color: #e5e5e5;">
+                  <strong>E-mail de acesso:</strong> ${email}
+                </p>
+                <p style="margin: 4px 0 16px 0; color: #a3a3a3;">
+                  Para criar ou definir sua senha pela primeira vez, clique no botão abaixo:
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${resetLink || appBaseUrl + '/reset-password'}" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                  Criar/Definir minha senha
+                </a>
+              </div>
+              
+              <p style="margin-top: 8px; color: #737373; font-size: 13px; text-align: center;">
+                Depois de definir sua senha, você pode acessar o painel sempre que quiser por:<br/>
+                <a href="${appBaseUrl}/login" style="color: #facc15; text-decoration: none;">
+                  ${appBaseUrl}/login
+                </a>
+              </p>
+              
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${appBaseUrl}/login" style="display: inline-block; background-color: transparent; color: #facc15; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 500; font-size: 14px; border: 1px solid #facc15;">
+                  Acessar o Painel
                 </a>
               </div>
               
               <p style="color: #a1a1a1; line-height: 1.6; font-size: 14px;">
-                <strong>Importante:</strong> ${resetLink ? 'Este link expira em 24 horas. Se você não solicitou esta conta, ignore este email.' : 'Use a opção "Esqueci minha senha" para definir sua senha de acesso.'}
+                <strong>Importante:</strong> O link para definir sua senha expira em 24 horas. Se você não solicitou esta conta, ignore este email.
               </p>
               
               <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
@@ -363,10 +386,10 @@ serve(async (req) => {
                 <h1 style="color: #facc15; margin: 0; font-size: 28px;">🚗 Driver Control</h1>
               </div>
               
-              <h2 style="color: #ffffff; margin-bottom: 24px;">Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}!</h2>
+              <h2 style="color: #ffffff; margin-bottom: 24px;">Sua assinatura está ativa! 🚗</h2>
               
               <p style="color: #a1a1a1; line-height: 1.6; margin-bottom: 24px;">
-                Sua assinatura do Driver Control está ativa! Continue gerenciando suas finanças com facilidade.
+                Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}! Sua assinatura do Driver Control foi renovada/reativada com sucesso.
               </p>
               
               <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
@@ -376,15 +399,22 @@ serve(async (req) => {
                 <p style="margin: 8px 0; color: #ffffff;"><strong>Próxima renovação:</strong> ${currentPeriodEnd.toLocaleDateString('pt-BR')}</p>
               </div>
               
+              <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                <h3 style="color: #facc15; margin: 0 0 12px 0; font-size: 16px;">🔐 Acesso ao Driver Control</h3>
+                <p style="margin: 4px 0; color: #e5e5e5;">
+                  <strong>E-mail de acesso:</strong> ${email}
+                </p>
+                <p style="margin: 4px 0; color: #a3a3a3;">
+                  Seu acesso continua o mesmo. Use seu e-mail e senha já cadastrados para entrar no painel.
+                  Se tiver esquecido a senha, clique em "Esqueci minha senha" na tela de login.
+                </p>
+              </div>
+              
               <div style="text-align: center; margin: 32px 0;">
                 <a href="${appBaseUrl}/login" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                   Acessar o Painel
                 </a>
               </div>
-              
-              <p style="color: #a1a1a1; line-height: 1.6; font-size: 14px;">
-                Use seu e-mail e senha cadastrados para acessar.
-              </p>
               
               <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
               
@@ -397,13 +427,16 @@ serve(async (req) => {
           </html>
         `;
 
+        const emailSubject = "Sua assinatura está ativa! 🚗";
+        
         console.log("Attempting to send email via Resend...");
         console.log("  - To:", email);
-        console.log("  - Subject:", isNewUser ? "Bem-vindo ao Driver Control! 🚗" : "Sua assinatura está ativa! 🚗");
+        console.log("  - Subject:", emailSubject);
+        console.log("  - Is New User:", isNewUser);
 
         const emailResult = await sendAppEmail({
           to: email,
-          subject: isNewUser ? "Bem-vindo ao Driver Control! 🚗" : "Sua assinatura está ativa! 🚗",
+          subject: emailSubject,
           html: emailHtml,
         });
 
