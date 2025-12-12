@@ -17,14 +17,14 @@ const plans = [
   {
     name: "Mensal",
     subtitle: "Para quem quer testar",
-    price: "R$ 19,90",
+    price: "R$ 14,90",
     period: "/mês",
     checkoutUrl: KIWIFY_CHECKOUT_MENSAL,
   },
   {
     name: "3 Meses",
     subtitle: "Escolha mais popular",
-    price: "R$ 47,90",
+    price: "R$ 37,90",
     period: "/trimestre",
     checkoutUrl: KIWIFY_CHECKOUT_TRIMESTRAL,
     popular: true,
@@ -32,9 +32,9 @@ const plans = [
   {
     name: "Anual",
     subtitle: "Melhor custo-benefício",
-    price: "R$ 147,90",
+    price: "R$ 97,00",
     period: "/ano",
-    equivalent: "R$ 15,30/mês",
+    equivalent: "R$ 8,08/mês",
     checkoutUrl: KIWIFY_CHECKOUT_ANUAL,
     bestValue: true,
   },
