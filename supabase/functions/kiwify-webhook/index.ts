@@ -281,24 +281,31 @@ serve(async (req) => {
         if (isNewUser) {
           try {
             console.log("[WEBHOOK] Novo cliente - gerando link de definição de senha...");
+            
+            // Generate recovery link using Supabase Admin API
             const { data: resetData, error: resetError } = await supabase.auth.admin.generateLink({
               type: 'recovery',
               email: email,
               options: {
-                // Redirect to reset-password page after email link is clicked
-                redirectTo: `${appBaseUrl}/reset-password`,
+                // Redirect to definir-senha page after Supabase processes the token
+                redirectTo: `${appBaseUrl}/definir-senha`,
               },
             });
 
             if (resetError) {
               console.error("[WEBHOOK] Erro ao gerar link de senha:", resetError.message || resetError);
+              // Fallback: use direct link to definir-senha with email param
+              resetLink = `${appBaseUrl}/definir-senha?email=${encodeURIComponent(email)}`;
             } else {
-              resetLink = resetData?.properties?.action_link || '';
+              // The action_link from Supabase will redirect to our definir-senha page with the token
+              resetLink = resetData?.properties?.action_link || `${appBaseUrl}/definir-senha?email=${encodeURIComponent(email)}`;
               console.log("[WEBHOOK] Link de senha gerado com sucesso");
               console.log("  - Reset Link:", resetLink ? "presente (length: " + resetLink.length + ")" : "vazio");
             }
           } catch (linkError: any) {
             console.error("[WEBHOOK] Exceção ao gerar link de senha:", linkError?.message || String(linkError));
+            // Fallback to direct link
+            resetLink = `${appBaseUrl}/definir-senha?email=${encodeURIComponent(email)}`;
           }
         } else {
           console.log("[WEBHOOK] Cliente existente - apenas confirmação de renovação/reativação");
@@ -342,7 +349,7 @@ serve(async (req) => {
               </div>
               
               <div style="text-align: center; margin: 24px 0;">
-                <a href="${resetLink || appBaseUrl + '/reset-password'}" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                <a href="${resetLink}" style="display: inline-block; background-color: #facc15; color: #0a0a0a; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                   Criar/Definir minha senha
                 </a>
               </div>
