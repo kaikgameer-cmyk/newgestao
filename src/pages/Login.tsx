@@ -256,9 +256,9 @@ export default function Login() {
             </Button>
             
             <div className="text-center">
-              <a href="#" className="text-sm text-muted-foreground hover:text-primary">
+              <Link to="/reset-password" className="text-sm text-muted-foreground hover:text-primary">
                 Esqueci minha senha
-              </a>
+              </Link>
             </div>
           </form>
           
