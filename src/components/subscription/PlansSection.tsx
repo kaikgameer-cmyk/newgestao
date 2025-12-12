@@ -20,14 +20,14 @@ const plans: Plan[] = [
   {
     name: "Mensal",
     interval: "month",
-    price: "R$ 19,90",
+    price: "R$ 14,90",
     period: "/mês",
     checkoutUrl: KIWIFY_CHECKOUT_MENSAL,
   },
   {
     name: "3 Meses",
     interval: "quarter",
-    price: "R$ 47,90",
+    price: "R$ 37,90",
     period: "/trimestre",
     checkoutUrl: KIWIFY_CHECKOUT_TRIMESTRAL,
     popular: true,
@@ -35,9 +35,9 @@ const plans: Plan[] = [
   {
     name: "Anual",
     interval: "year",
-    price: "R$ 147,90",
+    price: "R$ 97,00",
     period: "/ano",
-    equivalent: "R$ 15,30/mês",
+    equivalent: "R$ 8,08/mês",
     checkoutUrl: KIWIFY_CHECKOUT_ANUAL,
     bestValue: true,
   },
