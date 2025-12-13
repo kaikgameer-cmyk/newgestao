@@ -92,31 +92,39 @@ serve(async (req) => {
     // Verify the caller is an admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      console.log("No authorization header provided");
       return new Response(JSON.stringify({ error: "No authorization header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const anonClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Extract the token from the header
+    const token = authHeader.replace("Bearer ", "");
+    console.log("Auth token received, validating...");
 
-    const { data: { user: callerUser }, error: authError } = await anonClient.auth.getUser();
+    // Use service role client to get user from token (more reliable)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { data: { user: callerUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !callerUser) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      console.log("Auth error:", authError?.message || "User not found");
+      return new Response(JSON.stringify({ error: "Unauthorized", details: authError?.message }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    
+    console.log("User authenticated:", callerUser.id);
 
     // Check if caller is admin
-    const { data: isAdmin } = await anonClient.rpc("has_role", {
+    const { data: isAdmin } = await supabaseAdmin.rpc("has_role", {
       _user_id: callerUser.id,
       _role: "admin",
     });
 
     if (!isAdmin) {
+      console.log("User is not an admin:", callerUser.id);
       return new Response(JSON.stringify({ error: "Admin access required" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -144,9 +152,6 @@ serve(async (req) => {
     };
 
     console.log("Creating user with validated input:", { email, name, city });
-
-    // Use service role client to create user
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     // Create auth user
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
