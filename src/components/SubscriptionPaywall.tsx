@@ -34,7 +34,7 @@ const plans = [
     subtitle: "Melhor custo-benefício",
     price: "R$ 97,00",
     period: "/ano",
-    equivalent: "R$ 8,08/mês",
+    equivalent: "R$ 10,03/mês",
     checkoutUrl: KIWIFY_CHECKOUT_ANUAL,
     bestValue: true,
   },
