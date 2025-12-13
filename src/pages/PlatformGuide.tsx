@@ -85,10 +85,10 @@ export default function PlatformGuide() {
               <p>
                 Dúvidas? Entre em contato pelo email{" "}
                 <a
-                  href="mailto:suporte@drivercontrol.com.br"
+                  href="mailto:drivercontrolcontato@outlook.com"
                   className="text-primary hover:underline"
                 >
-                  suporte@drivercontrol.com.br
+                  drivercontrolcontato@outlook.com
                 </a>
               </p>
             </div>
