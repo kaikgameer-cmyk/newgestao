@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2, Calendar, Car, CalendarDays, Repeat } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useRecurringExpenses, RecurringExpense, calculateMonthlyExpensesDailyCost } from "@/hooks/useRecurringExpenses";
+import { useRecurringExpenses, RecurringExpense, calculateAllExpensesDailyCost, getDistributedDailyValue } from "@/hooks/useRecurringExpenses";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 
@@ -303,17 +303,8 @@ export default function RecurringExpenses() {
   const handleRecurrenceTypeChange = useCallback((value: "monthly_fixed_day" | "distributed") => setRecurrenceType(value), []);
   const handleRecurrenceDayChange = useCallback((value: string) => setRecurrenceDay(value), []);
 
-  // Calculate only monthly expenses daily cost (not distributed expenses)
-  const monthlyExpensesDailyCost = calculateMonthlyExpensesDailyCost(recurringExpenses);
-
-  // Helper to calculate daily value for distributed expenses
-  const getDistributedDailyValue = (expense: RecurringExpense) => {
-    if (expense.recurrence_type !== "distributed" || !expense.end_date) return null;
-    const start = new Date(expense.start_date + "T12:00:00");
-    const end = new Date(expense.end_date + "T12:00:00");
-    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    return expense.amount / Math.max(days, 1);
-  };
+  // Calculate combined daily cost for all active recurring expenses
+  const allExpensesDailyCost = calculateAllExpensesDailyCost(recurringExpenses);
 
   return (
     <div className="p-6 space-y-6">
@@ -359,7 +350,7 @@ export default function RecurringExpenses() {
         </Dialog>
       </div>
 
-      {/* Summary Card - Only shows monthly expenses daily cost */}
+      {/* Summary Card - Shows combined daily cost for all expenses */}
       <Card variant="elevated" className="bg-gradient-card border-primary/30">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
@@ -367,22 +358,27 @@ export default function RecurringExpenses() {
               <Car className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Custo diário das despesas mensais</p>
+              <p className="text-sm text-muted-foreground">Custo diário das despesas fixas</p>
               <p className="text-3xl font-bold text-primary">
-                R$ {monthlyExpensesDailyCost.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                R$ {allExpensesDailyCost.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Calculado dividindo despesas mensais por 30 dias
+                Soma das despesas mensais (÷30) + despesas rateadas (÷dias)
               </p>
             </div>
           </div>
-          {monthlyExpensesDailyCost.breakdown.length > 0 && (
+          {allExpensesDailyCost.breakdown.length > 0 && (
             <div className="mt-4 pt-4 border-t border-border/50">
               <p className="text-sm text-muted-foreground mb-2">Detalhamento:</p>
               <div className="space-y-1">
-                {monthlyExpensesDailyCost.breakdown.map((item, index) => (
+                {allExpensesDailyCost.breakdown.map((item, index) => (
                   <div key={index} className="flex justify-between text-sm">
-                    <span>{item.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span>{item.name}</span>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        {item.type === "monthly" ? "Mensal" : "Rateada"}
+                      </Badge>
+                    </div>
                     <span className="font-medium">
                       R$ {item.dailyAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/dia
                     </span>
@@ -427,7 +423,11 @@ export default function RecurringExpenses() {
                 </TableHeader>
                 <TableBody>
                   {recurringExpenses.map((expense) => {
-                    const dailyValue = getDistributedDailyValue(expense);
+                    const distributedDailyValue = getDistributedDailyValue(expense);
+                    // For monthly expenses, show estimated daily cost (value / 30)
+                    const monthlyDailyEstimate = expense.recurrence_type === "monthly_fixed_day" 
+                      ? expense.amount / 30 
+                      : null;
                     return (
                       <TableRow key={expense.id}>
                         <TableCell className="font-medium">{expense.name}</TableCell>
@@ -449,9 +449,14 @@ export default function RecurringExpenses() {
                         <TableCell>
                           <div>
                             R$ {expense.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                            {dailyValue && (
+                            {distributedDailyValue !== null && (
                               <span className="block text-xs text-muted-foreground">
-                                ≈ R$ {dailyValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/dia
+                                ≈ R$ {distributedDailyValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/dia
+                              </span>
+                            )}
+                            {monthlyDailyEstimate !== null && (
+                              <span className="block text-xs text-muted-foreground">
+                                ≈ R$ {monthlyDailyEstimate.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/dia (÷30)
                               </span>
                             )}
                           </div>

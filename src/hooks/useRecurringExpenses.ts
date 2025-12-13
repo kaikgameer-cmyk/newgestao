@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { formatLocalDate, parseLocalDate } from "@/lib/dateUtils";
 
 export interface RecurringExpense {
   id: string;
@@ -119,6 +120,27 @@ export function useRecurringExpenses(userId: string | undefined) {
 }
 
 /**
+ * Helper: Get the number of days in a distributed expense period
+ */
+function getDistributedDays(expense: RecurringExpense): number {
+  if (expense.recurrence_type !== "distributed" || !expense.end_date) return 1;
+  const start = parseLocalDate(expense.start_date);
+  const end = parseLocalDate(expense.end_date);
+  const diffTime = end.getTime() - start.getTime();
+  const days = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  return Math.max(days, 1);
+}
+
+/**
+ * Helper: Get daily value for a distributed expense
+ */
+export function getDistributedDailyValue(expense: RecurringExpense): number | null {
+  if (expense.recurrence_type !== "distributed" || !expense.end_date) return null;
+  const days = getDistributedDays(expense);
+  return expense.amount / days;
+}
+
+/**
  * Calculate daily recurring expense for a given date
  * - monthly_fixed_day: Full value on that specific day of month
  * - distributed: Daily prorated value within date range
@@ -127,13 +149,16 @@ export function calculateDailyRecurringAmount(
   recurringExpenses: RecurringExpense[],
   date: Date
 ): { total: number; breakdown: { name: string; dailyAmount: number }[] } {
-  const dateStr = date.toISOString().split("T")[0];
+  // Use string comparison to avoid timezone issues
+  const dateStr = formatLocalDate(date);
   const dayOfMonth = date.getDate();
 
   const breakdown: { name: string; dailyAmount: number }[] = [];
 
   for (const expense of recurringExpenses) {
     if (!expense.is_active) continue;
+    
+    // String comparison for date boundaries
     if (expense.start_date > dateStr) continue;
     if (expense.end_date && expense.end_date < dateStr) continue;
 
@@ -147,24 +172,18 @@ export function calculateDailyRecurringAmount(
       }
     } else if (expense.recurrence_type === "distributed") {
       // Distributed - prorated daily within the date range
-      const expenseStart = new Date(expense.start_date + "T12:00:00");
-      const expenseEnd = expense.end_date 
-        ? new Date(expense.end_date + "T12:00:00") 
-        : null;
+      // Check if date is within the range using string comparison
+      const isInRange = dateStr >= expense.start_date && 
+                       (!expense.end_date || dateStr <= expense.end_date);
       
-      // Check if date is within the range
-      if (date >= expenseStart && (!expenseEnd || date <= expenseEnd)) {
-        // Calculate total days in range
-        const endForCalc = expenseEnd || new Date(expense.start_date + "T12:00:00");
-        const totalDays = Math.ceil(
-          (endForCalc.getTime() - expenseStart.getTime()) / (1000 * 60 * 60 * 24)
-        ) + 1;
-        
-        const dailyAmount = expense.amount / Math.max(totalDays, 1);
-        breakdown.push({
-          name: expense.name,
-          dailyAmount,
-        });
+      if (isInRange) {
+        const dailyAmount = getDistributedDailyValue(expense);
+        if (dailyAmount !== null) {
+          breakdown.push({
+            name: expense.name,
+            dailyAmount,
+          });
+        }
       }
     }
   }
@@ -186,25 +205,28 @@ export function calculatePeriodRecurringAmount(
 ): number {
   let total = 0;
 
+  // Convert to string format for consistent comparison
+  const periodStartStr = formatLocalDate(startDate);
+  const periodEndStr = formatLocalDate(endDate);
+
   for (const expense of recurringExpenses) {
     if (!expense.is_active) continue;
 
-    const expenseStart = new Date(expense.start_date + "T12:00:00");
-    const expenseEnd = expense.end_date ? new Date(expense.end_date + "T12:00:00") : null;
-
-    // Check if expense is within the period
-    if (expenseStart > endDate) continue;
-    if (expenseEnd && expenseEnd < startDate) continue;
+    // Skip if expense starts after period ends
+    if (expense.start_date > periodEndStr) continue;
+    // Skip if expense ended before period starts
+    if (expense.end_date && expense.end_date < periodStartStr) continue;
 
     if (expense.recurrence_type === "monthly_fixed_day") {
       // Monthly fixed day - count occurrences of that day within the period
       if (expense.recurrence_day) {
+        // Iterate through each day in the period
         const current = new Date(startDate);
         while (current <= endDate) {
           const dayOfMonth = current.getDate();
-          const currentStr = current.toISOString().split("T")[0];
+          const currentStr = formatLocalDate(current);
           
-          // Check if this day matches and is within expense validity
+          // Check if this day matches the recurrence day and is within expense validity
           if (dayOfMonth === expense.recurrence_day) {
             if (currentStr >= expense.start_date && (!expense.end_date || currentStr <= expense.end_date)) {
               total += expense.amount;
@@ -216,21 +238,21 @@ export function calculatePeriodRecurringAmount(
       }
     } else if (expense.recurrence_type === "distributed") {
       // Distributed - calculate prorated amount for overlapping days
-      const rangeStart = expenseStart > startDate ? expenseStart : startDate;
-      const rangeEnd = expenseEnd && expenseEnd < endDate ? expenseEnd : endDate;
+      const dailyValue = getDistributedDailyValue(expense);
+      if (dailyValue === null) continue;
+
+      // Calculate overlapping range using string comparison
+      const overlapStartStr = expense.start_date > periodStartStr ? expense.start_date : periodStartStr;
+      const overlapEndStr = (expense.end_date && expense.end_date < periodEndStr) ? expense.end_date : periodEndStr;
       
-      // Calculate total days in the expense range (for daily rate)
-      const totalExpenseDays = expenseEnd 
-        ? Math.ceil((expenseEnd.getTime() - expenseStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
-        : 1;
+      // Count overlapping days
+      const overlapStart = parseLocalDate(overlapStartStr);
+      const overlapEnd = parseLocalDate(overlapEndStr);
       
-      // Calculate days in the overlapping period
-      const overlappingDays = Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      
-      // Daily rate based on total expense range
-      const dailyRate = expense.amount / Math.max(totalExpenseDays, 1);
-      
-      total += dailyRate * Math.max(overlappingDays, 0);
+      if (overlapEnd >= overlapStart) {
+        const overlappingDays = Math.round((overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        total += dailyValue * overlappingDays;
+      }
     }
   }
 
@@ -238,7 +260,62 @@ export function calculatePeriodRecurringAmount(
 }
 
 /**
- * Calculate monthly expenses daily cost (for display - only monthly_fixed_day divided by 30)
+ * Calculate combined daily cost for all active recurring expenses (for summary display)
+ * - monthly_fixed_day: divided by 30 days
+ * - distributed: daily value based on actual period
+ */
+export function calculateAllExpensesDailyCost(
+  recurringExpenses: RecurringExpense[]
+): { 
+  total: number; 
+  monthlyTotal: number;
+  distributedTotal: number;
+  breakdown: { name: string; dailyAmount: number; monthlyAmount?: number; type: string }[] 
+} {
+  const DAYS_DIVISOR = 30;
+  const breakdown: { name: string; dailyAmount: number; monthlyAmount?: number; type: string }[] = [];
+  const today = new Date();
+  const todayStr = formatLocalDate(today);
+
+  let monthlyTotal = 0;
+  let distributedTotal = 0;
+
+  for (const expense of recurringExpenses) {
+    if (!expense.is_active) continue;
+    if (expense.start_date > todayStr) continue;
+    if (expense.end_date && expense.end_date < todayStr) continue;
+
+    if (expense.recurrence_type === "monthly_fixed_day") {
+      // Monthly fixed day: divide by 30 for daily cost estimate
+      const dailyAmount = expense.amount / DAYS_DIVISOR;
+      breakdown.push({
+        name: expense.name,
+        dailyAmount,
+        monthlyAmount: expense.amount,
+        type: "monthly",
+      });
+      monthlyTotal += dailyAmount;
+    } else if (expense.recurrence_type === "distributed") {
+      // Distributed: use actual daily value
+      const dailyAmount = getDistributedDailyValue(expense);
+      if (dailyAmount !== null) {
+        breakdown.push({
+          name: expense.name,
+          dailyAmount,
+          type: "distributed",
+        });
+        distributedTotal += dailyAmount;
+      }
+    }
+  }
+
+  const total = monthlyTotal + distributedTotal;
+  return { total, monthlyTotal, distributedTotal, breakdown };
+}
+
+/**
+ * Legacy function - Calculate monthly expenses daily cost (for backwards compatibility)
+ * Only considers monthly_fixed_day divided by 30 days
  */
 export function calculateMonthlyExpensesDailyCost(
   recurringExpenses: RecurringExpense[]
@@ -246,7 +323,7 @@ export function calculateMonthlyExpensesDailyCost(
   const DAYS_DIVISOR = 30;
   const breakdown: { name: string; dailyAmount: number; monthlyAmount: number }[] = [];
   const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
+  const todayStr = formatLocalDate(today);
 
   for (const expense of recurringExpenses) {
     if (!expense.is_active) continue;
