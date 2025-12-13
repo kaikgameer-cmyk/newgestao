@@ -93,28 +93,24 @@ serve(async (req) => {
       });
     }
 
-    // Validate webhook secret - accept via header OR query string for Kiwify compatibility
-    const url = new URL(req.url);
-    const secretFromQuery = url.searchParams.get("secret");
+    // SECURITY: Validate webhook secret via header ONLY (query string exposes secrets in logs)
     const secretFromHeader = req.headers.get("x-kiwify-secret");
-    const providedSecret = secretFromHeader || secretFromQuery;
 
     console.log("Secret validation:");
     console.log("  - From header (x-kiwify-secret):", secretFromHeader ? "present" : "not present");
-    console.log("  - From query string (?secret=):", secretFromQuery ? "present" : "not present");
     console.log("  - Expected secret configured:", webhookSecret ? "yes" : "no");
 
-    if (!providedSecret) {
-      console.error("❌ No secret provided in header or query string");
-      return new Response(JSON.stringify({ error: "Missing webhook secret" }), {
+    if (!secretFromHeader) {
+      console.error("❌ No secret provided in x-kiwify-secret header");
+      return new Response(JSON.stringify({ error: "Missing webhook secret header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (providedSecret !== webhookSecret) {
+    if (secretFromHeader !== webhookSecret) {
       console.error("❌ Invalid webhook secret - secrets do not match");
-      console.error("  Provided:", providedSecret.substring(0, 4) + "***");
+      console.error("  Provided:", secretFromHeader.substring(0, 4) + "***");
       console.error("  Expected:", webhookSecret.substring(0, 4) + "***");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
