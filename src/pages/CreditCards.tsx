@@ -28,6 +28,7 @@ import { GlobalDateFilter } from "@/components/GlobalDateFilter";
 import { DatePreset, useDateFilterPresets } from "@/hooks/useDateFilterPresets";
 import { DateRange } from "react-day-picker";
 import { parseLocalDate } from "@/lib/dateUtils";
+import { formatCurrencyBRL } from "@/lib/format";
 
 export default function CreditCards() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -468,7 +469,7 @@ export default function CreditCards() {
                   </div>
                   <span className="text-sm text-muted-foreground">Limite Total</span>
                 </div>
-                <p className="text-2xl font-bold">R$ {totalLimit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                <p className="text-2xl font-bold">{formatCurrencyBRL(totalLimit)}</p>
               </CardContent>
             </Card>
             <Card variant="elevated">
@@ -479,8 +480,8 @@ export default function CreditCards() {
                   </div>
                   <span className="text-sm text-muted-foreground">Total Comprometido</span>
                 </div>
-                <p className="text-2xl font-bold text-destructive">R$ {totalPending.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-                <p className="text-xs text-muted-foreground mt-1">Fatura do mês: R$ {totalUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                <p className="text-2xl font-bold text-destructive">{formatCurrencyBRL(totalPending)}</p>
+                <p className="text-xs text-muted-foreground mt-1">Fatura do mês: {formatCurrencyBRL(totalUsed)}</p>
               </CardContent>
             </Card>
             <Card variant="elevated">
@@ -492,7 +493,7 @@ export default function CreditCards() {
                   <span className="text-sm text-muted-foreground">Limite Disponível</span>
                 </div>
                 <p className="text-2xl font-bold text-success">{availablePercentage}%</p>
-                <p className="text-sm text-muted-foreground">R$ {totalAvailable.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                <p className="text-sm text-muted-foreground">{formatCurrencyBRL(totalAvailable)}</p>
               </CardContent>
             </Card>
           </div>
@@ -559,10 +560,10 @@ export default function CreditCards() {
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription className="text-sm">
                           {isOverdue 
-                            ? `Fatura vencida há ${Math.abs(daysUntilDue)} dia(s)! Valor: R$ ${cardUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                            ? `Fatura vencida há ${Math.abs(daysUntilDue)} dia(s)! Valor: ${formatCurrencyBRL(cardUsed)}`
                             : daysUntilDue === 0 
-                              ? `Fatura vence hoje! Valor: R$ ${cardUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-                              : `Fatura vence em ${daysUntilDue} dia(s)! Valor: R$ ${cardUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                              ? `Fatura vence hoje! Valor: ${formatCurrencyBRL(cardUsed)}`
+                              : `Fatura vence em ${daysUntilDue} dia(s)! Valor: ${formatCurrencyBRL(cardUsed)}`
                           }
                         </AlertDescription>
                       </Alert>
@@ -572,7 +573,7 @@ export default function CreditCards() {
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Limite</span>
-                          <span className="font-medium">R$ {cardLimit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                          <span className="font-medium">{formatCurrencyBRL(cardLimit)}</span>
                         </div>
                         <div className="h-2 bg-secondary rounded-full overflow-hidden">
                           <div 
@@ -581,12 +582,12 @@ export default function CreditCards() {
                           />
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-destructive">Comprometido: R$ {cardPending.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                          <span className="text-success">Disponível: R$ {cardAvailable.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                          <span className="text-destructive">Comprometido: {formatCurrencyBRL(cardPending)}</span>
+                          <span className="text-success">Disponível: {formatCurrencyBRL(cardAvailable)}</span>
                         </div>
                         {cardUsed > 0 && cardUsed !== cardPending && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            Fatura do mês: R$ {cardUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            Fatura do mês: {formatCurrencyBRL(cardUsed)}
                           </p>
                         )}
                       </div>
@@ -635,7 +636,7 @@ export default function CreditCards() {
                                 </div>
                               </div>
                               <span className="font-medium text-destructive">
-                                R$ {Number(expense.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                {formatCurrencyBRL(expense.amount)}
                               </span>
                             </div>
                           ))}
@@ -655,14 +656,14 @@ export default function CreditCards() {
                                 </div>
                               </div>
                               <span className="font-medium text-destructive">
-                                R$ {Number(log.total_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                {formatCurrencyBRL(log.total_value)}
                               </span>
                             </div>
                           ))}
                           <div className="flex justify-between pt-2 border-t border-border/50 font-medium">
                             <span>Total da fatura</span>
                             <span className={isPaid ? "text-success" : "text-destructive"}>
-                              R$ {cardUsed.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                              {formatCurrencyBRL(cardUsed)}
                             </span>
                           </div>
                           
