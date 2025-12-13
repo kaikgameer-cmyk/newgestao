@@ -163,8 +163,27 @@ serve(async (req) => {
 
     if (createError) {
       console.error("Error creating user:", createError);
-      return new Response(JSON.stringify({ error: createError.message }), {
-        status: 400,
+      
+      // Handle specific error cases with clear codes
+      let errorCode = "CREATE_USER_ERROR";
+      let statusCode = 400;
+      let userMessage = createError.message;
+      
+      if (createError.message?.includes("already been registered") || 
+          createError.code === "email_exists" ||
+          createError.message?.includes("email_exists")) {
+        errorCode = "EMAIL_ALREADY_EXISTS";
+        statusCode = 409; // Conflict
+        userMessage = "Já existe um usuário cadastrado com este e-mail.";
+      }
+      
+      return new Response(JSON.stringify({ 
+        ok: false,
+        error: userMessage, 
+        code: errorCode,
+        details: createError.message
+      }), {
+        status: statusCode,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

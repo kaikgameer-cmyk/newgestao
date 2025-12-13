@@ -358,14 +358,29 @@ export default function AdminPage() {
   const createUserMutation = useMutation({
     mutationFn: async ({ email, password, name, city }: { email: string; password: string; name: string; city: string }) => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error("Você precisa estar autenticado para criar usuários.");
 
       const response = await supabase.functions.invoke("create-user", {
         body: { email, password, name, city },
       });
 
-      if (response.error) throw new Error(response.error.message);
-      if (response.data?.error) throw new Error(response.data.error);
+      // Handle edge function errors with proper error codes
+      if (response.error) {
+        // Try to parse error details from response
+        const errorMessage = response.error.message || "Erro ao criar usuário";
+        throw new Error(errorMessage);
+      }
+      
+      // Check for application-level errors in response data
+      if (response.data?.ok === false || response.data?.error) {
+        const code = response.data?.code;
+        const message = response.data?.error || "Erro ao criar usuário";
+        
+        // Throw error with code for specific handling
+        const err = new Error(message);
+        (err as any).code = code;
+        throw err;
+      }
       
       return response.data;
     },
@@ -385,8 +400,20 @@ export default function AdminPage() {
       setNewUserCity("");
       setCreateUserErrors({});
     },
-    onError: (error: Error) => {
-      toast({ title: "Erro ao criar usuário", description: error.message, variant: "destructive" });
+    onError: (error: Error & { code?: string }) => {
+      // Handle specific error codes with user-friendly messages
+      let title = "Erro ao criar usuário";
+      let description = error.message;
+      
+      if (error.code === "EMAIL_ALREADY_EXISTS" || error.message?.includes("já existe")) {
+        title = "E-mail já cadastrado";
+        description = "Já existe um usuário cadastrado com este e-mail. Use outro e-mail ou edite o usuário existente.";
+      } else if (error.message?.includes("already been registered")) {
+        title = "E-mail já cadastrado";
+        description = "Já existe um usuário cadastrado com este e-mail.";
+      }
+      
+      toast({ title, description, variant: "destructive" });
     }
   });
 
