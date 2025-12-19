@@ -88,6 +88,7 @@ export type Database = {
           credit_card_id: string | null
           current_installment: number | null
           date: string
+          fuel_log_id: string | null
           id: string
           installments: number | null
           notes: string | null
@@ -104,6 +105,7 @@ export type Database = {
           credit_card_id?: string | null
           current_installment?: number | null
           date: string
+          fuel_log_id?: string | null
           id?: string
           installments?: number | null
           notes?: string | null
@@ -120,6 +122,7 @@ export type Database = {
           credit_card_id?: string | null
           current_installment?: number | null
           date?: string
+          fuel_log_id?: string | null
           id?: string
           installments?: number | null
           notes?: string | null
@@ -135,6 +138,13 @@ export type Database = {
             columns: ["credit_card_id"]
             isOneToOne: false
             referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_fuel_log_id_fkey"
+            columns: ["fuel_log_id"]
+            isOneToOne: false
+            referencedRelation: "fuel_logs"
             referencedColumns: ["id"]
           },
         ]
@@ -484,6 +494,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_fuel_expense: {
+        Args: {
+          p_credit_card_id?: string
+          p_date: string
+          p_fuel_type: string
+          p_liters: number
+          p_notes?: string
+          p_odometer_km?: number
+          p_payment_method?: string
+          p_station?: string
+          p_total_value: number
+        }
+        Returns: Json
+      }
+      delete_fuel_expense: { Args: { p_expense_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

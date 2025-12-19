@@ -18,8 +18,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle, CreditCard, Pencil, DollarSign } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle, CreditCard, Pencil, DollarSign, Fuel } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,7 @@ import { DatePreset, useDateFilterPresets } from "@/hooks/useDateFilterPresets";
 import { DateRange } from "react-day-picker";
 import { format, isWithinInterval } from "date-fns";
 import { parseLocalDate } from "@/lib/dateUtils";
+import { useMaintenance } from "@/hooks/useMaintenance";
 
 export default function Transactions() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -58,6 +59,13 @@ export default function Transactions() {
   const [expenseInstallments, setExpenseInstallments] = useState("1");
   const [expenseNotes, setExpenseNotes] = useState("");
 
+  // Fuel-specific fields (when category === "combustivel")
+  const [fuelLiters, setFuelLiters] = useState("");
+  const [fuelPricePerLiter, setFuelPricePerLiter] = useState("");
+  const [fuelStation, setFuelStation] = useState("");
+  const [fuelOdometerKm, setFuelOdometerKm] = useState("");
+  const [fuelType, setFuelType] = useState("");
+
   // Edit state
   const [editingTransaction, setEditingTransaction] = useState<{
     id: string;
@@ -73,6 +81,8 @@ export default function Transactions() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { invalidateAll } = useInvalidateFinancialData();
+  const queryClient = useQueryClient();
+  const { checkMaintenanceAlerts, maintenanceRecords } = useMaintenance();
 
   const { data: allRevenues = [], isLoading: loadingRevenues } = useQuery({
     queryKey: ["revenues", user?.id],
@@ -96,7 +106,7 @@ export default function Transactions() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("expenses")
-        .select("*, credit_cards(name)")
+        .select("*, credit_cards(name), fuel_logs(liters, odometer_km, fuel_type)")
         .eq("user_id", user.id)
         .order("date", { ascending: false })
         .limit(500);
@@ -213,6 +223,75 @@ export default function Transactions() {
     },
   });
 
+  // Mutation for fuel expense using atomic RPC
+  const createFuelExpense = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Não autenticado");
+      const liters = parseFloat(fuelLiters);
+      const pricePerLiter = parseFloat(fuelPricePerLiter);
+      const totalValue = Math.round(liters * pricePerLiter * 100) / 100;
+      const odometerKm = fuelOdometerKm ? parseFloat(fuelOdometerKm) : null;
+
+      const { data, error } = await supabase.rpc('create_fuel_expense', {
+        p_date: expenseDate,
+        p_liters: liters,
+        p_total_value: totalValue,
+        p_fuel_type: fuelType,
+        p_station: fuelStation || null,
+        p_odometer_km: odometerKm,
+        p_payment_method: expenseMethod || null,
+        p_credit_card_id: expenseMethod === "credito" && expenseCreditCardId ? expenseCreditCardId : null,
+        p_notes: expenseNotes || null,
+      });
+      if (error) throw error;
+      return odometerKm;
+    },
+    onSuccess: (newOdometer) => {
+      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["fuel_logs"] });
+      queryClient.invalidateQueries({ queryKey: ["maintenance_records"] });
+      queryClient.invalidateQueries({ queryKey: ["latest_odometer"] });
+      setIsDialogOpen(false);
+      resetExpenseForm();
+      toast({ title: "Abastecimento registrado!" });
+
+      // Check for maintenance alerts if odometer was provided
+      if (newOdometer && maintenanceRecords.length > 0) {
+        const alerts = checkMaintenanceAlerts(newOdometer);
+        if (alerts.length > 0) {
+          const mostUrgent = alerts[0];
+          const formatKm = (km: number) => new Intl.NumberFormat("pt-BR").format(Math.abs(km));
+          
+          if (mostUrgent.status === "overdue") {
+            toast({
+              title: "⚠️ Manutenção vencida",
+              description: `Você já passou da quilometragem da manutenção: ${mostUrgent.title}. Faça a revisão o quanto antes.`,
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "⚡ Manutenção próxima",
+              description: `Você está a ${formatKm(mostUrgent.kmRemaining)} km da próxima manutenção: ${mostUrgent.title}.`,
+            });
+          }
+        }
+      }
+    },
+    onError: () => {
+      toast({ title: "Erro ao registrar abastecimento", variant: "destructive" });
+    },
+  });
+
+  // Handle expense form submission
+  const handleExpenseSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (expenseCategory === "combustivel") {
+      createFuelExpense.mutate();
+    } else {
+      createExpense.mutate();
+    }
+  };
+
   const updateRevenue = useMutation({
     mutationFn: async () => {
       if (!editingTransaction) throw new Error("Nenhuma transação selecionada");
@@ -277,12 +356,21 @@ export default function Transactions() {
   });
 
   const deleteExpense = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("expenses").delete().eq("id", id);
-      if (error) throw error;
+    mutationFn: async ({ id, hasFuelLog }: { id: string; hasFuelLog: boolean }) => {
+      if (hasFuelLog) {
+        // Use atomic RPC to delete both expense and fuel log
+        const { error } = await supabase.rpc('delete_fuel_expense', { p_expense_id: id });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("expenses").delete().eq("id", id);
+        if (error) throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       invalidateAll();
+      if (variables.hasFuelLog) {
+        queryClient.invalidateQueries({ queryKey: ["fuel_logs"] });
+      }
       toast({ title: "Despesa removida!" });
     },
   });
@@ -303,6 +391,12 @@ export default function Transactions() {
     setExpenseCreditCardId("");
     setExpenseInstallments("1");
     setExpenseNotes("");
+    // Reset fuel-specific fields
+    setFuelLiters("");
+    setFuelPricePerLiter("");
+    setFuelStation("");
+    setFuelOdometerKm("");
+    setFuelType("");
   };
 
   const handleEditClick = (transaction: any) => {
@@ -436,33 +530,107 @@ export default function Transactions() {
                   </form>
                 </TabsContent>
                 <TabsContent value="despesa" className="space-y-4 mt-4">
-                  <form onSubmit={(e) => { e.preventDefault(); createExpense.mutate(); }} className="grid gap-4">
+                  <form onSubmit={handleExpenseSubmit} className="grid gap-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Data *</Label>
                         <Input type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} required />
                       </div>
                       <div className="space-y-2">
+                        <Label>Categoria *</Label>
+                        <Select value={expenseCategory} onValueChange={setExpenseCategory} required>
+                          <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="combustivel">Combustível</SelectItem>
+                            <SelectItem value="manutencao">Manutenção</SelectItem>
+                            <SelectItem value="lavagem">Lavagem</SelectItem>
+                            <SelectItem value="pedagio">Pedágio</SelectItem>
+                            <SelectItem value="estacionamento">Estacionamento</SelectItem>
+                            <SelectItem value="alimentacao">Alimentação</SelectItem>
+                            <SelectItem value="cartao">Cartão de Crédito</SelectItem>
+                            <SelectItem value="outro">Outro</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Fuel-specific fields */}
+                    {expenseCategory === "combustivel" ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Litros *</Label>
+                            <Input 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              value={fuelLiters} 
+                              onChange={(e) => setFuelLiters(e.target.value)} 
+                              required 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Preço por Litro *</Label>
+                            <Input 
+                              type="number" 
+                              step="0.001" 
+                              placeholder="0.000" 
+                              value={fuelPricePerLiter} 
+                              onChange={(e) => setFuelPricePerLiter(e.target.value)} 
+                              required 
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Valor Total</Label>
+                          <Input 
+                            type="text" 
+                            value={fuelLiters && fuelPricePerLiter 
+                              ? `R$ ${(parseFloat(fuelLiters) * parseFloat(fuelPricePerLiter)).toFixed(2)}` 
+                              : "R$ 0.00"} 
+                            disabled 
+                            className="bg-muted"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Tipo de combustível *</Label>
+                          <Select value={fuelType} onValueChange={setFuelType} required>
+                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="gasolina">Gasolina</SelectItem>
+                              <SelectItem value="etanol">Etanol</SelectItem>
+                              <SelectItem value="diesel">Diesel</SelectItem>
+                              <SelectItem value="gnv">GNV</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Quilometragem atual</Label>
+                            <Input 
+                              type="number" 
+                              placeholder="0" 
+                              value={fuelOdometerKm} 
+                              onChange={(e) => setFuelOdometerKm(e.target.value)} 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Posto (opcional)</Label>
+                            <Input 
+                              placeholder="Ex: Shell" 
+                              value={fuelStation} 
+                              onChange={(e) => setFuelStation(e.target.value)} 
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="space-y-2">
                         <Label>Valor *</Label>
                         <Input type="number" step="0.01" placeholder="0.00" value={expenseAmount} onChange={(e) => setExpenseAmount(e.target.value)} required />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Categoria *</Label>
-                      <Select value={expenseCategory} onValueChange={setExpenseCategory} required>
-                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="combustivel">Combustível</SelectItem>
-                          <SelectItem value="manutencao">Manutenção</SelectItem>
-                          <SelectItem value="lavagem">Lavagem</SelectItem>
-                          <SelectItem value="pedagio">Pedágio</SelectItem>
-                          <SelectItem value="estacionamento">Estacionamento</SelectItem>
-                          <SelectItem value="alimentacao">Alimentação</SelectItem>
-                          <SelectItem value="cartao">Cartão de Crédito</SelectItem>
-                          <SelectItem value="outro">Outro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label>Método de pagamento</Label>
                       <Select value={expenseMethod} onValueChange={(value) => {
@@ -496,26 +664,29 @@ export default function Transactions() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
-                          <Label>Parcelamento</Label>
-                          <Select value={expenseInstallments} onValueChange={setExpenseInstallments}>
-                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">À vista (1x)</SelectItem>
-                              <SelectItem value="2">2x</SelectItem>
-                              <SelectItem value="3">3x</SelectItem>
-                              <SelectItem value="4">4x</SelectItem>
-                              <SelectItem value="5">5x</SelectItem>
-                              <SelectItem value="6">6x</SelectItem>
-                              <SelectItem value="7">7x</SelectItem>
-                              <SelectItem value="8">8x</SelectItem>
-                              <SelectItem value="9">9x</SelectItem>
-                              <SelectItem value="10">10x</SelectItem>
-                              <SelectItem value="11">11x</SelectItem>
-                              <SelectItem value="12">12x</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        {/* Only show installments for non-fuel expenses */}
+                        {expenseCategory !== "combustivel" && (
+                          <div className="space-y-2">
+                            <Label>Parcelamento</Label>
+                            <Select value={expenseInstallments} onValueChange={setExpenseInstallments}>
+                              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">À vista (1x)</SelectItem>
+                                <SelectItem value="2">2x</SelectItem>
+                                <SelectItem value="3">3x</SelectItem>
+                                <SelectItem value="4">4x</SelectItem>
+                                <SelectItem value="5">5x</SelectItem>
+                                <SelectItem value="6">6x</SelectItem>
+                                <SelectItem value="7">7x</SelectItem>
+                                <SelectItem value="8">8x</SelectItem>
+                                <SelectItem value="9">9x</SelectItem>
+                                <SelectItem value="10">10x</SelectItem>
+                                <SelectItem value="11">11x</SelectItem>
+                                <SelectItem value="12">12x</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </>
                     )}
                     {expenseMethod === "credito" && creditCards.length === 0 && (
@@ -525,10 +696,19 @@ export default function Transactions() {
                     )}
                     <div className="space-y-2">
                       <Label>Observação (opcional)</Label>
-                      <Input placeholder="Ex: Troca de óleo" value={expenseNotes} onChange={(e) => setExpenseNotes(e.target.value)} />
+                      <Input placeholder={expenseCategory === "combustivel" ? "Ex: Tanque cheio" : "Ex: Troca de óleo"} value={expenseNotes} onChange={(e) => setExpenseNotes(e.target.value)} />
                     </div>
-                    <Button type="submit" variant="hero" className="w-full" disabled={createExpense.isPending}>
-                      {createExpense.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Despesa"}
+                    <Button type="submit" variant="hero" className="w-full" disabled={createExpense.isPending || createFuelExpense.isPending}>
+                      {(createExpense.isPending || createFuelExpense.isPending) ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : expenseCategory === "combustivel" ? (
+                        <>
+                          <Fuel className="w-4 h-4 mr-2" />
+                          Salvar Abastecimento
+                        </>
+                      ) : (
+                        "Salvar Despesa"
+                      )}
                     </Button>
                   </form>
                 </TabsContent>
@@ -821,10 +1001,24 @@ export default function Transactions() {
                               </span>
                             </span>
                           </td>
-                          <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-center hidden sm:table-cell capitalize">
-                            {transaction.transactionType === "receita" 
-                              ? (transaction.app || "—") 
-                              : (transaction.category || "—")}
+                          <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-center hidden sm:table-cell">
+                            <div className="flex flex-col items-center">
+                              <span className="capitalize">
+                                {transaction.transactionType === "receita" 
+                                  ? (transaction.app || "—") 
+                                  : (transaction.category || "—")}
+                              </span>
+                              {/* Show fuel details if linked to fuel_logs */}
+                              {transaction.transactionType === "despesa" && transaction.fuel_logs && (
+                                <span className="text-xs text-primary flex items-center gap-1 mt-0.5">
+                                  <Fuel className="w-3 h-3" />
+                                  {Number(transaction.fuel_logs.liters).toFixed(1)}L
+                                  {transaction.fuel_logs.odometer_km && (
+                                    <> • {new Intl.NumberFormat("pt-BR").format(Number(transaction.fuel_logs.odometer_km))} km</>
+                                  )}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-muted-foreground text-center hidden md:table-cell">
                             <div className="flex flex-col items-center">
@@ -866,7 +1060,10 @@ export default function Transactions() {
                                   if (transaction.transactionType === "receita") {
                                     deleteRevenue.mutate(transaction.id);
                                   } else {
-                                    deleteExpense.mutate(transaction.id);
+                                    deleteExpense.mutate({ 
+                                      id: transaction.id, 
+                                      hasFuelLog: !!transaction.fuel_log_id 
+                                    });
                                   }
                                 }}
                               >
