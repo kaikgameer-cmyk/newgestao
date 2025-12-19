@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Fuel as FuelIcon, Gauge, DollarSign, TrendingUp, Loader2, Trash2, CreditCard } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,8 @@ import { DatePreset, useDateFilterPresets } from "@/hooks/useDateFilterPresets";
 import { DateRange } from "react-day-picker";
 import { format, isWithinInterval } from "date-fns";
 import { parseLocalDate } from "@/lib/dateUtils";
+import { useMaintenance, WARNING_KM } from "@/hooks/useMaintenance";
+import { MaintenanceAlertBanner } from "@/components/maintenance/MaintenanceAlertBanner";
 
 export default function FuelControl() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -48,6 +50,8 @@ export default function FuelControl() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { invalidateAll } = useInvalidateFinancialData();
+  const queryClient = useQueryClient();
+  const { checkMaintenanceAlerts, maintenanceRecords } = useMaintenance();
 
   const { data: allFuelLogs = [], isLoading } = useQuery({
     queryKey: ["fuel_logs", user?.id],
@@ -92,6 +96,7 @@ export default function FuelControl() {
   const createFuelLog = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
+      const newOdometer = odometerKm ? parseFloat(odometerKm) : null;
       const { error } = await supabase.from("fuel_logs").insert({
         user_id: user.id,
         date,
@@ -99,17 +104,42 @@ export default function FuelControl() {
         liters: parseFloat(liters),
         total_value: parseFloat(totalValue),
         fuel_type: fuelType,
-        odometer_km: odometerKm ? parseFloat(odometerKm) : null,
+        odometer_km: newOdometer,
         payment_method: paymentMethod || null,
         credit_card_id: paymentMethod === "credito" && creditCardId ? creditCardId : null,
       });
       if (error) throw error;
+      return newOdometer;
     },
-    onSuccess: () => {
+    onSuccess: (newOdometer) => {
       invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["maintenance_records"] });
+      queryClient.invalidateQueries({ queryKey: ["latest_odometer"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Abastecimento registrado!" });
+
+      // Check for maintenance alerts if odometer was provided
+      if (newOdometer && maintenanceRecords.length > 0) {
+        const alerts = checkMaintenanceAlerts(newOdometer);
+        if (alerts.length > 0) {
+          const mostUrgent = alerts[0];
+          const formatKm = (km: number) => new Intl.NumberFormat("pt-BR").format(Math.abs(km));
+          
+          if (mostUrgent.status === "overdue") {
+            toast({
+              title: "⚠️ Manutenção vencida",
+              description: `Você já passou da quilometragem da manutenção: ${mostUrgent.title}. Faça a revisão o quanto antes.`,
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "⚡ Manutenção próxima",
+              description: `Você está a ${formatKm(mostUrgent.kmRemaining)} km da próxima manutenção: ${mostUrgent.title}.`,
+            });
+          }
+        }
+      }
     },
     onError: () => {
       toast({ title: "Erro ao registrar abastecimento", variant: "destructive" });
@@ -171,8 +201,17 @@ export default function FuelControl() {
     );
   }
 
+  // Get maintenance alerts for current odometer
+  const latestOdometerValue = allFuelLogs[0]?.odometer_km ? Number(allFuelLogs[0].odometer_km) : null;
+  const maintenanceAlerts = latestOdometerValue ? checkMaintenanceAlerts(latestOdometerValue) : [];
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      {/* Maintenance Alert Banner */}
+      {maintenanceAlerts.length > 0 && (
+        <MaintenanceAlertBanner alerts={maintenanceAlerts} />
+      )}
+
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

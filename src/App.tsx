@@ -15,6 +15,7 @@ import WeeklyReports from "./pages/WeeklyReports";
 import Transactions from "./pages/Transactions";
 import CreditCards from "./pages/CreditCards";
 import FuelControl from "./pages/FuelControl";
+import Maintenance from "./pages/Maintenance";
 import RecurringExpenses from "./pages/RecurringExpenses";
 import SettingsPage from "./pages/Settings";
 import SubscriptionPage from "./pages/Subscription";
@@ -51,6 +52,7 @@ const App = () => {
             <Route path="metas" element={<Goals />} />
             <Route path="cartoes" element={<CreditCards />} />
             <Route path="combustivel" element={<FuelControl />} />
+            <Route path="manutencao" element={<Maintenance />} />
             <Route path="despesas-fixas" element={<RecurringExpenses />} />
             <Route path="configuracoes" element={<SettingsPage />} />
             <Route path="assinatura" element={<SubscriptionPage />} />

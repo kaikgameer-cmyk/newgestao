@@ -26,6 +26,8 @@ import { DailyGoalCard } from "@/components/goals/DailyGoalCard";
 import { PeriodGoalCard } from "@/components/goals/PeriodGoalCard";
 import { GoalEditor } from "@/components/goals/GoalEditor";
 import { useDailyGoals } from "@/hooks/useDailyGoals";
+import { useMaintenance } from "@/hooks/useMaintenance";
+import { MaintenanceSummaryCard } from "@/components/maintenance/MaintenanceSummaryCard";
 import { format, eachDayOfInterval, isSameDay } from "date-fns";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 
@@ -77,6 +79,10 @@ export default function Dashboard() {
 
   // Fetch daily goals
   const { getGoalForDate, getGoalsForPeriod } = useDailyGoals();
+
+  // Fetch maintenance data
+  const { getCounts: getMaintenanceCounts } = useMaintenance();
+  const maintenanceCounts = getMaintenanceCounts();
 
   // Calculate recurring expenses for the period (correctly handles single-day vs monthly)
   const daysInPeriod = eachDayOfInterval({ start: periodStart, end: periodEnd }).length;
@@ -254,6 +260,17 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+
+      {/* Maintenance Summary Card */}
+      {maintenanceCounts.total > 0 && (
+        <MaintenanceSummaryCard
+          total={maintenanceCounts.total}
+          ok={maintenanceCounts.ok}
+          warning={maintenanceCounts.warning}
+          overdue={maintenanceCounts.overdue}
+          compact
+        />
+      )}
 
       {/* Empty State or Charts */}
       {!hasData ? (

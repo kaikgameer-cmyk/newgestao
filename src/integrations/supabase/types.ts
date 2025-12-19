@@ -192,6 +192,45 @@ export type Database = {
           },
         ]
       }
+      maintenance_records: {
+        Row: {
+          created_at: string
+          current_km: number
+          date: string
+          description: string | null
+          id: string
+          is_active: boolean
+          next_km: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_km: number
+          date: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          next_km: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_km?: number
+          date?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          next_km?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       paid_bills: {
         Row: {
           amount: number
