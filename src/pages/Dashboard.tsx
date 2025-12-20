@@ -1,13 +1,10 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp, TrendingDown, DollarSign, Calendar, PlusCircle, Clock, Target, CheckCircle2, XCircle, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { GlobalDateFilter } from "@/components/GlobalDateFilter";
-import { DatePicker } from "@/components/ui/date-picker";
-import { DatePreset, useDateFilterPresets } from "@/hooks/useDateFilterPresets";
-import { DateRange } from "react-day-picker";
+import { useDashboardFilter } from "@/hooks/useDashboardFilter";
+import { DashboardFilterBar } from "@/components/dashboard/DashboardFilterBar";
 import { useIncomeDay } from "@/hooks/useIncomeDay";
 import { useIncomeDays } from "@/hooks/useIncomeDays";
 import { IncomeDayForm } from "@/components/income/IncomeDayForm";
@@ -38,7 +35,7 @@ import { PlatformBreakdownCard } from "@/components/dashboard/PlatformBreakdownC
 import { PeriodPlatformBreakdownCard } from "@/components/dashboard/PeriodPlatformBreakdownCard";
 import { DailySummaryCard } from "@/components/dashboard/DailySummaryCard";
 import { useRevenueByPlatform } from "@/hooks/useRevenueByPlatform";
-import { format, eachDayOfInterval, isSameDay, startOfDay, endOfDay } from "date-fns";
+import { format, eachDayOfInterval, isSameDay } from "date-fns";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 
 const COLORS = [
@@ -54,32 +51,28 @@ const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 export default function Dashboard() {
   const { user } = useAuth();
 
-  // View mode: "period" or "day"
-  const [viewMode, setViewMode] = useState<"period" | "day">("period");
+  // New unified filter state with URL persistence
+  const filter = useDashboardFilter();
+  const { mode, startDate, endDate, isSingleDay } = filter;
 
-  // Global date filter state for period view
-  const [preset, setPreset] = useState<DatePreset>("thisMonth");
-  const [customRange, setCustomRange] = useState<DateRange>();
-  const { dateRange, formattedRange } = useDateFilterPresets(preset, customRange);
+  // Convert string dates to Date objects for hooks that need them
+  const periodStart = parseLocalDate(startDate);
+  const periodEnd = parseLocalDate(endDate);
 
-  // Single day selection for day view
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-
-  // Determine actual period based on view mode
-  const periodStart = viewMode === "period" ? dateRange.from! : startOfDay(selectedDate);
-  const periodEnd = viewMode === "period" ? (dateRange.to || dateRange.from!) : endOfDay(selectedDate);
+  // Determine if we're in "day" view (single day in day mode)
+  const isDayView = mode === "day" && isSingleDay;
 
   // Fetch revenues for selected period
   const { data: revenues = [] } = useQuery({
-    queryKey: ["revenues", user?.id, format(periodStart, "yyyy-MM-dd"), format(periodEnd, "yyyy-MM-dd")],
+    queryKey: ["revenues", user?.id, startDate, endDate],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
         .from("revenues")
         .select("*")
         .eq("user_id", user.id)
-        .gte("date", format(periodStart, "yyyy-MM-dd"))
-        .lte("date", format(periodEnd, "yyyy-MM-dd"));
+        .gte("date", startDate)
+        .lte("date", endDate);
       if (error) throw error;
       return data || [];
     },
@@ -104,7 +97,7 @@ export default function Dashboard() {
   const maintenanceCounts = getMaintenanceCounts();
 
   // Fetch income_day data for the new model
-  const { incomeDay } = useIncomeDay(viewMode === "day" ? selectedDate : undefined);
+  const { incomeDay } = useIncomeDay(isDayView ? periodStart : undefined);
   const { 
     totalRevenue: incomeDayTotalRevenue,
     totalTrips: incomeDayTotalTrips,
@@ -136,12 +129,11 @@ export default function Dashboard() {
   const daysWithRevenue = new Set(revenues.map((r) => r.date)).size;
   const avgPerDay = daysWithRevenue > 0 ? netProfit / daysWithRevenue : 0;
 
-  // Determine if single day or period view for goals
-  const isSingleDay = viewMode === "day" || isSameDay(periodStart, periodEnd);
-  const currentDayGoal = isSingleDay ? getGoalForDate(periodStart) : null;
+  // Goal for single day view
+  const currentDayGoal = isDayView ? getGoalForDate(periodStart) : null;
 
   // Build period goals data for multi-day view
-  const periodGoalsData = !isSingleDay
+  const periodGoalsData = !isDayView
     ? eachDayOfInterval({ start: periodStart, end: periodEnd }).map((day) => {
         const dateStr = formatLocalDate(day);
         const dayRevenue = revenues
@@ -263,39 +255,21 @@ export default function Dashboard() {
               Acompanhe seus resultados financeiros
             </p>
           </div>
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "period" | "day")}>
-            <TabsList>
-              <TabsTrigger value="period">Período</TabsTrigger>
-              <TabsTrigger value="day">Dia</TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
 
-        {/* Date Selection */}
-        <div className="flex flex-wrap items-center gap-3">
-          {viewMode === "period" ? (
-            <GlobalDateFilter
-              preset={preset}
-              onPresetChange={setPreset}
-              customRange={customRange}
-              onCustomRangeChange={setCustomRange}
-              className="flex-wrap"
-            />
-          ) : (
-            <>
-              <DatePicker
-                date={selectedDate}
-                onDateChange={(date) => date && setSelectedDate(date)}
-                placeholder="Selecione o dia"
-              />
-              <GoalEditor date={selectedDate} currentGoal={currentDayGoal} />
-            </>
-          )}
-        </div>
+        {/* New Filter Bar with Mode Selector */}
+        <DashboardFilterBar filter={filter} />
+
+        {/* Goal Editor for single day view */}
+        {isDayView && (
+          <div className="flex items-center gap-2">
+            <GoalEditor date={periodStart} currentGoal={currentDayGoal} />
+          </div>
+        )}
       </div>
 
-      {/* === DAY VIEW === */}
-      {viewMode === "day" && (
+      {/* === SINGLE DAY VIEW (mode=day and single date) === */}
+      {isDayView && (
         (() => {
           // Use income_day data if available, fallback to legacy revenues
           const dayTotalTrips = incomeDay 
@@ -308,7 +282,7 @@ export default function Dashboard() {
             : totalRevenue;
 
           // Platform breakdown from income_day
-          const platformRevenues = incomeDay 
+          const dayPlatformRevenues = incomeDay 
             ? incomeDay.items.map(item => ({
                 app: item.platform === "other" && item.platform_label ? item.platform_label : item.platform,
                 amount: item.amount,
@@ -321,7 +295,7 @@ export default function Dashboard() {
               <IncomeDayForm
                 open={isIncomeDayFormOpen}
                 onOpenChange={setIsIncomeDayFormOpen}
-                selectedDate={selectedDate}
+                selectedDate={periodStart}
                 existingData={incomeDay}
               />
 
@@ -349,7 +323,7 @@ export default function Dashboard() {
               <DailyGoalCard
                 goal={currentDayGoal}
                 revenue={dayRevenue}
-                label={`Meta de ${format(selectedDate, "dd/MM/yyyy")}`}
+                label={`Meta de ${format(periodStart, "dd/MM/yyyy")}`}
               />
 
               {/* Day Metrics Panel - Full metrics grid */}
@@ -362,13 +336,13 @@ export default function Dashboard() {
               />
 
               {/* Platform Breakdown */}
-              <PlatformBreakdownCard revenues={platformRevenues} />
+              <PlatformBreakdownCard revenues={dayPlatformRevenues} />
 
               {/* Daily Summary with transactions */}
               <DailySummaryCard
                 revenues={revenues}
                 expenses={combinedExpenses}
-                recurringTotal={calculateDailyRecurringAmount(recurringExpenses, selectedDate).total}
+                recurringTotal={calculateDailyRecurringAmount(recurringExpenses, periodStart).total}
                 totalRevenue={dayRevenue}
                 totalExpenses={totalAllExpenses}
                 netProfit={dayRevenue - totalAllExpenses}
@@ -383,28 +357,28 @@ export default function Dashboard() {
         })()
       )}
 
-      {/* === PERIOD VIEW === */}
-      {viewMode === "period" && (
+      {/* === PERIOD VIEW (any mode with range, or non-day modes) === */}
+      {!isDayView && (
         <>
           {/* Goals Section */}
-          {!isSingleDay ? (
-            <PeriodGoalCard
-              days={periodGoalsData}
-              periodLabel={
-                preset === "last7days"
-                  ? "Últimos 7 dias"
-                  : preset === "last30days"
-                  ? "Últimos 30 dias"
-                  : preset === "thisMonth"
-                  ? "Este mês"
-                  : "Período selecionado"
-              }
-            />
-          ) : (
+          {isSingleDay ? (
             <DailyGoalCard
               goal={currentDayGoal}
               revenue={totalRevenue}
               label={`Meta de ${format(periodStart, "dd/MM/yyyy")}`}
+            />
+          ) : (
+            <PeriodGoalCard
+              days={periodGoalsData}
+              periodLabel={
+                mode === "week"
+                  ? "Esta semana"
+                  : mode === "month"
+                  ? "Este mês"
+                  : mode === "year"
+                  ? "Este ano"
+                  : "Período selecionado"
+              }
             />
           )}
 
@@ -432,7 +406,7 @@ export default function Dashboard() {
       )}
 
       {/* Maintenance + Platform Revenue Grid - Period View */}
-      {viewMode === "period" && (
+      {!isDayView && (
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Maintenance Summary */}
           <MaintenanceSummaryCard
@@ -453,7 +427,7 @@ export default function Dashboard() {
       )}
 
       {/* Maintenance Summary Card - Day View Only */}
-      {viewMode === "day" && maintenanceCounts.total > 0 && (
+      {isDayView && maintenanceCounts.total > 0 && (
         <MaintenanceSummaryCard
           total={maintenanceCounts.total}
           ok={maintenanceCounts.ok}
@@ -464,7 +438,7 @@ export default function Dashboard() {
       )}
 
       {/* Empty State or Charts - Period View */}
-      {viewMode === "period" && !hasData && (
+      {!isDayView && !hasData && (
         <Card variant="elevated" className="p-8 sm:p-12">
           <div className="flex flex-col items-center justify-center text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -487,7 +461,7 @@ export default function Dashboard() {
       )}
 
       {/* Charts - Period View */}
-      {viewMode === "period" && hasData && (
+      {!isDayView && hasData && (
         <>
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Bar Chart - Daily Profit */}
@@ -644,7 +618,7 @@ export default function Dashboard() {
       )}
 
       {/* Profit Comparison Chart - Always show if there's any data (period view only) */}
-      {viewMode === "period" && hasData && (
+      {!isDayView && hasData && (
         <ProfitComparisonChart userId={user?.id} />
       )}
     </div>
