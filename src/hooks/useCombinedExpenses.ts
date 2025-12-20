@@ -76,22 +76,26 @@ export function useCombinedExpenses(
   });
 
   // Combine and normalize both sources
+  // IMPORTANT: Filter out expenses that have fuel_log_id to avoid duplicates
+  // Fuel logs are already fetched separately and have more details
   const combinedExpenses: CombinedExpense[] = [
-    ...expenses.map((e) => ({
-      id: e.id,
-      user_id: e.user_id,
-      date: e.date,
-      amount: Number(e.amount),
-      category: e.category,
-      payment_method: e.payment_method,
-      credit_card_id: e.credit_card_id,
-      notes: e.notes,
-      source: "expense" as const,
-      installments: e.installments,
-      current_installment: e.current_installment,
-      total_installments: e.total_installments,
-      credit_cards: e.credit_cards,
-    })),
+    ...expenses
+      .filter((e) => !e.fuel_log_id) // Exclude fuel-related expenses (they come from fuel_logs)
+      .map((e) => ({
+        id: e.id,
+        user_id: e.user_id,
+        date: e.date,
+        amount: Number(e.amount),
+        category: e.category,
+        payment_method: e.payment_method,
+        credit_card_id: e.credit_card_id,
+        notes: e.notes,
+        source: "expense" as const,
+        installments: e.installments,
+        current_installment: e.current_installment,
+        total_installments: e.total_installments,
+        credit_cards: e.credit_cards,
+      })),
     ...fuelLogs.map((f) => ({
       id: f.id,
       user_id: f.user_id,
