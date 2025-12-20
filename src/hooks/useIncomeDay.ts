@@ -174,7 +174,7 @@ export function useIncomeDay(selectedDate?: Date) {
         income_day_id: incomeDayId,
         user_id: user.id,
         platform: item.platform,
-        platform_label: item.platform === "outro" ? item.platform_label : null,
+        platform_label: item.platform === "other" ? item.platform_label : null,
         amount: item.amount,
         trips: item.trips,
         payment_method: item.payment_method || null,

@@ -35,7 +35,9 @@ import { useMaintenance } from "@/hooks/useMaintenance";
 import { MaintenanceSummaryCard } from "@/components/maintenance/MaintenanceSummaryCard";
 import { DayMetricsPanel } from "@/components/dashboard/DayMetricsPanel";
 import { PlatformBreakdownCard } from "@/components/dashboard/PlatformBreakdownCard";
+import { PeriodPlatformBreakdownCard } from "@/components/dashboard/PeriodPlatformBreakdownCard";
 import { DailySummaryCard } from "@/components/dashboard/DailySummaryCard";
+import { useRevenueByPlatform } from "@/hooks/useRevenueByPlatform";
 import { format, eachDayOfInterval, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 
@@ -110,6 +112,13 @@ export default function Dashboard() {
     totalMinutes: incomeDayTotalMinutes,
     platformBreakdown: incomeDayPlatformBreakdown,
   } = useIncomeDays(periodStart, periodEnd);
+
+  // Fetch revenue by platform for period view
+  const { 
+    platformRevenues, 
+    totalRevenue: platformTotalRevenue, 
+    isLoading: loadingPlatformRevenues 
+  } = useRevenueByPlatform(periodStart, periodEnd);
 
   // State for income day form
   const [isIncomeDayFormOpen, setIsIncomeDayFormOpen] = useState(false);
@@ -301,7 +310,7 @@ export default function Dashboard() {
           // Platform breakdown from income_day
           const platformRevenues = incomeDay 
             ? incomeDay.items.map(item => ({
-                app: item.platform === "outro" && item.platform_label ? item.platform_label : item.platform,
+                app: item.platform === "other" && item.platform_label ? item.platform_label : item.platform,
                 amount: item.amount,
               }))
             : revenues.map(r => ({ app: r.app, amount: Number(r.amount) }));
@@ -422,8 +431,29 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* Maintenance Summary Card - both views */}
-      {maintenanceCounts.total > 0 && (
+      {/* Maintenance + Platform Revenue Grid - Period View */}
+      {viewMode === "period" && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Maintenance Summary */}
+          <MaintenanceSummaryCard
+            total={maintenanceCounts.total}
+            ok={maintenanceCounts.ok}
+            warning={maintenanceCounts.warning}
+            overdue={maintenanceCounts.overdue}
+            compact
+          />
+
+          {/* Platform Revenue Breakdown */}
+          <PeriodPlatformBreakdownCard
+            platformRevenues={platformRevenues}
+            totalRevenue={platformTotalRevenue}
+            isLoading={loadingPlatformRevenues}
+          />
+        </div>
+      )}
+
+      {/* Maintenance Summary Card - Day View Only */}
+      {viewMode === "day" && maintenanceCounts.total > 0 && (
         <MaintenanceSummaryCard
           total={maintenanceCounts.total}
           ok={maintenanceCounts.ok}

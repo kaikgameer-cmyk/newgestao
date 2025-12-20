@@ -17,8 +17,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-
 import { useNavigate } from "react-router-dom";
+import { PlatformSettings } from "@/components/settings/PlatformSettings";
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -246,6 +246,9 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Platform Settings */}
+      <PlatformSettings />
 
       {/* Quick Stats */}
       <Card variant="elevated">

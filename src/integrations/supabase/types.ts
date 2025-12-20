@@ -664,6 +664,33 @@ export type Database = {
         }
         Relationships: []
       }
+      platforms: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_other: boolean
+          key: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_other?: boolean
+          key: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_other?: boolean
+          key?: string
+          name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           apps_used: string[] | null
@@ -832,6 +859,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_platforms: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          platform_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          platform_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          platform_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_platforms_platform_key_fkey"
+            columns: ["platform_key"]
+            isOneToOne: false
+            referencedRelation: "platforms"
+            referencedColumns: ["key"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -972,6 +1034,16 @@ export type Database = {
         Returns: Json
       }
       delete_fuel_expense: { Args: { p_expense_id: string }; Returns: boolean }
+      get_revenue_by_platform: {
+        Args: { p_end_date: string; p_start_date: string }
+        Returns: {
+          platform_key: string
+          platform_label: string
+          platform_name: string
+          total_amount: number
+          total_trips: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

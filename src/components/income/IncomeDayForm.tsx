@@ -19,6 +19,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Trash2, Loader2, Clock, MapPin, Car } from "lucide-react";
 import { useIncomeDay, IncomeDay, IncomeDayItem } from "@/hooks/useIncomeDay";
+import { usePlatforms } from "@/hooks/usePlatforms";
 import { format } from "date-fns";
 
 interface IncomeDayFormProps {
@@ -27,13 +28,6 @@ interface IncomeDayFormProps {
   selectedDate: Date;
   existingData?: IncomeDay | null;
 }
-
-const PLATFORMS = [
-  { value: "uber", label: "Uber" },
-  { value: "99", label: "99" },
-  { value: "indrive", label: "inDrive" },
-  { value: "outro", label: "Outro" },
-];
 
 const emptyItem: IncomeDayItem = {
   platform: "",
@@ -51,6 +45,7 @@ export function IncomeDayForm({
   existingData,
 }: IncomeDayFormProps) {
   const { saveIncomeDay } = useIncomeDay();
+  const { enabledPlatforms, loadingPlatforms } = usePlatforms();
 
   // Form state
   const [kmRodados, setKmRodados] = useState("");
@@ -151,7 +146,9 @@ export function IncomeDayForm({
       (item) =>
         item.platform &&
         (typeof item.amount === "string" ? parseFloat(item.amount) : item.amount) > 0 &&
-        (typeof item.trips === "string" ? parseInt(item.trips as any) : item.trips) > 0
+        (typeof item.trips === "string" ? parseInt(item.trips as any) : item.trips) > 0 &&
+        // If platform is "other", platform_label is required
+        (item.platform !== "other" || (item.platform_label && item.platform_label.trim().length > 0))
     );
 
   return (
@@ -259,29 +256,31 @@ export function IncomeDayForm({
                       <Select
                         value={item.platform}
                         onValueChange={(v) => updateItem(index, "platform", v)}
+                        disabled={loadingPlatforms}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
-                          {PLATFORMS.map((p) => (
-                            <SelectItem key={p.value} value={p.value}>
-                              {p.label}
+                          {enabledPlatforms.map((p) => (
+                            <SelectItem key={p.key} value={p.key}>
+                              {p.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
 
-                    {item.platform === "outro" && (
+                    {item.platform === "other" && (
                       <div className="space-y-1.5">
-                        <Label>Nome do App</Label>
+                        <Label>Nome do App *</Label>
                         <Input
                           placeholder="Ex: Bolt"
                           value={item.platform_label || ""}
                           onChange={(e) =>
                             updateItem(index, "platform_label", e.target.value)
                           }
+                          required
                         />
                       </div>
                     )}
