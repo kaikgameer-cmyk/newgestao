@@ -17,7 +17,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Calendar, AlertTriangle, CheckCircle2, Fuel, FileText, Pencil, Banknote } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -46,25 +46,44 @@ export default function CreditCards() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { invalidateAll } = useInvalidateFinancialData();
+  const queryClient = useQueryClient();
 
-  // Fetch all credit cards
-  const { data: creditCards = [], isLoading: isLoadingCards } = useQuery({
-    queryKey: ["credit_cards", user?.id],
+  // Define type for credit card with calculated limits
+  interface CreditCardWithLimits {
+    id: string;
+    user_id: string;
+    name: string;
+    last_digits: string | null;
+    brand: string | null;
+    credit_limit: number | null;
+    closing_day: number | null;
+    due_day: number | null;
+    due_month_offset: number | null;
+    best_purchase_day: number | null;
+    created_at: string;
+    updated_at: string;
+    committed: number;
+    available: number;
+  }
+
+  // Fetch all credit cards with calculated limits from view
+  const { data: creditCards = [], isLoading: isLoadingCards } = useQuery<CreditCardWithLimits[]>({
+    queryKey: ["credit_cards_with_limits", user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
-        .from("credit_cards")
+        .from("credit_cards_with_limits" as any)
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      return (data || []) as unknown as CreditCardWithLimits[];
     },
     enabled: !!user,
   });
 
-  // Fetch all invoices with balance > 0 (open, closed, or overdue)
-  const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery({
+  // Fetch all invoices
+  const { data: invoices = [] } = useQuery({
     queryKey: ["credit_card_invoices", user?.id],
     queryFn: async () => {
       if (!user) return [];
@@ -79,12 +98,11 @@ export default function CreditCards() {
     enabled: !!user,
   });
 
-  // Calculate invoice-based data
+  // Calculate invoice-based data (now using committed/available from view)
   const { 
     invoicesByCard, 
     currentInvoiceByCard, 
-    overdueInvoicesByCard,
-    totalCommittedByCard 
+    overdueInvoicesByCard
   } = useMemo(() => {
     const today = new Date();
     const todayStr = format(today, "yyyy-MM-dd");
@@ -101,14 +119,9 @@ export default function CreditCards() {
     // For each card, find current invoice (closing_date >= today) and overdue invoices
     const currentInvoiceByCard: Record<string, typeof invoices[0] | null> = {};
     const overdueInvoicesByCard: Record<string, typeof invoices> = {};
-    const totalCommittedByCard: Record<string, number> = {};
 
     creditCards.forEach(card => {
       const cardInvoices = invoicesByCard[card.id] || [];
-      
-      // Current invoice: first invoice where closing_date >= today (sorted desc, so find last one that meets criteria)
-      // Or the most recent open/closed invoice
-      const openInvoices = cardInvoices.filter(inv => inv.balance > 0);
       
       // Find current cycle invoice (closing_date >= today)
       const currentCycleInvoice = cardInvoices.find(inv => inv.closing_date >= todayStr && inv.status === 'open');
@@ -118,26 +131,20 @@ export default function CreditCards() {
       overdueInvoicesByCard[card.id] = cardInvoices.filter(
         inv => Number(inv.balance) > 0 && inv.due_date < todayStr
       );
-      
-      // Total committed: sum of balance from all invoices with balance > 0
-      totalCommittedByCard[card.id] = openInvoices.reduce(
-        (sum, inv) => sum + Number(inv.balance), 
-        0
-      );
     });
 
-    return { invoicesByCard, currentInvoiceByCard, overdueInvoicesByCard, totalCommittedByCard };
+    return { invoicesByCard, currentInvoiceByCard, overdueInvoicesByCard };
   }, [creditCards, invoices]);
 
-  // Calculate summary totals
+  // Calculate summary totals using committed/available from view
   const { totalLimit, totalCommitted, totalAvailable, availablePercentage } = useMemo(() => {
     const totalLimit = creditCards.reduce((acc, card) => acc + (Number(card.credit_limit) || 0), 0);
-    const totalCommitted = Object.values(totalCommittedByCard).reduce((acc, val) => acc + val, 0);
-    const totalAvailable = Math.max(0, totalLimit - totalCommitted);
+    const totalCommitted = creditCards.reduce((acc, card) => acc + (Number((card as any).committed) || 0), 0);
+    const totalAvailable = creditCards.reduce((acc, card) => acc + (Number((card as any).available) || 0), 0);
     const availablePercentage = totalLimit > 0 ? ((totalAvailable / totalLimit) * 100).toFixed(0) : "100";
     
     return { totalLimit, totalCommitted, totalAvailable, availablePercentage };
-  }, [creditCards, totalCommittedByCard]);
+  }, [creditCards]);
 
   const createCard = useMutation({
     mutationFn: async () => {
@@ -233,10 +240,11 @@ export default function CreditCards() {
     },
     onSuccess: () => {
       invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["credit_cards_with_limits"] });
       setIsPaymentDialogOpen(false);
       setSelectedInvoice(null);
       setPaymentAmount("");
-      toast({ title: "Pagamento registrado!", description: "O saldo da fatura foi atualizado." });
+      toast({ title: "Pagamento registrado!", description: "O limite do cartão foi atualizado." });
     },
     onError: (error: any) => {
       toast({ title: error.message || "Erro ao registrar pagamento", variant: "destructive" });
@@ -273,7 +281,7 @@ export default function CreditCards() {
     setDueDay("");
   };
 
-  const isLoading = isLoadingCards || isLoadingInvoices;
+  const isLoading = isLoadingCards;
 
   if (isLoading) {
     return (
@@ -448,8 +456,8 @@ export default function CreditCards() {
           <div className="grid lg:grid-cols-2 gap-6">
             {creditCards.map((card) => {
               const cardLimit = Number(card.credit_limit) || 0;
-              const cardCommitted = totalCommittedByCard[card.id] || 0;
-              const cardAvailable = Math.max(0, cardLimit - cardCommitted);
+              const cardCommitted = Number(card.committed) || 0;
+              const cardAvailable = Number(card.available) || 0;
               const cardUsedPercent = cardLimit > 0 ? (cardCommitted / cardLimit) * 100 : 0;
               const currentInvoice = currentInvoiceByCard[card.id];
               const overdueInvoices = overdueInvoicesByCard[card.id] || [];

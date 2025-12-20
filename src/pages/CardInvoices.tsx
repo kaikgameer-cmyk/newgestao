@@ -192,10 +192,12 @@ export default function CardInvoices() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["credit_card_invoices"] });
       queryClient.invalidateQueries({ queryKey: ["cc_transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["credit_cards_with_limits"] });
+      queryClient.invalidateQueries({ queryKey: ["credit_cards"] });
       setPaymentDialogOpen(false);
       setPaymentAmount("");
       setSelectedInvoice(null);
-      toast({ title: "Pagamento registrado!" });
+      toast({ title: "Pagamento registrado!", description: "O limite do cartão foi atualizado." });
     },
     onError: () => {
       toast({ title: "Erro ao registrar pagamento", variant: "destructive" });
