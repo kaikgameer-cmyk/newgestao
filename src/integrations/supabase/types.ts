@@ -74,6 +74,13 @@ export type Database = {
             referencedRelation: "credit_cards"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "credit_card_invoices_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards_with_limits"
+            referencedColumns: ["id"]
+          },
         ]
       }
       credit_card_transactions: {
@@ -134,6 +141,13 @@ export type Database = {
             columns: ["credit_card_id"]
             isOneToOne: false
             referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_card_transactions_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards_with_limits"
             referencedColumns: ["id"]
           },
           {
@@ -295,6 +309,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "expenses_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards_with_limits"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "expenses_fuel_log_id_fkey"
             columns: ["fuel_log_id"]
             isOneToOne: false
@@ -362,6 +383,13 @@ export type Database = {
             columns: ["credit_card_id"]
             isOneToOne: false
             referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fuel_logs_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards_with_limits"
             referencedColumns: ["id"]
           },
           {
@@ -446,6 +474,13 @@ export type Database = {
             columns: ["credit_card_id"]
             isOneToOne: false
             referencedRelation: "credit_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "paid_bills_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards_with_limits"
             referencedColumns: ["id"]
           },
         ]
@@ -662,7 +697,25 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      credit_cards_with_limits: {
+        Row: {
+          available: number | null
+          best_purchase_day: number | null
+          brand: string | null
+          closing_day: number | null
+          committed: number | null
+          created_at: string | null
+          credit_limit: number | null
+          due_day: number | null
+          due_month_offset: number | null
+          id: string | null
+          last_digits: string | null
+          name: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       compute_closing_date: {

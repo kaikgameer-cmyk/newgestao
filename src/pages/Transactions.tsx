@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle, CreditCard, Pencil, DollarSign, Fuel } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle, CreditCard, Pencil, DollarSign, Fuel, AlertTriangle } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -123,17 +123,31 @@ export default function Transactions() {
     enabled: !!user,
   });
 
-  const { data: creditCards = [] } = useQuery({
-    queryKey: ["credit_cards", user?.id],
+  // Define type for credit card with limits
+  interface CreditCardWithLimits {
+    id: string;
+    user_id: string;
+    name: string;
+    last_digits: string | null;
+    brand: string | null;
+    credit_limit: number | null;
+    closing_day: number | null;
+    due_day: number | null;
+    committed: number;
+    available: number;
+  }
+
+  const { data: creditCards = [] } = useQuery<CreditCardWithLimits[]>({
+    queryKey: ["credit_cards_with_limits", user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
-        .from("credit_cards")
+        .from("credit_cards_with_limits" as any)
         .select("*")
         .eq("user_id", user.id)
         .order("name");
       if (error) throw error;
-      return data || [];
+      return (data || []) as unknown as CreditCardWithLimits[];
     },
     enabled: !!user,
   });
@@ -746,11 +760,54 @@ export default function Transactions() {
                               {creditCards.map((card) => (
                                 <SelectItem key={card.id} value={card.id}>
                                   {card.name} {card.last_digits ? `(•••• ${card.last_digits})` : ""}
+                                  {Number(card.available) <= 0 && " (sem limite)"}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
+                        
+                        {/* Limit warning */}
+                        {(() => {
+                          const selectedCard = creditCards.find(c => c.id === expenseCreditCardId);
+                          if (!selectedCard) return null;
+                          
+                          const available = Number(selectedCard.available) || 0;
+                          const expenseValue = expenseCategory === "combustivel" 
+                            ? parseFloat(fuelTotalValue) || 0
+                            : parseFloat(expenseAmount) || 0;
+                          
+                          if (available <= 0) {
+                            return (
+                              <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <p className="font-medium">Cartão sem limite disponível</p>
+                                  <p className="text-xs opacity-80">
+                                    Use outro cartão ou pague uma fatura para liberar limite.
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          if (expenseValue > available) {
+                            return (
+                              <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 text-warning text-sm">
+                                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <p className="font-medium">Limite insuficiente</p>
+                                  <p className="text-xs opacity-80">
+                                    Disponível: R$ {available.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          return null;
+                        })()}
+                        
                         {/* Only show installments for non-fuel expenses */}
                         {expenseCategory !== "combustivel" && (
                           <div className="space-y-2">
