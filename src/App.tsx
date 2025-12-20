@@ -11,7 +11,7 @@ import ResetPassword from "./pages/ResetPassword";
 import DefinirSenha from "./pages/DefinirSenha";
 import DashboardLayout from "./components/layouts/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
-import WeeklyReports from "./pages/WeeklyReports";
+
 import Transactions from "./pages/Transactions";
 import CreditCards from "./pages/CreditCards";
 import CardInvoices from "./pages/CardInvoices";
@@ -48,7 +48,7 @@ const App = () => {
             }
           >
             <Route index element={<Dashboard />} />
-            <Route path="semanal" element={<WeeklyReports />} />
+            
             <Route path="lancamentos" element={<Transactions />} />
             <Route path="metas" element={<Goals />} />
             <Route path="cartoes" element={<CreditCards />} />

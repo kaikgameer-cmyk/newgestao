@@ -245,6 +245,42 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_km_logs: {
+        Row: {
+          created_at: string
+          date: string
+          end_km: number
+          id: string
+          km_driven: number | null
+          notes: string | null
+          start_km: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          end_km: number
+          id?: string
+          km_driven?: number | null
+          notes?: string | null
+          start_km: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          end_km?: number
+          id?: string
+          km_driven?: number | null
+          notes?: string | null
+          start_km?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -691,6 +727,83 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      work_session_pauses: {
+        Row: {
+          created_at: string
+          id: string
+          paused_at: string
+          resumed_at: string | null
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          paused_at: string
+          resumed_at?: string | null
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          paused_at?: string
+          resumed_at?: string | null
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_session_pauses_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "work_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_sessions: {
+        Row: {
+          created_at: string
+          date: string
+          ended_at: string | null
+          id: string
+          notes: string | null
+          started_at: string
+          status: string
+          total_paused_seconds: number
+          total_worked_seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          started_at: string
+          status?: string
+          total_paused_seconds?: number
+          total_worked_seconds?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          started_at?: string
+          status?: string
+          total_paused_seconds?: number
+          total_worked_seconds?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
