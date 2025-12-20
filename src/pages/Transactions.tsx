@@ -76,6 +76,13 @@ export default function Transactions() {
     app?: string;
     method?: string;
     notes?: string;
+    // Fuel-specific fields for editing
+    fuel_log_id?: string | null;
+    fuelLiters?: string;
+    fuelType?: string;
+    fuelStation?: string;
+    fuelOdometerKm?: string;
+    creditCardId?: string;
   } | null>(null);
 
   const { user } = useAuth();
@@ -106,7 +113,7 @@ export default function Transactions() {
       if (!user) return [];
       const { data, error } = await supabase
         .from("expenses")
-        .select("*, credit_cards(name), fuel_logs(liters, odometer_km, fuel_type)")
+        .select("*, credit_cards(name), fuel_logs(liters, odometer_km, fuel_type, station)")
         .eq("user_id", user.id)
         .order("date", { ascending: false })
         .limit(500);
@@ -344,6 +351,42 @@ export default function Transactions() {
     },
   });
 
+  // Mutation for updating fuel expense atomically
+  const updateFuelExpense = useMutation({
+    mutationFn: async () => {
+      if (!editingTransaction) throw new Error("Nenhuma transação selecionada");
+      const liters = parseFloat(editingTransaction.fuelLiters || "0");
+      const totalValue = parseFloat(editingTransaction.amount);
+      const odometerKm = editingTransaction.fuelOdometerKm ? parseFloat(editingTransaction.fuelOdometerKm) : null;
+
+      const { error } = await supabase.rpc('update_fuel_expense', {
+        p_expense_id: editingTransaction.id,
+        p_date: editingTransaction.date,
+        p_liters: liters,
+        p_total_value: totalValue,
+        p_fuel_type: editingTransaction.fuelType || "gasolina",
+        p_station: editingTransaction.fuelStation || null,
+        p_odometer_km: odometerKm,
+        p_payment_method: editingTransaction.method || null,
+        p_credit_card_id: editingTransaction.creditCardId || null,
+        p_notes: editingTransaction.notes || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["fuel_logs"] });
+      queryClient.invalidateQueries({ queryKey: ["maintenance_records"] });
+      queryClient.invalidateQueries({ queryKey: ["latest_odometer"] });
+      setIsEditDialogOpen(false);
+      setEditingTransaction(null);
+      toast({ title: "Abastecimento atualizado!" });
+    },
+    onError: () => {
+      toast({ title: "Erro ao atualizar abastecimento", variant: "destructive" });
+    },
+  });
+
   const deleteRevenue = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("revenues").delete().eq("id", id);
@@ -411,6 +454,10 @@ export default function Transactions() {
         notes: transaction.notes,
       });
     } else {
+      // Check if this is a fuel expense
+      const isFuelExpense = transaction.fuel_log_id || transaction.fuel_logs;
+      const fuelLogs = transaction.fuel_logs;
+      
       setEditingTransaction({
         id: transaction.id,
         type: "despesa",
@@ -419,6 +466,12 @@ export default function Transactions() {
         category: transaction.category,
         method: transaction.payment_method,
         notes: transaction.notes,
+        fuel_log_id: transaction.fuel_log_id,
+        fuelLiters: fuelLogs?.liters ? String(fuelLogs.liters) : "",
+        fuelType: fuelLogs?.fuel_type || "",
+        fuelOdometerKm: fuelLogs?.odometer_km ? String(fuelLogs.odometer_km) : "",
+        fuelStation: fuelLogs?.station || "",
+        creditCardId: transaction.credit_card_id || "",
       });
     }
     setIsEditDialogOpen(true);
@@ -428,6 +481,8 @@ export default function Transactions() {
     e.preventDefault();
     if (editingTransaction?.type === "receita") {
       updateRevenue.mutate();
+    } else if (editingTransaction?.fuel_log_id) {
+      updateFuelExpense.mutate();
     } else {
       updateExpense.mutate();
     }
@@ -835,7 +890,91 @@ export default function Transactions() {
                     </Select>
                   </div>
                 </>
+              ) : editingTransaction.fuel_log_id ? (
+                /* Fuel expense edit form */
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Litros *</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        placeholder="0.00" 
+                        value={editingTransaction.fuelLiters || ""} 
+                        onChange={(e) => setEditingTransaction({ ...editingTransaction, fuelLiters: e.target.value })} 
+                        required 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tipo de combustível *</Label>
+                      <Select 
+                        value={editingTransaction.fuelType || ""} 
+                        onValueChange={(value) => setEditingTransaction({ ...editingTransaction, fuelType: value })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="gasolina">Gasolina</SelectItem>
+                          <SelectItem value="etanol">Etanol</SelectItem>
+                          <SelectItem value="diesel">Diesel</SelectItem>
+                          <SelectItem value="gnv">GNV</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Km do odômetro</Label>
+                      <Input 
+                        type="number" 
+                        step="1" 
+                        placeholder="Ex: 45000" 
+                        value={editingTransaction.fuelOdometerKm || ""} 
+                        onChange={(e) => setEditingTransaction({ ...editingTransaction, fuelOdometerKm: e.target.value })} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Posto</Label>
+                      <Input 
+                        placeholder="Nome do posto" 
+                        value={editingTransaction.fuelStation || ""} 
+                        onChange={(e) => setEditingTransaction({ ...editingTransaction, fuelStation: e.target.value })} 
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Método de pagamento</Label>
+                    <Select 
+                      value={editingTransaction.method || ""} 
+                      onValueChange={(value) => setEditingTransaction({ ...editingTransaction, method: value })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                        <SelectItem value="debito">Débito</SelectItem>
+                        <SelectItem value="credito">Cartão de Crédito</SelectItem>
+                        <SelectItem value="pix">PIX</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {editingTransaction.method === "credito" && creditCards.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Cartão de Crédito</Label>
+                      <Select 
+                        value={editingTransaction.creditCardId || ""} 
+                        onValueChange={(value) => setEditingTransaction({ ...editingTransaction, creditCardId: value })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Selecione o cartão" /></SelectTrigger>
+                        <SelectContent>
+                          {creditCards.map((card) => (
+                            <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </>
               ) : (
+                /* Regular expense edit form */
                 <>
                   <div className="space-y-2">
                     <Label>Categoria *</Label>
@@ -887,10 +1026,15 @@ export default function Transactions() {
                 type="submit" 
                 variant="hero" 
                 className="w-full" 
-                disabled={updateRevenue.isPending || updateExpense.isPending}
+                disabled={updateRevenue.isPending || updateExpense.isPending || updateFuelExpense.isPending}
               >
-                {(updateRevenue.isPending || updateExpense.isPending) ? (
+                {(updateRevenue.isPending || updateExpense.isPending || updateFuelExpense.isPending) ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
+                ) : editingTransaction.fuel_log_id ? (
+                  <>
+                    <Fuel className="w-4 h-4 mr-2" />
+                    Salvar Abastecimento
+                  </>
                 ) : (
                   "Salvar Alterações"
                 )}

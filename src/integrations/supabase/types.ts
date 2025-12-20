@@ -516,6 +516,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_fuel_expense: {
+        Args: {
+          p_credit_card_id?: string
+          p_date: string
+          p_expense_id: string
+          p_fuel_type: string
+          p_liters: number
+          p_notes?: string
+          p_odometer_km?: number
+          p_payment_method?: string
+          p_station?: string
+          p_total_value: number
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"
