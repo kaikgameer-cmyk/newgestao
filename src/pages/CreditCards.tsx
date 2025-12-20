@@ -37,6 +37,7 @@ export default function CreditCards() {
   const [brand, setBrand] = useState("");
   const [creditLimit, setCreditLimit] = useState("");
   const [bestPurchaseDay, setBestPurchaseDay] = useState("");
+  const [closingDay, setClosingDay] = useState("");
   const [dueDay, setDueDay] = useState("");
   
   // Global date filter state
@@ -279,6 +280,7 @@ export default function CreditCards() {
   const createCard = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
+      if (!closingDay || !dueDay) throw new Error("Dia de fechamento e vencimento são obrigatórios");
       const { error } = await supabase.from("credit_cards").insert({
         user_id: user.id,
         name,
@@ -286,7 +288,8 @@ export default function CreditCards() {
         brand: brand || null,
         credit_limit: creditLimit ? parseFloat(creditLimit) : null,
         best_purchase_day: bestPurchaseDay ? parseInt(bestPurchaseDay) : null,
-        due_day: dueDay ? parseInt(dueDay) : null,
+        closing_day: parseInt(closingDay),
+        due_day: parseInt(dueDay),
       });
       if (error) throw error;
     },
@@ -321,6 +324,7 @@ export default function CreditCards() {
     setBrand("");
     setCreditLimit("");
     setBestPurchaseDay("");
+    setClosingDay("");
     setDueDay("");
   };
 
@@ -412,18 +416,19 @@ export default function CreditCards() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Melhor dia de compra</Label>
+                  <Label>Dia de fechamento *</Label>
                   <Input 
                     type="number" 
                     min={1} 
                     max={31} 
-                    placeholder="1"
-                    value={bestPurchaseDay}
-                    onChange={(e) => setBestPurchaseDay(e.target.value)}
+                    placeholder="25"
+                    value={closingDay}
+                    onChange={(e) => setClosingDay(e.target.value)}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Dia de vencimento</Label>
+                  <Label>Dia de vencimento *</Label>
                   <Input 
                     type="number" 
                     min={1} 
@@ -431,8 +436,20 @@ export default function CreditCards() {
                     placeholder="10"
                     value={dueDay}
                     onChange={(e) => setDueDay(e.target.value)}
+                    required
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Melhor dia de compra</Label>
+                <Input 
+                  type="number" 
+                  min={1} 
+                  max={31} 
+                  placeholder="1"
+                  value={bestPurchaseDay}
+                  onChange={(e) => setBestPurchaseDay(e.target.value)}
+                />
               </div>
               <Button type="submit" variant="hero" className="w-full" disabled={createCard.isPending}>
                 {createCard.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Cartão"}
