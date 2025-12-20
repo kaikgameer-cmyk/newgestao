@@ -16,7 +16,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Calendar, AlertTriangle, CheckCircle2, Fuel, FileText, Pencil } from "lucide-react";
+import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Calendar, AlertTriangle, CheckCircle2, Fuel, FileText, Pencil, Banknote } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,7 +31,10 @@ export default function CreditCards() {
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<any>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
   const [name, setName] = useState("");
   const [lastDigits, setLastDigits] = useState("");
   const [brand, setBrand] = useState("");
@@ -207,6 +210,44 @@ export default function CreditCards() {
       toast({ title: error.message || "Erro ao atualizar cartão", variant: "destructive" });
     },
   });
+
+  // Payment mutation
+  const registerPayment = useMutation({
+    mutationFn: async () => {
+      if (!user || !selectedInvoice) throw new Error("Dados inválidos");
+      const amount = parseFloat(paymentAmount);
+      if (isNaN(amount) || amount <= 0) throw new Error("Valor inválido");
+      if (amount > Number(selectedInvoice.balance)) throw new Error("Valor maior que o saldo da fatura");
+
+      const { error } = await supabase.from("credit_card_transactions").insert({
+        user_id: user.id,
+        credit_card_id: selectedInvoice.credit_card_id,
+        invoice_id: selectedInvoice.id,
+        date: format(new Date(), "yyyy-MM-dd"),
+        amount: amount,
+        type: "payment",
+        description: `Pagamento fatura ${format(new Date(selectedInvoice.closing_date + 'T12:00:00'), "MMM/yy", { locale: ptBR })}`,
+        category: "pagamento",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      setIsPaymentDialogOpen(false);
+      setSelectedInvoice(null);
+      setPaymentAmount("");
+      toast({ title: "Pagamento registrado!", description: "O saldo da fatura foi atualizado." });
+    },
+    onError: (error: any) => {
+      toast({ title: error.message || "Erro ao registrar pagamento", variant: "destructive" });
+    },
+  });
+
+  const handleOpenPaymentDialog = (invoice: any) => {
+    setSelectedInvoice(invoice);
+    setPaymentAmount(Number(invoice.balance).toFixed(2));
+    setIsPaymentDialogOpen(true);
+  };
 
   const handleEditCard = (card: any) => {
     setEditingCard({
@@ -538,8 +579,8 @@ export default function CreditCards() {
                                 key={invoice.id} 
                                 className={`p-3 rounded-lg border ${isOverdue ? 'border-destructive/50 bg-destructive/5' : isClosed ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/30'}`}
                               >
-                                <div className="flex justify-between items-center">
-                                  <div>
+                                <div className="flex justify-between items-start gap-2">
+                                  <div className="flex-1">
                                     <p className="text-sm font-medium">
                                       Fatura {format(new Date(invoice.closing_date + 'T12:00:00'), "MMM/yy", { locale: ptBR })}
                                     </p>
@@ -547,7 +588,7 @@ export default function CreditCards() {
                                       Vence: {format(new Date(invoice.due_date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })}
                                     </p>
                                   </div>
-                                  <div className="text-right">
+                                  <div className="text-right flex-shrink-0">
                                     <p className={`text-sm font-bold ${isOverdue ? 'text-destructive' : ''}`}>
                                       {formatCurrencyBRL(Number(invoice.balance))}
                                     </p>
@@ -559,6 +600,18 @@ export default function CreditCards() {
                                       {isOverdue ? 'Vencida' : isClosed ? 'Fechada' : 'Aberta'}
                                     </span>
                                   </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-2 flex-shrink-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenPaymentDialog(invoice);
+                                    }}
+                                  >
+                                    <Banknote className="w-4 h-4 mr-1" />
+                                    Pagar
+                                  </Button>
                                 </div>
                               </div>
                             );
@@ -682,6 +735,103 @@ export default function CreditCards() {
                 {updateCard.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Alterações"}
               </Button>
             </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Banknote className="w-5 h-5 text-success" />
+              Registrar Pagamento
+            </DialogTitle>
+          </DialogHeader>
+          {selectedInvoice && (
+            <div className="space-y-4 py-4">
+              <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-muted-foreground">Fatura</span>
+                  <span className="font-medium">
+                    {format(new Date(selectedInvoice.closing_date + 'T12:00:00'), "MMMM/yyyy", { locale: ptBR })}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-muted-foreground">Vencimento</span>
+                  <span className="font-medium">
+                    {format(new Date(selectedInvoice.due_date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Saldo em aberto</span>
+                  <span className="font-bold text-lg">{formatCurrencyBRL(Number(selectedInvoice.balance))}</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="paymentAmount">Valor do pagamento</Label>
+                <Input
+                  id="paymentAmount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={Number(selectedInvoice.balance)}
+                  placeholder="0.00"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setPaymentAmount(Number(selectedInvoice.balance).toFixed(2))}
+                  >
+                    Pagar total
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setPaymentAmount((Number(selectedInvoice.balance) / 2).toFixed(2))}
+                  >
+                    Pagar 50%
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setIsPaymentDialogOpen(false);
+                    setSelectedInvoice(null);
+                    setPaymentAmount("");
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  variant="hero" 
+                  className="flex-1"
+                  onClick={() => registerPayment.mutate()}
+                  disabled={registerPayment.isPending || !paymentAmount || parseFloat(paymentAmount) <= 0}
+                >
+                  {registerPayment.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Confirmar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>
