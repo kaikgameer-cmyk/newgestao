@@ -666,11 +666,14 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          km_rodados: number | null
           notes: string | null
           receive_method: string | null
+          trips_count: number | null
           type: string
           updated_at: string
           user_id: string
+          worked_minutes: number | null
         }
         Insert: {
           amount: number
@@ -678,11 +681,14 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
+          km_rodados?: number | null
           notes?: string | null
           receive_method?: string | null
+          trips_count?: number | null
           type: string
           updated_at?: string
           user_id: string
+          worked_minutes?: number | null
         }
         Update: {
           amount?: number
@@ -690,11 +696,14 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          km_rodados?: number | null
           notes?: string | null
           receive_method?: string | null
+          trips_count?: number | null
           type?: string
           updated_at?: string
           user_id?: string
+          worked_minutes?: number | null
         }
         Relationships: []
       }

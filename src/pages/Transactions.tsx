@@ -52,6 +52,7 @@ export default function Transactions() {
   const [revenueNotes, setRevenueNotes] = useState("");
   const [revenueKmRodados, setRevenueKmRodados] = useState("");
   const [revenueHorasTrabalhadas, setRevenueHorasTrabalhadas] = useState("");
+  const [revenueTripsCount, setRevenueTripsCount] = useState("");
   
   // Expense form
   const [expenseDate, setExpenseDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -218,6 +219,15 @@ export default function Transactions() {
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
       
+      // Validate required fields
+      const kmRodados = parseInt(revenueKmRodados);
+      const horasTrabalhadas = parseTimeToMinutes(revenueHorasTrabalhadas);
+      const tripsCount = parseInt(revenueTripsCount);
+      
+      if (!kmRodados || kmRodados <= 0) throw new Error("KM rodados é obrigatório");
+      if (!horasTrabalhadas || horasTrabalhadas <= 0) throw new Error("Horas trabalhadas é obrigatório");
+      if (!tripsCount || tripsCount <= 0) throw new Error("Quantidade de viagens é obrigatória");
+      
       // Save the revenue - use custom label for "outro"
       const appValue = revenueApp === "outro" && revenueAppLabel ? revenueAppLabel : revenueApp;
       
@@ -229,41 +239,38 @@ export default function Transactions() {
         type: "total_diario",
         receive_method: revenueMethod || null,
         notes: revenueNotes || null,
+        trips_count: tripsCount,
+        km_rodados: kmRodados,
+        worked_minutes: horasTrabalhadas,
       });
       if (error) throw error;
       
-      // If KM or hours provided, upsert to daily_work_summary
-      const kmRodados = revenueKmRodados ? parseInt(revenueKmRodados) : null;
-      const horasTrabalhadas = revenueHorasTrabalhadas ? parseTimeToMinutes(revenueHorasTrabalhadas) : null;
+      // Also upsert to daily_work_summary (additive for multiple revenues same day)
+      const { data: existing } = await supabase
+        .from("daily_work_summary")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("date", revenueDate)
+        .maybeSingle();
       
-      if (kmRodados || horasTrabalhadas) {
-        // Check if exists
-        const { data: existing } = await supabase
-          .from("daily_work_summary")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("date", revenueDate)
-          .maybeSingle();
+      if (existing) {
+        // Add to existing values
+        const newKm = (existing.km_rodados || 0) + kmRodados;
+        const newMinutes = (existing.worked_minutes || 0) + horasTrabalhadas;
         
-        if (existing) {
-          const updates: any = {};
-          if (kmRodados) updates.km_rodados = kmRodados;
-          if (horasTrabalhadas) updates.worked_minutes = horasTrabalhadas;
-          
-          await supabase
-            .from("daily_work_summary")
-            .update(updates)
-            .eq("id", existing.id);
-        } else {
-          await supabase
-            .from("daily_work_summary")
-            .insert({
-              user_id: user.id,
-              date: revenueDate,
-              km_rodados: kmRodados,
-              worked_minutes: horasTrabalhadas,
-            });
-        }
+        await supabase
+          .from("daily_work_summary")
+          .update({ km_rodados: newKm, worked_minutes: newMinutes })
+          .eq("id", existing.id);
+      } else {
+        await supabase
+          .from("daily_work_summary")
+          .insert({
+            user_id: user.id,
+            date: revenueDate,
+            km_rodados: kmRodados,
+            worked_minutes: horasTrabalhadas,
+          });
       }
     },
     onSuccess: () => {
@@ -273,8 +280,8 @@ export default function Transactions() {
       resetRevenueForm();
       toast({ title: "Receita adicionada!" });
     },
-    onError: () => {
-      toast({ title: "Erro ao adicionar receita", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: error.message || "Erro ao adicionar receita", variant: "destructive" });
     },
   });
   
@@ -532,6 +539,7 @@ export default function Transactions() {
     setRevenueNotes("");
     setRevenueKmRodados("");
     setRevenueHorasTrabalhadas("");
+    setRevenueTripsCount("");
   };
 
   const resetExpenseForm = () => {
@@ -663,7 +671,7 @@ export default function Transactions() {
                         <Input type="date" value={revenueDate} onChange={(e) => setRevenueDate(e.target.value)} required />
                       </div>
                       <div className="space-y-2">
-                        <Label>Valor total do dia *</Label>
+                        <Label>Valor de entrada *</Label>
                         <Input type="number" step="0.01" placeholder="0.00" value={revenueAmount} onChange={(e) => setRevenueAmount(e.target.value)} required />
                       </div>
                     </div>
@@ -686,32 +694,54 @@ export default function Transactions() {
                       </div>
                     )}
                     
-                    {/* Optional: KM and Hours for the day */}
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+                    {/* Required: Trips, KM and Hours */}
+                    <div className="grid grid-cols-3 gap-3 pt-3 border-t border-border">
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1.5">
+                          <TrendingUp className="w-3.5 h-3.5" />
+                          Viagens *
+                        </Label>
+                        <Input 
+                          type="number" 
+                          placeholder="Ex: 15" 
+                          value={revenueTripsCount} 
+                          onChange={(e) => setRevenueTripsCount(e.target.value)} 
+                          required 
+                        />
+                      </div>
                       <div className="space-y-2">
                         <Label className="flex items-center gap-1.5">
                           <Gauge className="w-3.5 h-3.5" />
-                          KM rodados (opcional)
+                          KM rodados *
                         </Label>
-                        <Input type="number" placeholder="Ex: 200" value={revenueKmRodados} onChange={(e) => setRevenueKmRodados(e.target.value)} />
+                        <Input 
+                          type="number" 
+                          placeholder="Ex: 200" 
+                          value={revenueKmRodados} 
+                          onChange={(e) => setRevenueKmRodados(e.target.value)} 
+                          required 
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label className="flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5" />
-                          Horas (opcional)
+                          Horas *
                         </Label>
-                        <Input placeholder="Ex: 10:30" value={revenueHorasTrabalhadas} onChange={(e) => setRevenueHorasTrabalhadas(e.target.value)} />
+                        <Input 
+                          placeholder="Ex: 10:30" 
+                          value={revenueHorasTrabalhadas} 
+                          onChange={(e) => setRevenueHorasTrabalhadas(e.target.value)} 
+                          required 
+                        />
+                        <p className="text-[10px] text-muted-foreground">Formato HH:MM</p>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground -mt-2">
-                      Informe KM e horas para calcular R$/KM e R$/hora no Dashboard
-                    </p>
                     
                     <div className="space-y-2">
                       <Label>Observação (opcional)</Label>
                       <Input placeholder="Ex: Dia cheio" value={revenueNotes} onChange={(e) => setRevenueNotes(e.target.value)} />
                     </div>
-                    <Button type="submit" variant="hero" className="w-full" disabled={createRevenue.isPending}>
+                    <Button type="submit" variant="hero" className="w-full" disabled={createRevenue.isPending || !revenueKmRodados || !revenueHorasTrabalhadas || !revenueTripsCount}>
                       {createRevenue.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Receita"}
                     </Button>
                   </form>

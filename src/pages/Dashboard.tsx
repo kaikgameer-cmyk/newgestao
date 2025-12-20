@@ -30,7 +30,7 @@ import { GoalEditor } from "@/components/goals/GoalEditor";
 import { useDailyGoals } from "@/hooks/useDailyGoals";
 import { useMaintenance } from "@/hooks/useMaintenance";
 import { MaintenanceSummaryCard } from "@/components/maintenance/MaintenanceSummaryCard";
-import { DayYieldCard } from "@/components/dashboard/DayYieldCard";
+import { DayMetricsPanel } from "@/components/dashboard/DayMetricsPanel";
 import { PlatformBreakdownCard } from "@/components/dashboard/PlatformBreakdownCard";
 import { DailySummaryCard } from "@/components/dashboard/DailySummaryCard";
 import { format, eachDayOfInterval, isSameDay, startOfDay, endOfDay } from "date-fns";
@@ -271,72 +271,50 @@ export default function Dashboard() {
 
       {/* === DAY VIEW === */}
       {viewMode === "day" && (
-        <>
-          {/* Day Header Summary - Receita, Despesa, Lucro */}
-          <div className="grid grid-cols-3 gap-3">
-            <Card className="bg-card border-border">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <DollarSign className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Receita</span>
-                </div>
-                <p className="text-xl font-bold">
-                  R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="bg-card border-border">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingDown className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Despesas</span>
-                </div>
-                <p className="text-xl font-bold">
-                  R$ {totalAllExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className={`border-border ${netProfit < 0 ? "bg-destructive/5 border-destructive/20" : "bg-card"}`}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Lucro</span>
-                </div>
-                <p className={`text-xl font-bold ${netProfit < 0 ? "text-destructive" : "text-primary"}`}>
-                  R$ {netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+        (() => {
+          // Calculate day metrics from revenues
+          const dayTotalTrips = revenues.reduce((sum, r) => sum + (r.trips_count || 0), 0);
+          const dayKmRodados = revenues.reduce((sum, r) => sum + (r.km_rodados || 0), 0);
+          const dayWorkedMinutes = revenues.reduce((sum, r) => sum + (r.worked_minutes || 0), 0);
 
-          {/* Day Controls Row: Meta, Rendimento */}
-          <div className="grid md:grid-cols-2 gap-4">
-            <DailyGoalCard
-              goal={currentDayGoal}
-              revenue={totalRevenue}
-              label={`Meta de ${format(selectedDate, "dd/MM/yyyy")}`}
-            />
-            <DayYieldCard date={selectedDate} dayRevenue={totalRevenue} />
-          </div>
+          return (
+            <>
+              {/* Daily Goal Card */}
+              <DailyGoalCard
+                goal={currentDayGoal}
+                revenue={totalRevenue}
+                label={`Meta de ${format(selectedDate, "dd/MM/yyyy")}`}
+              />
 
-          {/* Platform Breakdown */}
-          <PlatformBreakdownCard revenues={revenues} />
+              {/* Day Metrics Panel - Full metrics grid */}
+              <DayMetricsPanel
+                totalTrips={dayTotalTrips}
+                workedMinutes={dayWorkedMinutes}
+                kmRodados={dayKmRodados}
+                revenue={totalRevenue}
+                expenses={totalAllExpenses}
+              />
 
-          {/* Daily Summary with transactions */}
-          <DailySummaryCard
-            revenues={revenues}
-            expenses={combinedExpenses}
-            recurringTotal={calculateDailyRecurringAmount(recurringExpenses, selectedDate).total}
-            totalRevenue={totalRevenue}
-            totalExpenses={totalAllExpenses}
-            netProfit={netProfit}
-          />
+              {/* Platform Breakdown */}
+              <PlatformBreakdownCard revenues={revenues} />
 
-          {/* Expenses by Category - Compact for day view */}
-          {expenseCategoriesData.length > 0 && (
-            <ExpensesByCategoryChart data={expenseCategoriesData} compact />
-          )}
-        </>
+              {/* Daily Summary with transactions */}
+              <DailySummaryCard
+                revenues={revenues}
+                expenses={combinedExpenses}
+                recurringTotal={calculateDailyRecurringAmount(recurringExpenses, selectedDate).total}
+                totalRevenue={totalRevenue}
+                totalExpenses={totalAllExpenses}
+                netProfit={netProfit}
+              />
+
+              {/* Expenses by Category - Compact for day view */}
+              {expenseCategoriesData.length > 0 && (
+                <ExpensesByCategoryChart data={expenseCategoriesData} compact />
+              )}
+            </>
+          );
+        })()
       )}
 
       {/* === PERIOD VIEW === */}
