@@ -25,6 +25,9 @@ import PlatformGuide from "./pages/PlatformGuide";
 import Goals from "./pages/Goals";
 import TimerPage from "./pages/Timer";
 import NotFound from "./pages/NotFound";
+import Competitions from "./pages/Competitions";
+import CompetitionDetails from "./pages/CompetitionDetails";
+import JoinCompetition from "./pages/JoinCompetition";
 
 const App = () => {
   const [queryClient] = useState(() => new QueryClient());
@@ -62,6 +65,9 @@ const App = () => {
             <Route path="assinatura" element={<SubscriptionPage />} />
             <Route path="guia" element={<PlatformGuide />} />
             <Route path="admin" element={<AdminPage />} />
+            <Route path="competicoes" element={<Competitions />} />
+            <Route path="competicoes/entrar" element={<JoinCompetition />} />
+            <Route path="competicoes/:code" element={<CompetitionDetails />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

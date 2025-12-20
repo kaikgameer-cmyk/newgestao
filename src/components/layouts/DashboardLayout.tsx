@@ -19,6 +19,7 @@ import {
   Book,
   Target,
   Timer,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
@@ -119,6 +120,7 @@ export default function DashboardLayout() {
     { icon: Wrench, label: "Manutenção", path: "/dashboard/manutencao" },
     { icon: Repeat, label: "Despesas Fixas", path: "/dashboard/despesas-fixas" },
     { icon: Timer, label: "Timer", path: "/dashboard/timer" },
+    { icon: Trophy, label: "Competições", path: "/dashboard/competicoes" },
     { icon: Crown, label: "Assinatura", path: "/dashboard/assinatura" },
     { icon: Book, label: "Guia da Plataforma", path: "/dashboard/guia" },
     { icon: Settings, label: "Configurações", path: "/dashboard/configuracoes" },
