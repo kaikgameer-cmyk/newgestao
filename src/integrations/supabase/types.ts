@@ -281,6 +281,36 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_work_summary: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          km_rodados: number | null
+          updated_at: string
+          user_id: string
+          worked_minutes: number | null
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          km_rodados?: number | null
+          updated_at?: string
+          user_id: string
+          worked_minutes?: number | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          km_rodados?: number | null
+          updated_at?: string
+          user_id?: string
+          worked_minutes?: number | null
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number

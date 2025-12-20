@@ -92,7 +92,7 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
                       R$ {platform.total.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {platform.count} {platform.count === 1 ? "corrida" : "corridas"} • {percentage.toFixed(0)}%
+                      {percentage.toFixed(0)}% do total
                     </p>
                   </div>
                 );

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, TrendingDown, DollarSign, Calendar, PlusCircle, Target, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Calendar, PlusCircle, Clock, Target, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { GlobalDateFilter } from "@/components/GlobalDateFilter";
@@ -9,8 +9,6 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { DatePreset, useDateFilterPresets } from "@/hooks/useDateFilterPresets";
 import { DateRange } from "react-day-picker";
 import {
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   XAxis,
@@ -31,10 +29,8 @@ import { PeriodGoalCard } from "@/components/goals/PeriodGoalCard";
 import { GoalEditor } from "@/components/goals/GoalEditor";
 import { useDailyGoals } from "@/hooks/useDailyGoals";
 import { useMaintenance } from "@/hooks/useMaintenance";
-import { useWorkSession } from "@/hooks/useWorkSession";
 import { MaintenanceSummaryCard } from "@/components/maintenance/MaintenanceSummaryCard";
-import { DailyKmCard } from "@/components/dashboard/DailyKmCard";
-import { WorkTimerCard } from "@/components/dashboard/WorkTimerCard";
+import { DayYieldCard } from "@/components/dashboard/DayYieldCard";
 import { PlatformBreakdownCard } from "@/components/dashboard/PlatformBreakdownCard";
 import { DailySummaryCard } from "@/components/dashboard/DailySummaryCard";
 import { format, eachDayOfInterval, isSameDay, startOfDay, endOfDay } from "date-fns";
@@ -101,15 +97,6 @@ export default function Dashboard() {
   // Fetch maintenance data
   const { getCounts: getMaintenanceCounts } = useMaintenance();
   const maintenanceCounts = getMaintenanceCounts();
-
-  // Fetch work sessions for day view
-  const { getSessionsForDate } = useWorkSession();
-  
-  // Calculate worked hours for the selected day
-  const dayWorkedSeconds = viewMode === "day" 
-    ? getSessionsForDate(selectedDate).reduce((sum, s) => sum + s.total_worked_seconds, 0)
-    : 0;
-  const dayWorkedHours = dayWorkedSeconds / 3600;
 
   // Calculate recurring expenses for the period
   const daysInPeriod = eachDayOfInterval({ start: periodStart, end: periodEnd }).length;
@@ -322,15 +309,14 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Day Controls Row: Meta, KM, Timer */}
-          <div className="grid md:grid-cols-3 gap-4">
+          {/* Day Controls Row: Meta, Rendimento */}
+          <div className="grid md:grid-cols-2 gap-4">
             <DailyGoalCard
               goal={currentDayGoal}
               revenue={totalRevenue}
               label={`Meta de ${format(selectedDate, "dd/MM/yyyy")}`}
             />
-            <DailyKmCard date={selectedDate} dayRevenue={totalRevenue} dayWorkedHours={dayWorkedHours} />
-            <WorkTimerCard currentDate={selectedDate} />
+            <DayYieldCard date={selectedDate} dayRevenue={totalRevenue} />
           </div>
 
           {/* Platform Breakdown */}

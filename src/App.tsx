@@ -23,6 +23,7 @@ import SubscriptionPage from "./pages/Subscription";
 import AdminPage from "./pages/Admin";
 import PlatformGuide from "./pages/PlatformGuide";
 import Goals from "./pages/Goals";
+import TimerPage from "./pages/Timer";
 import NotFound from "./pages/NotFound";
 
 const App = () => {
@@ -56,6 +57,7 @@ const App = () => {
             <Route path="combustivel" element={<FuelControl />} />
             <Route path="manutencao" element={<Maintenance />} />
             <Route path="despesas-fixas" element={<RecurringExpenses />} />
+            <Route path="timer" element={<TimerPage />} />
             <Route path="configuracoes" element={<SettingsPage />} />
             <Route path="assinatura" element={<SubscriptionPage />} />
             <Route path="guia" element={<PlatformGuide />} />

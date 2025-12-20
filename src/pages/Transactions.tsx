@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle, CreditCard, Pencil, DollarSign, Fuel, AlertTriangle } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle, CreditCard, Pencil, DollarSign, Fuel, AlertTriangle, Gauge, Clock } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,7 +28,7 @@ import { GlobalDateFilter } from "@/components/GlobalDateFilter";
 import { DatePreset, useDateFilterPresets } from "@/hooks/useDateFilterPresets";
 import { DateRange } from "react-day-picker";
 import { format, isWithinInterval } from "date-fns";
-import { parseLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
 import { useMaintenance } from "@/hooks/useMaintenance";
 
 export default function Transactions() {
@@ -47,8 +47,11 @@ export default function Transactions() {
   const [revenueDate, setRevenueDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [revenueAmount, setRevenueAmount] = useState("");
   const [revenueApp, setRevenueApp] = useState("");
+  const [revenueAppLabel, setRevenueAppLabel] = useState(""); // For "Outro" custom label
   const [revenueMethod, setRevenueMethod] = useState("");
   const [revenueNotes, setRevenueNotes] = useState("");
+  const [revenueKmRodados, setRevenueKmRodados] = useState("");
+  const [revenueHorasTrabalhadas, setRevenueHorasTrabalhadas] = useState("");
   
   // Expense form
   const [expenseDate, setExpenseDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -214,19 +217,58 @@ export default function Transactions() {
   const createRevenue = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
+      
+      // Save the revenue - use custom label for "outro"
+      const appValue = revenueApp === "outro" && revenueAppLabel ? revenueAppLabel : revenueApp;
+      
       const { error } = await supabase.from("revenues").insert({
         user_id: user.id,
         date: revenueDate,
         amount: parseFloat(revenueAmount),
-        app: revenueApp,
+        app: appValue,
         type: "total_diario",
         receive_method: revenueMethod || null,
         notes: revenueNotes || null,
       });
       if (error) throw error;
+      
+      // If KM or hours provided, upsert to daily_work_summary
+      const kmRodados = revenueKmRodados ? parseInt(revenueKmRodados) : null;
+      const horasTrabalhadas = revenueHorasTrabalhadas ? parseTimeToMinutes(revenueHorasTrabalhadas) : null;
+      
+      if (kmRodados || horasTrabalhadas) {
+        // Check if exists
+        const { data: existing } = await supabase
+          .from("daily_work_summary")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("date", revenueDate)
+          .maybeSingle();
+        
+        if (existing) {
+          const updates: any = {};
+          if (kmRodados) updates.km_rodados = kmRodados;
+          if (horasTrabalhadas) updates.worked_minutes = horasTrabalhadas;
+          
+          await supabase
+            .from("daily_work_summary")
+            .update(updates)
+            .eq("id", existing.id);
+        } else {
+          await supabase
+            .from("daily_work_summary")
+            .insert({
+              user_id: user.id,
+              date: revenueDate,
+              km_rodados: kmRodados,
+              worked_minutes: horasTrabalhadas,
+            });
+        }
+      }
     },
     onSuccess: () => {
       invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["daily_work_summary"] });
       setIsDialogOpen(false);
       resetRevenueForm();
       toast({ title: "Receita adicionada!" });
@@ -235,6 +277,19 @@ export default function Transactions() {
       toast({ title: "Erro ao adicionar receita", variant: "destructive" });
     },
   });
+  
+  // Helper to parse HH:MM to minutes
+  const parseTimeToMinutes = (time: string): number => {
+    if (!time) return 0;
+    // Support both HH:MM and decimal formats
+    if (time.includes(":")) {
+      const [hours, mins] = time.split(":").map(Number);
+      return (hours || 0) * 60 + (mins || 0);
+    }
+    // Decimal format (e.g. 10.5 = 10h30min)
+    const decimal = parseFloat(time);
+    return Math.round(decimal * 60);
+  };
 
   const createExpense = useMutation({
     mutationFn: async () => {
@@ -472,8 +527,11 @@ export default function Transactions() {
     setRevenueDate(format(new Date(), "yyyy-MM-dd"));
     setRevenueAmount("");
     setRevenueApp("");
+    setRevenueAppLabel("");
     setRevenueMethod("");
     setRevenueNotes("");
+    setRevenueKmRodados("");
+    setRevenueHorasTrabalhadas("");
   };
 
   const resetExpenseForm = () => {
@@ -610,7 +668,7 @@ export default function Transactions() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>App *</Label>
+                      <Label>Plataforma *</Label>
                       <Select value={revenueApp} onValueChange={setRevenueApp} required>
                         <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                         <SelectContent>
@@ -621,20 +679,37 @@ export default function Transactions() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Método de recebimento</Label>
-                      <Select value={revenueMethod} onValueChange={setRevenueMethod}>
-                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="conta">Conta</SelectItem>
-                          <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                          <SelectItem value="pix">PIX</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    {revenueApp === "outro" && (
+                      <div className="space-y-2">
+                        <Label>Nome da plataforma *</Label>
+                        <Input placeholder="Ex: Drive, Particular" value={revenueAppLabel} onChange={(e) => setRevenueAppLabel(e.target.value)} required />
+                      </div>
+                    )}
+                    
+                    {/* Optional: KM and Hours for the day */}
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1.5">
+                          <Gauge className="w-3.5 h-3.5" />
+                          KM rodados (opcional)
+                        </Label>
+                        <Input type="number" placeholder="Ex: 200" value={revenueKmRodados} onChange={(e) => setRevenueKmRodados(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          Horas (opcional)
+                        </Label>
+                        <Input placeholder="Ex: 10:30" value={revenueHorasTrabalhadas} onChange={(e) => setRevenueHorasTrabalhadas(e.target.value)} />
+                      </div>
                     </div>
+                    <p className="text-xs text-muted-foreground -mt-2">
+                      Informe KM e horas para calcular R$/KM e R$/hora no Dashboard
+                    </p>
+                    
                     <div className="space-y-2">
                       <Label>Observação (opcional)</Label>
-                      <Input placeholder="Ex: Dia cheio, muitas corridas longas" value={revenueNotes} onChange={(e) => setRevenueNotes(e.target.value)} />
+                      <Input placeholder="Ex: Dia cheio" value={revenueNotes} onChange={(e) => setRevenueNotes(e.target.value)} />
                     </div>
                     <Button type="submit" variant="hero" className="w-full" disabled={createRevenue.isPending}>
                       {createRevenue.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Receita"}
