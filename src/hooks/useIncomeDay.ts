@@ -9,7 +9,7 @@ export interface IncomeDayItem {
   platform: string;
   platform_label?: string | null;
   amount: number;
-  trips: number;
+  trips: number; // kept for backwards compatibility, but now at day level
   payment_method?: string | null;
   notes?: string | null;
 }
@@ -19,6 +19,7 @@ export interface IncomeDay {
   date: string;
   km_rodados: number;
   hours_minutes: number;
+  trips?: number; // total trips for the day
   notes?: string | null;
   items: IncomeDayItem[];
 }
@@ -127,17 +128,11 @@ export function useIncomeDay(selectedDate?: Date) {
         throw new Error("Horas trabalhadas é obrigatório");
       }
       if (!data.items || data.items.length === 0) {
-        throw new Error("Adicione pelo menos uma plataforma");
+        throw new Error("Adicione pelo menos uma plataforma com valor");
       }
 
-      for (const item of data.items) {
-        if (!item.amount || item.amount <= 0) {
-          throw new Error(`Valor é obrigatório para ${item.platform}`);
-        }
-        if (!item.trips || item.trips <= 0) {
-          throw new Error(`Quantidade de viagens é obrigatória para ${item.platform}`);
-        }
-      }
+      // Calculate total trips from items or use day-level trips
+      const totalTrips = data.items.reduce((sum, item) => sum + (item.trips || 0), 0);
 
       // Upsert income_day
       const { data: dayResult, error: dayError } = await supabase
@@ -169,30 +164,35 @@ export function useIncomeDay(selectedDate?: Date) {
 
       if (deleteError) throw deleteError;
 
-      // Insert new items
-      const itemsToInsert = data.items.map((item) => ({
-        income_day_id: incomeDayId,
-        user_id: user.id,
-        platform: item.platform,
-        platform_label: item.platform === "other" ? item.platform_label : null,
-        amount: item.amount,
-        trips: item.trips,
-        payment_method: item.payment_method || null,
-        notes: item.notes || null,
-      }));
+      // Insert new items (only those with amount > 0)
+      const itemsToInsert = data.items
+        .filter((item) => item.amount > 0)
+        .map((item) => ({
+          income_day_id: incomeDayId,
+          user_id: user.id,
+          platform: item.platform,
+          platform_label: item.platform_label || null,
+          amount: item.amount,
+          trips: item.trips || 0,
+          payment_method: item.payment_method || null,
+          notes: item.notes || null,
+        }));
 
-      const { error: insertError } = await supabase
-        .from("income_day_items")
-        .insert(itemsToInsert);
+      if (itemsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from("income_day_items")
+          .insert(itemsToInsert);
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
+      }
 
       return incomeDayId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["income_day"] });
       queryClient.invalidateQueries({ queryKey: ["income_days"] });
-      queryClient.invalidateQueries({ queryKey: ["revenues"] }); // Keep legacy queries fresh
+      queryClient.invalidateQueries({ queryKey: ["revenues"] });
+      queryClient.invalidateQueries({ queryKey: ["revenue_by_platform"] });
       toast({ title: "Receita do dia salva!" });
     },
     onError: (error: Error) => {

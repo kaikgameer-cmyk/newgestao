@@ -525,6 +525,7 @@ export type Database = {
           id: string
           km_rodados: number
           notes: string | null
+          trips: number
           updated_at: string
           user_id: string
         }
@@ -535,6 +536,7 @@ export type Database = {
           id?: string
           km_rodados?: number
           notes?: string | null
+          trips?: number
           updated_at?: string
           user_id: string
         }
@@ -545,6 +547,7 @@ export type Database = {
           id?: string
           km_rodados?: number
           notes?: string | null
+          trips?: number
           updated_at?: string
           user_id?: string
         }
@@ -672,6 +675,7 @@ export type Database = {
           is_other: boolean
           key: string
           name: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -680,6 +684,7 @@ export type Database = {
           is_other?: boolean
           key: string
           name: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -688,6 +693,7 @@ export type Database = {
           is_other?: boolean
           key?: string
           name?: string
+          user_id?: string | null
         }
         Relationships: []
       }
