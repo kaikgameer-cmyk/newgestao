@@ -9,6 +9,7 @@ interface ExpenseCategory {
 
 interface ExpensesByCategoryChartProps {
   data: ExpenseCategory[];
+  compact?: boolean;
 }
 
 const COLORS = [
@@ -30,7 +31,7 @@ const COLORS = [
  * - Tablet: Gráfico médio + legenda ao lado
  * - Desktop: Gráfico maior + legenda ao lado
  */
-export function ExpensesByCategoryChart({ data }: ExpensesByCategoryChartProps) {
+export function ExpensesByCategoryChart({ data, compact = false }: ExpensesByCategoryChartProps) {
   // Assign colors to data if not already set
   const chartData = data.map((item, index) => ({
     ...item,
@@ -42,12 +43,12 @@ export function ExpensesByCategoryChart({ data }: ExpensesByCategoryChartProps) 
   if (chartData.length === 0) {
     return (
       <Card variant="elevated">
-        <CardHeader>
-          <CardTitle className="text-lg">Despesas por Categoria</CardTitle>
+        <CardHeader className={compact ? "pb-2" : ""}>
+          <CardTitle className={compact ? "text-base" : "text-lg"}>Despesas por Categoria</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[200px] sm:h-[250px] lg:h-[300px] flex items-center justify-center text-muted-foreground">
-            Nenhuma despesa registrada
+          <div className={`${compact ? "h-[120px]" : "h-[200px] sm:h-[250px] lg:h-[300px]"} flex items-center justify-center text-muted-foreground text-sm`}>
+            Sem despesas neste dia
           </div>
         </CardContent>
       </Card>
@@ -56,14 +57,14 @@ export function ExpensesByCategoryChart({ data }: ExpensesByCategoryChartProps) 
 
   return (
     <Card variant="elevated">
-      <CardHeader>
-        <CardTitle className="text-lg">Despesas por Categoria</CardTitle>
+      <CardHeader className={compact ? "pb-2" : ""}>
+        <CardTitle className={compact ? "text-base" : "text-lg"}>Despesas por Categoria</CardTitle>
       </CardHeader>
-      <CardContent className="p-3 sm:p-6">
+      <CardContent className={compact ? "p-3" : "p-3 sm:p-6"}>
         {/* Container responsivo - empilha em mobile, lado a lado em tablet+ */}
-        <div className="flex flex-col md:flex-row items-center gap-3 sm:gap-6">
+        <div className={`flex ${compact ? "flex-row" : "flex-col md:flex-row"} items-center gap-3 sm:gap-6`}>
           {/* Gráfico - tamanho adaptativo com aspect ratio fixo */}
-          <div className="w-full md:w-1/2 aspect-square max-h-[200px] sm:max-h-[220px] md:max-h-[250px] flex items-center justify-center">
+          <div className={`${compact ? "w-32 h-32" : "w-full md:w-1/2 aspect-square max-h-[200px] sm:max-h-[220px] md:max-h-[250px]"} flex items-center justify-center`}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
                 <Pie
@@ -98,7 +99,7 @@ export function ExpensesByCategoryChart({ data }: ExpensesByCategoryChartProps) 
           </div>
 
           {/* Legenda - responsiva com grid em mobile */}
-          <div className="w-full md:w-1/2 grid grid-cols-1 xs:grid-cols-2 md:grid-cols-1 gap-2 sm:gap-3 overflow-auto max-h-[180px] sm:max-h-[220px] md:max-h-[250px] px-1">
+          <div className={`${compact ? "flex-1" : "w-full md:w-1/2"} grid grid-cols-1 ${compact ? "" : "xs:grid-cols-2 md:grid-cols-1"} gap-2 sm:gap-3 overflow-auto ${compact ? "max-h-[130px]" : "max-h-[180px] sm:max-h-[220px] md:max-h-[250px]"} px-1`}>
             {chartData.map((category, index) => {
               const percentage = ((category.value / totalValue) * 100).toFixed(1);
               return (

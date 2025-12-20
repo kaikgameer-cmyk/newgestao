@@ -195,43 +195,26 @@ export default function Dashboard() {
 
   const hasData = revenues.length > 0 || combinedExpenses.length > 0;
 
-  const kpis = viewMode === "day" ? [
-    {
-      title: "Receita",
-      value: `R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      icon: DollarSign,
-      highlight: false,
-    },
-    {
-      title: "Despesas",
-      value: `R$ ${totalAllExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      icon: TrendingDown,
-      highlight: false,
-    },
-    {
-      title: "Lucro",
-      value: `R$ ${netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      icon: TrendingUp,
-      highlight: true,
-    },
-  ] : [
+  // Period view KPIs
+  const periodKpis = [
     {
       title: "Receita Total",
-      value: `R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+      value: `R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: DollarSign,
       highlight: false,
     },
     {
       title: "Despesas",
-      value: `R$ ${totalAllExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+      value: `R$ ${totalAllExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: TrendingDown,
       highlight: false,
     },
     {
       title: "Lucro Líquido",
-      value: `R$ ${netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+      value: `R$ ${netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: TrendingUp,
       highlight: true,
+      isNegative: netProfit < 0,
     },
     {
       title: "Dias Rodados",
@@ -241,7 +224,7 @@ export default function Dashboard() {
     },
     {
       title: "Média/Dia",
-      value: `R$ ${avgPerDay.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+      value: `R$ ${avgPerDay.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: Clock,
       highlight: false,
     },
@@ -289,71 +272,61 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Goals Section */}
-      {viewMode === "period" && !isSingleDay ? (
-        <PeriodGoalCard
-          days={periodGoalsData}
-          periodLabel={
-            preset === "last7days"
-              ? "Últimos 7 dias"
-              : preset === "last30days"
-              ? "Últimos 30 dias"
-              : preset === "thisMonth"
-              ? "Este mês"
-              : "Período selecionado"
-          }
-        />
-      ) : isSingleDay && viewMode === "period" ? (
-        <DailyGoalCard
-          goal={currentDayGoal}
-          revenue={totalRevenue}
-          label={`Meta de ${format(periodStart, "dd/MM/yyyy")}`}
-        />
-      ) : null}
-
-      {/* KPI Cards */}
-      <div className={`grid gap-3 sm:gap-4 ${viewMode === "day" ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"}`}>
-        {kpis.map((kpi, index) => (
-          <Card
-            key={index}
-            variant={kpi.highlight ? "elevated" : "default"}
-            className={kpi.highlight ? "bg-gradient-card border-primary/30" : ""}
-          >
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <kpi.icon className={`w-4 h-4 ${kpi.highlight ? "text-primary" : "text-muted-foreground"}`} />
-                <span className="text-xs text-muted-foreground">{kpi.title}</span>
-              </div>
-              <p className={`text-lg sm:text-xl font-bold truncate ${kpi.highlight ? "text-primary" : ""}`}>
-                {kpi.value}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Day View - Additional Cards */}
+      {/* === DAY VIEW === */}
       {viewMode === "day" && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Daily Goal */}
-          <DailyGoalCard
-            goal={currentDayGoal}
-            revenue={totalRevenue}
-            label={`Meta de ${format(selectedDate, "dd/MM/yyyy")}`}
-          />
+        <>
+          {/* Day Header Summary - Receita, Despesa, Lucro */}
+          <div className="grid grid-cols-3 gap-3">
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <DollarSign className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Receita</span>
+                </div>
+                <p className="text-xl font-bold">
+                  R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingDown className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Despesas</span>
+                </div>
+                <p className="text-xl font-bold">
+                  R$ {totalAllExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className={`border-border ${netProfit < 0 ? "bg-destructive/5 border-destructive/20" : "bg-card"}`}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Lucro</span>
+                </div>
+                <p className={`text-xl font-bold ${netProfit < 0 ? "text-destructive" : "text-primary"}`}>
+                  R$ {netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-          {/* KM Card */}
-          <DailyKmCard date={selectedDate} />
+          {/* Day Controls Row: Meta, KM, Timer */}
+          <div className="grid md:grid-cols-3 gap-4">
+            <DailyGoalCard
+              goal={currentDayGoal}
+              revenue={totalRevenue}
+              label={`Meta de ${format(selectedDate, "dd/MM/yyyy")}`}
+            />
+            <DailyKmCard date={selectedDate} />
+            <WorkTimerCard currentDate={selectedDate} />
+          </div>
 
-          {/* Work Timer */}
-          <WorkTimerCard currentDate={selectedDate} />
-        </div>
-      )}
-
-      {/* Day View - Platform Breakdown & Summary */}
-      {viewMode === "day" && (
-        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Platform Breakdown */}
           <PlatformBreakdownCard revenues={revenues} />
+
+          {/* Daily Summary with transactions */}
           <DailySummaryCard
             revenues={revenues}
             expenses={combinedExpenses}
@@ -362,7 +335,60 @@ export default function Dashboard() {
             totalExpenses={totalAllExpenses}
             netProfit={netProfit}
           />
-        </div>
+
+          {/* Expenses by Category - Compact for day view */}
+          {expenseCategoriesData.length > 0 && (
+            <ExpensesByCategoryChart data={expenseCategoriesData} compact />
+          )}
+        </>
+      )}
+
+      {/* === PERIOD VIEW === */}
+      {viewMode === "period" && (
+        <>
+          {/* Goals Section */}
+          {!isSingleDay ? (
+            <PeriodGoalCard
+              days={periodGoalsData}
+              periodLabel={
+                preset === "last7days"
+                  ? "Últimos 7 dias"
+                  : preset === "last30days"
+                  ? "Últimos 30 dias"
+                  : preset === "thisMonth"
+                  ? "Este mês"
+                  : "Período selecionado"
+              }
+            />
+          ) : (
+            <DailyGoalCard
+              goal={currentDayGoal}
+              revenue={totalRevenue}
+              label={`Meta de ${format(periodStart, "dd/MM/yyyy")}`}
+            />
+          )}
+
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+            {periodKpis.map((kpi, index) => (
+              <Card
+                key={index}
+                variant={kpi.highlight ? "elevated" : "default"}
+                className={kpi.highlight ? "bg-gradient-card border-primary/30" : ""}
+              >
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <kpi.icon className={`w-4 h-4 ${kpi.highlight ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className="text-xs text-muted-foreground">{kpi.title}</span>
+                  </div>
+                  <p className={`text-lg sm:text-xl font-bold truncate ${kpi.highlight && !kpi.isNegative ? "text-primary" : ""} ${kpi.isNegative ? "text-destructive" : ""}`}>
+                    {kpi.value}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Maintenance Summary Card - both views */}
@@ -554,11 +580,6 @@ export default function Dashboard() {
             <ExpensesByCategoryChart data={expenseCategoriesData} />
           </div>
         </>
-      )}
-
-      {/* Day View - Expense Categories */}
-      {viewMode === "day" && expenseCategoriesData.length > 0 && (
-        <ExpensesByCategoryChart data={expenseCategoriesData} />
       )}
 
       {/* Profit Comparison Chart - Always show if there's any data (period view only) */}

@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Car } from "lucide-react";
+import { Car, Inbox } from "lucide-react";
 
 interface PlatformData {
   name: string;
@@ -11,11 +11,10 @@ interface PlatformBreakdownCardProps {
   revenues: Array<{ app: string; amount: number }>;
 }
 
-export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) {
-  if (revenues.length === 0) {
-    return null;
-  }
+// Known platforms with their colors
+const KNOWN_PLATFORMS = ["uber", "99", "indrive", "99pop", "uber eats", "ifood", "rappi"];
 
+export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) {
   // Group by platform
   const platformData = revenues.reduce((acc, r) => {
     const platform = r.app || "Outros";
@@ -53,6 +52,9 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
     return platformColors[normalized] || "bg-primary";
   };
 
+  // Build list of all platforms (known + any extras that have data)
+  const allPlatformNames = [...new Set([...KNOWN_PLATFORMS.slice(0, 4), ...platforms.map(p => p.name.toLowerCase())])];
+
   return (
     <Card variant="elevated">
       <CardHeader className="pb-3">
@@ -61,39 +63,51 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
           Receita por Plataforma
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {platforms.map((platform) => {
-          const percentage = totalRevenue > 0 ? (platform.total / totalRevenue) * 100 : 0;
-          return (
-            <div key={platform.name} className="space-y-1">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2.5 h-2.5 rounded-full ${getColorForPlatform(platform.name)}`} />
-                  <span className="font-medium capitalize">{platform.name}</span>
-                  <span className="text-muted-foreground text-xs">
-                    ({platform.count} {platform.count === 1 ? "corrida" : "corridas"})
-                  </span>
-                </div>
-                <span className="font-bold">
-                  R$ {platform.total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-1.5">
-                <div
-                  className={`h-1.5 rounded-full transition-all ${getColorForPlatform(platform.name)}`}
-                  style={{ width: `${percentage}%` }}
-                />
-              </div>
+      <CardContent>
+        {revenues.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
+            <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center">
+              <Inbox className="w-5 h-5 text-muted-foreground" />
             </div>
-          );
-        })}
+            <p className="text-sm text-muted-foreground">
+              Nenhuma receita neste dia
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {/* Platform cards in a grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {platforms.map((platform) => {
+                const percentage = totalRevenue > 0 ? (platform.total / totalRevenue) * 100 : 0;
+                return (
+                  <div
+                    key={platform.name}
+                    className="p-3 rounded-lg bg-secondary/30 border border-border space-y-1"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2.5 h-2.5 rounded-full ${getColorForPlatform(platform.name)}`} />
+                      <span className="font-medium capitalize text-sm truncate">{platform.name}</span>
+                    </div>
+                    <p className="text-lg font-bold">
+                      R$ {platform.total.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {platform.count} {platform.count === 1 ? "corrida" : "corridas"} • {percentage.toFixed(0)}%
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
 
-        <div className="pt-3 mt-3 border-t border-border flex justify-between">
-          <span className="text-sm font-medium">Total</span>
-          <span className="font-bold text-primary">
-            R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-          </span>
-        </div>
+            {/* Total */}
+            <div className="pt-3 border-t border-border flex justify-between items-center">
+              <span className="text-sm font-medium">Total do dia</span>
+              <span className="font-bold text-lg text-primary">
+                R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
