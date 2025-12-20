@@ -160,6 +160,43 @@ export default function Transactions() {
   const totalExpense = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
   const netBalance = totalRevenue - totalExpense;
 
+  // Fuel-specific KPIs (for when combustivel filter is active)
+  const fuelExpenses = expenses.filter((e) => !!e.fuel_log_id && e.fuel_logs);
+  const fuelKpis = (() => {
+    if (fuelExpenses.length === 0) return null;
+    
+    const totalLiters = fuelExpenses.reduce((sum, e) => sum + Number(e.fuel_logs?.liters || 0), 0);
+    const totalCost = fuelExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const avgPricePerLiter = totalLiters > 0 ? totalCost / totalLiters : 0;
+    
+    // Calculate average consumption (km/L) from consecutive odometer readings
+    const fuelWithOdometer = fuelExpenses
+      .filter((e) => e.fuel_logs?.odometer_km)
+      .sort((a, b) => Number(a.fuel_logs?.odometer_km) - Number(b.fuel_logs?.odometer_km));
+    
+    let totalKm = 0;
+    let totalLitersForConsumption = 0;
+    for (let i = 1; i < fuelWithOdometer.length; i++) {
+      const kmDiff = Number(fuelWithOdometer[i].fuel_logs?.odometer_km) - Number(fuelWithOdometer[i - 1].fuel_logs?.odometer_km);
+      if (kmDiff > 0) {
+        totalKm += kmDiff;
+        totalLitersForConsumption += Number(fuelWithOdometer[i].fuel_logs?.liters || 0);
+      }
+    }
+    
+    const avgConsumption = totalLitersForConsumption > 0 ? totalKm / totalLitersForConsumption : 0;
+    const costPerKm = totalKm > 0 ? totalCost / totalKm : 0;
+    
+    return {
+      totalLiters,
+      totalCost,
+      avgPricePerLiter,
+      avgConsumption,
+      costPerKm,
+      fuelingsCount: fuelExpenses.length,
+    };
+  })();
+
   const createRevenue = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
@@ -789,48 +826,105 @@ export default function Transactions() {
         />
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4">
-        <Card variant="elevated">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3 mb-2">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-success/10 flex items-center justify-center">
-                <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-success" />
+      {/* Summary Cards - Show fuel KPIs when combustivel filter is active */}
+      {typeFilter === "combustivel" && fuelKpis ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <Card variant="elevated">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Fuel className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">Média km/L</span>
               </div>
-              <span className="text-xs sm:text-sm text-muted-foreground">Receitas</span>
-            </div>
-            <p className="text-sm sm:text-lg font-bold text-success">
-              R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-            </p>
-          </CardContent>
-        </Card>
-        <Card variant="elevated">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3 mb-2">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive" />
+              <p className="text-sm sm:text-lg font-bold text-foreground">
+                {fuelKpis.avgConsumption > 0 ? fuelKpis.avgConsumption.toFixed(1) : "—"} km/L
+              </p>
+            </CardContent>
+          </Card>
+          <Card variant="elevated">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary/50 flex items-center justify-center">
+                  <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">Preço/L</span>
               </div>
-              <span className="text-xs sm:text-sm text-muted-foreground">Despesas</span>
-            </div>
-            <p className="text-sm sm:text-lg font-bold text-destructive">
-              R$ {totalExpense.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-            </p>
-          </CardContent>
-        </Card>
-        <Card variant="elevated">
-          <CardContent className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 sm:gap-3 mb-2">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+              <p className="text-sm sm:text-lg font-bold text-foreground">
+                R$ {fuelKpis.avgPricePerLiter.toFixed(2)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card variant="elevated">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-warning/10 flex items-center justify-center">
+                  <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-warning" />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">Custo/km</span>
               </div>
-              <span className="text-xs sm:text-sm text-muted-foreground">Saldo</span>
-            </div>
-            <p className={`text-sm sm:text-lg font-bold ${netBalance >= 0 ? "text-success" : "text-destructive"}`}>
-              R$ {netBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+              <p className="text-sm sm:text-lg font-bold text-foreground">
+                R$ {fuelKpis.costPerKm > 0 ? fuelKpis.costPerKm.toFixed(2) : "—"}
+              </p>
+            </CardContent>
+          </Card>
+          <Card variant="elevated">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
+                  <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive" />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">Total Período</span>
+              </div>
+              <p className="text-sm sm:text-lg font-bold text-destructive">
+                R$ {fuelKpis.totalCost.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+          <Card variant="elevated">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                  <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-success" />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">Receitas</span>
+              </div>
+              <p className="text-sm sm:text-lg font-bold text-success">
+                R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            </CardContent>
+          </Card>
+          <Card variant="elevated">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
+                  <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive" />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">Despesas</span>
+              </div>
+              <p className="text-sm sm:text-lg font-bold text-destructive">
+                R$ {totalExpense.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            </CardContent>
+          </Card>
+          <Card variant="elevated">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">Saldo</span>
+              </div>
+              <p className={`text-sm sm:text-lg font-bold ${netBalance >= 0 ? "text-success" : "text-destructive"}`}>
+                R$ {netBalance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
