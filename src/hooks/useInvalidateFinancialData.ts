@@ -8,8 +8,10 @@ export function useInvalidateFinancialData() {
     queryClient.invalidateQueries({ queryKey: ["revenues"] });
     queryClient.invalidateQueries({ queryKey: ["expenses"] });
     queryClient.invalidateQueries({ queryKey: ["credit_cards"] });
+    queryClient.invalidateQueries({ queryKey: ["credit_card"] });
     queryClient.invalidateQueries({ queryKey: ["credit_card_invoices"] });
     queryClient.invalidateQueries({ queryKey: ["credit_card_transactions"] });
+    queryClient.invalidateQueries({ queryKey: ["cc_transactions"] });
     queryClient.invalidateQueries({ queryKey: ["card_expenses"] });
     queryClient.invalidateQueries({ queryKey: ["fuel_logs"] });
     queryClient.invalidateQueries({ queryKey: ["paid_bills"] });
