@@ -494,7 +494,14 @@ export default function Transactions() {
     ...expenses.map((e) => ({ ...e, transactionType: "despesa" as const, app: undefined })),
   ]
     .filter((t) => {
+      // Type filter
+      if (typeFilter === "combustivel") {
+        // Show only fuel expenses (has fuel_log_id)
+        return t.transactionType === "despesa" && !!(t as any).fuel_log_id;
+      }
       if (typeFilter !== "all" && t.transactionType !== typeFilter) return false;
+      
+      // Search filter
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         const category = t.transactionType === "receita" ? t.type : t.category;
@@ -1078,13 +1085,14 @@ export default function Transactions() {
                   />
                 </div>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="receita">Receitas</SelectItem>
                     <SelectItem value="despesa">Despesas</SelectItem>
+                    <SelectItem value="combustivel">Combustível</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
