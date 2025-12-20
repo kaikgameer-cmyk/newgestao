@@ -593,8 +593,11 @@ export default function CardInvoices() {
             <Button
               variant="hero"
               onClick={handleRequestPayment}
-              disabled={!paymentAmount}
+              disabled={!paymentAmount || registerPayment.isPending}
             >
+              {registerPayment.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
               Registrar Pagamento
             </Button>
           </DialogFooter>
