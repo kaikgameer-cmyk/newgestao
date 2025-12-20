@@ -467,6 +467,89 @@ export type Database = {
           },
         ]
       }
+      income_day_items: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          income_day_id: string
+          notes: string | null
+          payment_method: string | null
+          platform: string
+          platform_label: string | null
+          trips: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          income_day_id: string
+          notes?: string | null
+          payment_method?: string | null
+          platform: string
+          platform_label?: string | null
+          trips?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          income_day_id?: string
+          notes?: string | null
+          payment_method?: string | null
+          platform?: string
+          platform_label?: string | null
+          trips?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "income_day_items_income_day_id_fkey"
+            columns: ["income_day_id"]
+            isOneToOne: false
+            referencedRelation: "income_days"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      income_days: {
+        Row: {
+          created_at: string
+          date: string
+          hours_minutes: number
+          id: string
+          km_rodados: number
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          hours_minutes?: number
+          id?: string
+          km_rodados?: number
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          hours_minutes?: number
+          id?: string
+          km_rodados?: number
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       maintenance_records: {
         Row: {
           created_at: string

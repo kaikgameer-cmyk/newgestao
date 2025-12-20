@@ -3,7 +3,6 @@ import { Car, Inbox } from "lucide-react";
 
 interface PlatformData {
   name: string;
-  count: number;
   total: number;
 }
 
@@ -19,17 +18,15 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
   const platformData = revenues.reduce((acc, r) => {
     const platform = r.app || "Outros";
     if (!acc[platform]) {
-      acc[platform] = { count: 0, total: 0 };
+      acc[platform] = { total: 0 };
     }
-    acc[platform].count += 1;
     acc[platform].total += Number(r.amount);
     return acc;
-  }, {} as Record<string, { count: number; total: number }>);
+  }, {} as Record<string, { total: number }>);
 
   const platforms: PlatformData[] = Object.entries(platformData)
     .map(([name, data]) => ({
       name,
-      count: data.count,
       total: data.total,
     }))
     .sort((a, b) => b.total - a.total);

@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, TrendingDown, DollarSign, Calendar, PlusCircle, Clock, Target, CheckCircle2, XCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Calendar, PlusCircle, Clock, Target, CheckCircle2, XCircle, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { GlobalDateFilter } from "@/components/GlobalDateFilter";
 import { DatePicker } from "@/components/ui/date-picker";
 import { DatePreset, useDateFilterPresets } from "@/hooks/useDateFilterPresets";
 import { DateRange } from "react-day-picker";
+import { useIncomeDay } from "@/hooks/useIncomeDay";
+import { useIncomeDays } from "@/hooks/useIncomeDays";
+import { IncomeDayForm } from "@/components/income/IncomeDayForm";
 import {
   BarChart,
   Bar,
@@ -97,6 +100,19 @@ export default function Dashboard() {
   // Fetch maintenance data
   const { getCounts: getMaintenanceCounts } = useMaintenance();
   const maintenanceCounts = getMaintenanceCounts();
+
+  // Fetch income_day data for the new model
+  const { incomeDay } = useIncomeDay(viewMode === "day" ? selectedDate : undefined);
+  const { 
+    totalRevenue: incomeDayTotalRevenue,
+    totalTrips: incomeDayTotalTrips,
+    totalKm: incomeDayTotalKm,
+    totalMinutes: incomeDayTotalMinutes,
+    platformBreakdown: incomeDayPlatformBreakdown,
+  } = useIncomeDays(periodStart, periodEnd);
+
+  // State for income day form
+  const [isIncomeDayFormOpen, setIsIncomeDayFormOpen] = useState(false);
 
   // Calculate recurring expenses for the period
   const daysInPeriod = eachDayOfInterval({ start: periodStart, end: periodEnd }).length;
@@ -272,17 +288,58 @@ export default function Dashboard() {
       {/* === DAY VIEW === */}
       {viewMode === "day" && (
         (() => {
-          // Calculate day metrics from revenues
-          const dayTotalTrips = revenues.reduce((sum, r) => sum + (r.trips_count || 0), 0);
-          const dayKmRodados = revenues.reduce((sum, r) => sum + (r.km_rodados || 0), 0);
-          const dayWorkedMinutes = revenues.reduce((sum, r) => sum + (r.worked_minutes || 0), 0);
+          // Use income_day data if available, fallback to legacy revenues
+          const dayTotalTrips = incomeDay 
+            ? incomeDay.items.reduce((sum, item) => sum + item.trips, 0)
+            : revenues.reduce((sum, r) => sum + (r.trips_count || 0), 0);
+          const dayKmRodados = incomeDay?.km_rodados || revenues.reduce((sum, r) => sum + (r.km_rodados || 0), 0);
+          const dayWorkedMinutes = incomeDay?.hours_minutes || revenues.reduce((sum, r) => sum + (r.worked_minutes || 0), 0);
+          const dayRevenue = incomeDay 
+            ? incomeDay.items.reduce((sum, item) => sum + item.amount, 0)
+            : totalRevenue;
+
+          // Platform breakdown from income_day
+          const platformRevenues = incomeDay 
+            ? incomeDay.items.map(item => ({
+                app: item.platform === "outro" && item.platform_label ? item.platform_label : item.platform,
+                amount: item.amount,
+              }))
+            : revenues.map(r => ({ app: r.app, amount: Number(r.amount) }));
 
           return (
             <>
+              {/* Income Day Form */}
+              <IncomeDayForm
+                open={isIncomeDayFormOpen}
+                onOpenChange={setIsIncomeDayFormOpen}
+                selectedDate={selectedDate}
+                existingData={incomeDay}
+              />
+
+              {/* Button to add/edit income */}
+              <div className="flex justify-end">
+                <Button
+                  variant={incomeDay ? "outline" : "hero"}
+                  onClick={() => setIsIncomeDayFormOpen(true)}
+                >
+                  {incomeDay ? (
+                    <>
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Editar Receita do Dia
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="w-4 h-4 mr-2" />
+                      Lançar Receita do Dia
+                    </>
+                  )}
+                </Button>
+              </div>
+
               {/* Daily Goal Card */}
               <DailyGoalCard
                 goal={currentDayGoal}
-                revenue={totalRevenue}
+                revenue={dayRevenue}
                 label={`Meta de ${format(selectedDate, "dd/MM/yyyy")}`}
               />
 
@@ -291,21 +348,21 @@ export default function Dashboard() {
                 totalTrips={dayTotalTrips}
                 workedMinutes={dayWorkedMinutes}
                 kmRodados={dayKmRodados}
-                revenue={totalRevenue}
+                revenue={dayRevenue}
                 expenses={totalAllExpenses}
               />
 
               {/* Platform Breakdown */}
-              <PlatformBreakdownCard revenues={revenues} />
+              <PlatformBreakdownCard revenues={platformRevenues} />
 
               {/* Daily Summary with transactions */}
               <DailySummaryCard
                 revenues={revenues}
                 expenses={combinedExpenses}
                 recurringTotal={calculateDailyRecurringAmount(recurringExpenses, selectedDate).total}
-                totalRevenue={totalRevenue}
+                totalRevenue={dayRevenue}
                 totalExpenses={totalAllExpenses}
-                netProfit={netProfit}
+                netProfit={dayRevenue - totalAllExpenses}
               />
 
               {/* Expenses by Category - Compact for day view */}
