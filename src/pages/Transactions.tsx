@@ -842,18 +842,37 @@ export default function Transactions() {
                       <Label>Observação (opcional)</Label>
                       <Input placeholder={expenseCategory === "combustivel" ? "Ex: Tanque cheio" : "Ex: Troca de óleo"} value={expenseNotes} onChange={(e) => setExpenseNotes(e.target.value)} />
                     </div>
-                    <Button type="submit" variant="hero" className="w-full" disabled={createExpense.isPending || createFuelExpense.isPending}>
-                      {(createExpense.isPending || createFuelExpense.isPending) ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : expenseCategory === "combustivel" ? (
-                        <>
-                          <Fuel className="w-4 h-4 mr-2" />
-                          Salvar Abastecimento
-                        </>
-                      ) : (
-                        "Salvar Despesa"
-                      )}
-                    </Button>
+                    {(() => {
+                      const isPending = createExpense.isPending || createFuelExpense.isPending;
+                      const selectedCard = expenseMethod === "credito" && expenseCreditCardId
+                        ? creditCards.find(c => c.id === expenseCreditCardId)
+                        : null;
+                      const available = selectedCard ? Number(selectedCard.available) || 0 : Infinity;
+                      const expenseValue = expenseCategory === "combustivel" 
+                        ? parseFloat(fuelTotalValue) || 0
+                        : parseFloat(expenseAmount) || 0;
+                      const exceedsLimit = selectedCard && expenseValue > available;
+                      
+                      return (
+                        <Button 
+                          type="submit" 
+                          variant="hero" 
+                          className="w-full" 
+                          disabled={isPending || exceedsLimit}
+                        >
+                          {isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : expenseCategory === "combustivel" ? (
+                            <>
+                              <Fuel className="w-4 h-4 mr-2" />
+                              Salvar Abastecimento
+                            </>
+                          ) : (
+                            "Salvar Despesa"
+                          )}
+                        </Button>
+                      );
+                    })()}
                   </form>
                 </TabsContent>
               </Tabs>
