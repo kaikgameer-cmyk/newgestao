@@ -112,7 +112,6 @@ export default function DashboardLayout() {
   // Build nav items - always include admin if user is admin (once fetched)
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: Calendar, label: "Relatórios Semanais", path: "/dashboard/semanal" },
     { icon: Receipt, label: "Lançamentos", path: "/dashboard/lancamentos" },
     { icon: Target, label: "Metas", path: "/dashboard/metas" },
     { icon: CreditCard, label: "Cartões", path: "/dashboard/cartoes" },
