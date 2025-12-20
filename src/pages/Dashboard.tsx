@@ -31,6 +31,7 @@ import { PeriodGoalCard } from "@/components/goals/PeriodGoalCard";
 import { GoalEditor } from "@/components/goals/GoalEditor";
 import { useDailyGoals } from "@/hooks/useDailyGoals";
 import { useMaintenance } from "@/hooks/useMaintenance";
+import { useWorkSession } from "@/hooks/useWorkSession";
 import { MaintenanceSummaryCard } from "@/components/maintenance/MaintenanceSummaryCard";
 import { DailyKmCard } from "@/components/dashboard/DailyKmCard";
 import { WorkTimerCard } from "@/components/dashboard/WorkTimerCard";
@@ -100,6 +101,15 @@ export default function Dashboard() {
   // Fetch maintenance data
   const { getCounts: getMaintenanceCounts } = useMaintenance();
   const maintenanceCounts = getMaintenanceCounts();
+
+  // Fetch work sessions for day view
+  const { getSessionsForDate } = useWorkSession();
+  
+  // Calculate worked hours for the selected day
+  const dayWorkedSeconds = viewMode === "day" 
+    ? getSessionsForDate(selectedDate).reduce((sum, s) => sum + s.total_worked_seconds, 0)
+    : 0;
+  const dayWorkedHours = dayWorkedSeconds / 3600;
 
   // Calculate recurring expenses for the period
   const daysInPeriod = eachDayOfInterval({ start: periodStart, end: periodEnd }).length;
@@ -319,7 +329,7 @@ export default function Dashboard() {
               revenue={totalRevenue}
               label={`Meta de ${format(selectedDate, "dd/MM/yyyy")}`}
             />
-            <DailyKmCard date={selectedDate} />
+            <DailyKmCard date={selectedDate} dayRevenue={totalRevenue} dayWorkedHours={dayWorkedHours} />
             <WorkTimerCard currentDate={selectedDate} />
           </div>
 

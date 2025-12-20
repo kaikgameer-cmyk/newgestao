@@ -249,7 +249,7 @@ export type Database = {
         Row: {
           created_at: string
           date: string
-          end_km: number
+          end_km: number | null
           id: string
           km_driven: number | null
           notes: string | null
@@ -260,7 +260,7 @@ export type Database = {
         Insert: {
           created_at?: string
           date: string
-          end_km: number
+          end_km?: number | null
           id?: string
           km_driven?: number | null
           notes?: string | null
@@ -271,7 +271,7 @@ export type Database = {
         Update: {
           created_at?: string
           date?: string
-          end_km?: number
+          end_km?: number | null
           id?: string
           km_driven?: number | null
           notes?: string | null

@@ -9,8 +9,8 @@ export interface DailyKmLog {
   user_id: string;
   date: string;
   start_km: number;
-  end_km: number;
-  km_driven: number;
+  end_km: number | null;
+  km_driven: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -49,33 +49,36 @@ export function useDailyKm() {
     }: {
       date: Date;
       startKm: number;
-      endKm: number;
+      endKm?: number | null;
       notes?: string;
     }) => {
       if (!user) throw new Error("Not authenticated");
       const dateStr = formatLocalDate(date);
 
+      const payload = {
+        user_id: user.id,
+        date: dateStr,
+        start_km: Math.round(startKm),
+        end_km: endKm !== undefined && endKm !== null ? Math.round(endKm) : null,
+        notes: notes || null,
+      };
+
       const { data, error } = await supabase
         .from("daily_km_logs")
-        .upsert(
-          {
-            user_id: user.id,
-            date: dateStr,
-            start_km: startKm,
-            end_km: endKm,
-            notes: notes || null,
-          },
-          { onConflict: "user_id,date" }
-        )
+        .upsert(payload, { onConflict: "user_id,date" })
         .select()
         .single();
 
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["daily_km_logs"] });
-      toast.success("KM registrado com sucesso!");
+      if (data.end_km !== null) {
+        toast.success("KM registrado com sucesso!");
+      } else {
+        toast.success("KM inicial salvo! Informe o KM final ao terminar.");
+      }
     },
     onError: (error) => {
       toast.error("Erro ao salvar KM: " + error.message);
