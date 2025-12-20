@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   Clock,
   FileText,
+  Trash2,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -187,6 +188,27 @@ export default function CardInvoices() {
     },
     onError: () => {
       toast({ title: "Erro ao registrar pagamento", variant: "destructive" });
+    },
+  });
+
+  // Delete transaction mutation
+  const deleteTransaction = useMutation({
+    mutationFn: async (transactionId: string) => {
+      if (!user) throw new Error("Não autenticado");
+      const { error } = await supabase
+        .from("credit_card_transactions")
+        .delete()
+        .eq("id", transactionId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["credit_card_invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["cc_transactions"] });
+      toast({ title: "Transação excluída!", description: "A fatura foi recalculada automaticamente." });
+    },
+    onError: () => {
+      toast({ title: "Erro ao excluir transação", variant: "destructive" });
     },
   });
 
@@ -422,7 +444,7 @@ export default function CardInvoices() {
                             {transactions.map((tx) => (
                               <div
                                 key={tx.id}
-                                className={`flex items-center justify-between py-2 px-3 rounded-lg text-sm ${
+                                className={`flex items-center justify-between py-2 px-3 rounded-lg text-sm group ${
                                   tx.type === "payment"
                                     ? "bg-success/10"
                                     : tx.type === "refund"
@@ -430,8 +452,8 @@ export default function CardInvoices() {
                                     : "bg-secondary/50"
                                 }`}
                               >
-                                <div className="flex flex-col">
-                                  <span className="font-medium">
+                                <div className="flex flex-col flex-1 min-w-0">
+                                  <span className="font-medium truncate">
                                     {tx.description || tx.category || tx.type}
                                   </span>
                                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -454,18 +476,29 @@ export default function CardInvoices() {
                                     </Badge>
                                   </div>
                                 </div>
-                                <span
-                                  className={`font-medium ${
-                                    tx.type === "payment"
-                                      ? "text-success"
-                                      : tx.type === "refund"
-                                      ? "text-primary"
-                                      : "text-destructive"
-                                  }`}
-                                >
-                                  {tx.type === "payment" || tx.type === "refund" ? "-" : ""}
-                                  {formatCurrencyBRL(Math.abs(tx.amount))}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`font-medium ${
+                                      tx.type === "payment"
+                                        ? "text-success"
+                                        : tx.type === "refund"
+                                        ? "text-primary"
+                                        : "text-destructive"
+                                    }`}
+                                  >
+                                    {tx.type === "payment" || tx.type === "refund" ? "-" : ""}
+                                    {formatCurrencyBRL(Math.abs(tx.amount))}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                                    onClick={() => deleteTransaction.mutate(tx.id)}
+                                    disabled={deleteTransaction.isPending}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </div>
                             ))}
                           </div>
