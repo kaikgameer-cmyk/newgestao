@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Gauge, Edit2, Check, X, Trash2, TrendingDown } from "lucide-react";
+import { Gauge, Edit2, Check, X, Trash2, TrendingDown, Calendar } from "lucide-react";
 import { useDailyKm, DailyKmLog } from "@/hooks/useDailyKm";
 import { useCombinedExpenses } from "@/hooks/useCombinedExpenses";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,13 +23,23 @@ export function DailyKmCard({ date }: DailyKmCardProps) {
   const monthEnd = endOfMonth(date);
   const { combinedExpenses } = useCombinedExpenses(user?.id, monthStart, monthEnd);
 
+  // Get monthly KM logs
+  const monthlyKmLogs = kmLogs.filter((log: DailyKmLog) => {
+    const logDate = new Date(log.date);
+    return logDate >= monthStart && logDate <= monthEnd;
+  });
+
   // Calculate total KM driven this month
-  const monthlyKmDriven = kmLogs
-    .filter((log: DailyKmLog) => {
-      const logDate = new Date(log.date);
-      return logDate >= monthStart && logDate <= monthEnd;
-    })
-    .reduce((sum: number, log: DailyKmLog) => sum + (log.km_driven || 0), 0);
+  const monthlyKmDriven = monthlyKmLogs.reduce(
+    (sum: number, log: DailyKmLog) => sum + (log.km_driven || 0),
+    0
+  );
+
+  // Count days worked (days with KM records)
+  const daysWorked = monthlyKmLogs.length;
+
+  // Average KM per day worked
+  const avgKmPerDay = daysWorked > 0 ? monthlyKmDriven / daysWorked : 0;
 
   // Calculate fuel + maintenance costs for the month
   const fuelAndMaintenanceCosts = combinedExpenses
@@ -183,6 +193,22 @@ export function DailyKmCard({ date }: DailyKmCardProps) {
                 <p className="text-xs text-muted-foreground">
                   Combustível + Manutenção: R$ {fuelAndMaintenanceCosts.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                 </p>
+              </div>
+            )}
+            {avgKmPerDay > 0 && (
+              <div className="pt-2 border-t border-border">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                  <Calendar className="w-3 h-3" />
+                  <span>Média por dia trabalhado (mês)</span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm text-muted-foreground">
+                    {daysWorked} {daysWorked === 1 ? "dia" : "dias"}
+                  </span>
+                  <span className="text-lg font-bold text-blue-500">
+                    {avgKmPerDay.toFixed(1).replace(".", ",")} km
+                  </span>
+                </div>
               </div>
             )}
           </div>
