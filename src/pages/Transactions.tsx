@@ -61,7 +61,7 @@ export default function Transactions() {
 
   // Fuel-specific fields (when category === "combustivel")
   const [fuelLiters, setFuelLiters] = useState("");
-  const [fuelPricePerLiter, setFuelPricePerLiter] = useState("");
+  const [fuelTotalValue, setFuelTotalValue] = useState("");
   const [fuelStation, setFuelStation] = useState("");
   const [fuelOdometerKm, setFuelOdometerKm] = useState("");
   const [fuelType, setFuelType] = useState("");
@@ -272,8 +272,7 @@ export default function Transactions() {
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
       const liters = parseFloat(fuelLiters);
-      const pricePerLiter = parseFloat(fuelPricePerLiter);
-      const totalValue = Math.round(liters * pricePerLiter * 100) / 100;
+      const totalValue = parseFloat(fuelTotalValue);
       const odometerKm = fuelOdometerKm ? parseFloat(fuelOdometerKm) : null;
 
       const { data, error } = await supabase.rpc('create_fuel_expense', {
@@ -473,7 +472,7 @@ export default function Transactions() {
     setExpenseNotes("");
     // Reset fuel-specific fields
     setFuelLiters("");
-    setFuelPricePerLiter("");
+    setFuelTotalValue("");
     setFuelStation("");
     setFuelOdometerKm("");
     setFuelType("");
@@ -653,9 +652,19 @@ export default function Transactions() {
                       </div>
                     </div>
 
-                    {/* Fuel-specific fields */}
+                    {/* Fuel-specific fields - EXACTLY like FuelControl modal */}
                     {expenseCategory === "combustivel" ? (
                       <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Posto (opcional)</Label>
+                            <Input 
+                              placeholder="Ex: Shell" 
+                              value={fuelStation} 
+                              onChange={(e) => setFuelStation(e.target.value)} 
+                            />
+                          </div>
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>Litros *</Label>
@@ -669,27 +678,16 @@ export default function Transactions() {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label>Preço por Litro *</Label>
+                            <Label>Valor Total *</Label>
                             <Input 
                               type="number" 
-                              step="0.001" 
-                              placeholder="0.000" 
-                              value={fuelPricePerLiter} 
-                              onChange={(e) => setFuelPricePerLiter(e.target.value)} 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              value={fuelTotalValue} 
+                              onChange={(e) => setFuelTotalValue(e.target.value)} 
                               required 
                             />
                           </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Valor Total</Label>
-                          <Input 
-                            type="text" 
-                            value={fuelLiters && fuelPricePerLiter 
-                              ? `R$ ${(parseFloat(fuelLiters) * parseFloat(fuelPricePerLiter)).toFixed(2)}` 
-                              : "R$ 0.00"} 
-                            disabled 
-                            className="bg-muted"
-                          />
                         </div>
                         <div className="space-y-2">
                           <Label>Tipo de combustível *</Label>
@@ -703,24 +701,14 @@ export default function Transactions() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Quilometragem atual</Label>
-                            <Input 
-                              type="number" 
-                              placeholder="0" 
-                              value={fuelOdometerKm} 
-                              onChange={(e) => setFuelOdometerKm(e.target.value)} 
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Posto (opcional)</Label>
-                            <Input 
-                              placeholder="Ex: Shell" 
-                              value={fuelStation} 
-                              onChange={(e) => setFuelStation(e.target.value)} 
-                            />
-                          </div>
+                        <div className="space-y-2">
+                          <Label>Quilometragem atual</Label>
+                          <Input 
+                            type="number" 
+                            placeholder="0" 
+                            value={fuelOdometerKm} 
+                            onChange={(e) => setFuelOdometerKm(e.target.value)} 
+                          />
                         </div>
                       </>
                     ) : (
