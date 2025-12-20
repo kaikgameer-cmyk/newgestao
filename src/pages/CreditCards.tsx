@@ -16,19 +16,15 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt, ChevronLeft, ChevronRight, Calendar, AlertTriangle, CheckCircle2, Circle, Fuel, FileText, Pencil } from "lucide-react";
+import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Calendar, AlertTriangle, CheckCircle2, Fuel, FileText, Pencil } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useInvalidateFinancialData } from "@/hooks/useInvalidateFinancialData";
-import { startOfMonth, endOfMonth, format, addMonths, subMonths, differenceInDays, isSameMonth, isWithinInterval } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { GlobalDateFilter } from "@/components/GlobalDateFilter";
-import { DatePreset, useDateFilterPresets } from "@/hooks/useDateFilterPresets";
-import { DateRange } from "react-day-picker";
-import { parseLocalDate } from "@/lib/dateUtils";
 import { formatCurrencyBRL } from "@/lib/format";
 
 export default function CreditCards() {
@@ -44,20 +40,12 @@ export default function CreditCards() {
   const [closingDay, setClosingDay] = useState("");
   const [dueDay, setDueDay] = useState("");
   
-  // Global date filter state
-  const [preset, setPreset] = useState<DatePreset>("thisMonth");
-  const [customRange, setCustomRange] = useState<DateRange>();
-  const { dateRange, formattedRange } = useDateFilterPresets(preset, customRange);
-  
   const { user } = useAuth();
   const { toast } = useToast();
   const { invalidateAll } = useInvalidateFinancialData();
 
-  const currentMonthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
-  const selectedMonthKey = format(dateRange.from || new Date(), "yyyy-MM");
-
   // Fetch all credit cards
-  const { data: creditCards = [], isLoading } = useQuery({
+  const { data: creditCards = [], isLoading: isLoadingCards } = useQuery({
     queryKey: ["credit_cards", user?.id],
     queryFn: async () => {
       if (!user) return [];
@@ -71,215 +59,82 @@ export default function CreditCards() {
     },
     enabled: !!user,
   });
-  const { data: cardExpenses = [] } = useQuery({
-    queryKey: ["card_expenses", user?.id, formattedRange.from, formattedRange.to],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("expenses")
-        .select("id, credit_card_id, amount, date, category, notes, current_installment, total_installments")
-        .eq("user_id", user.id)
-        .gte("date", formattedRange.from)
-        .lte("date", formattedRange.to)
-        .not("credit_card_id", "is", null)
-        .order("date", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user && !!formattedRange.from,
-  });
 
-  // Fetch ALL credit card expenses from current month onwards (for limit calculation)
-  const { data: allCreditCardExpenses = [] } = useQuery({
-    queryKey: ["all_credit_card_expenses", user?.id, currentMonthStart],
+  // Fetch all invoices with balance > 0 (open, closed, or overdue)
+  const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery({
+    queryKey: ["credit_card_invoices", user?.id],
     queryFn: async () => {
       if (!user) return [];
       const { data, error } = await supabase
-        .from("expenses")
-        .select("id, credit_card_id, amount, date, current_installment, total_installments")
-        .eq("user_id", user.id)
-        .gte("date", currentMonthStart)
-        .not("credit_card_id", "is", null);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  // Fetch ALL fuel logs with credit card from current month onwards (for limit calculation)
-  const { data: allFuelLogsWithCard = [] } = useQuery({
-    queryKey: ["all_fuel_logs_with_card", user?.id, currentMonthStart],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("fuel_logs")
-        .select("id, credit_card_id, total_value, date")
-        .eq("user_id", user.id)
-        .gte("date", currentMonthStart)
-        .not("credit_card_id", "is", null);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  // Fetch fuel logs for selected period (for display in card bills)
-  const { data: fuelLogsForMonth = [] } = useQuery({
-    queryKey: ["fuel_logs_for_month", user?.id, formattedRange.from, formattedRange.to],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("fuel_logs")
-        .select("id, credit_card_id, total_value, date, station, fuel_type, liters")
-        .eq("user_id", user.id)
-        .gte("date", formattedRange.from)
-        .lte("date", formattedRange.to)
-        .not("credit_card_id", "is", null)
-        .order("date", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user && !!formattedRange.from,
-  });
-
-  // Fetch paid bills
-  const { data: paidBills = [] } = useQuery({
-    queryKey: ["paid_bills", user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("paid_bills")
+        .from("credit_card_invoices")
         .select("*")
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .order("closing_date", { ascending: false });
       if (error) throw error;
       return data || [];
     },
     enabled: !!user,
   });
 
-  // Mark bill as paid mutation
-  const markAsPaid = useMutation({
-    mutationFn: async ({ cardId, amount }: { cardId: string; amount: number }) => {
-      if (!user) throw new Error("Não autenticado");
-      const { error } = await supabase.from("paid_bills").insert({
-        user_id: user.id,
-        credit_card_id: cardId,
-        month_year: selectedMonthKey,
-        amount,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      invalidateAll();
-      toast({ title: "Fatura marcada como paga!" });
-    },
-    onError: () => {
-      toast({ title: "Erro ao marcar fatura", variant: "destructive" });
-    },
-  });
-
-  // Unmark bill as paid mutation
-  const unmarkAsPaid = useMutation({
-    mutationFn: async (cardId: string) => {
-      if (!user) throw new Error("Não autenticado");
-      const { error } = await supabase
-        .from("paid_bills")
-        .delete()
-        .eq("credit_card_id", cardId)
-        .eq("month_year", selectedMonthKey)
-        .eq("user_id", user.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      invalidateAll();
-      toast({ title: "Fatura desmarcada!" });
-    },
-    onError: () => {
-      toast({ title: "Erro ao desmarcar fatura", variant: "destructive" });
-    },
-  });
-
-  // Check if a bill is paid for the selected month
-  const isBillPaid = (cardId: string) => {
-    return paidBills.some(
-      (bill) => bill.credit_card_id === cardId && bill.month_year === selectedMonthKey
-    );
-  };
-
-  // Get paid bills for current month onwards to exclude from limit calculation
-  const paidBillsSet = useMemo(() => {
-    const currentMonth = format(new Date(), "yyyy-MM");
-    return new Set(
-      paidBills
-        .filter((bill) => bill.month_year >= currentMonth)
-        .map((bill) => `${bill.credit_card_id}-${bill.month_year}`)
-    );
-  }, [paidBills]);
-
-  // Calculate totals using useMemo for performance
-  const { expensesByCard, fuelLogsByCard, usedLimitByCard, totalPendingByCard } = useMemo(() => {
-    // Group expenses by card for selected month display
-    const expensesByCard = cardExpenses.reduce((acc, expense) => {
-      if (expense.credit_card_id) {
-        if (!acc[expense.credit_card_id]) acc[expense.credit_card_id] = [];
-        acc[expense.credit_card_id].push(expense);
-      }
-      return acc;
-    }, {} as Record<string, typeof cardExpenses>);
-
-    // Group fuel logs by card for selected month display
-    const fuelLogsByCard = fuelLogsForMonth.reduce((acc, log) => {
-      if (log.credit_card_id) {
-        if (!acc[log.credit_card_id]) acc[log.credit_card_id] = [];
-        acc[log.credit_card_id].push(log);
-      }
-      return acc;
-    }, {} as Record<string, typeof fuelLogsForMonth>);
-
-    // Calculate used limit per card for selected month (for bill display) - includes expenses AND fuel
-    const usedLimitByCard: Record<string, number> = {};
+  // Calculate invoice-based data
+  const { 
+    invoicesByCard, 
+    currentInvoiceByCard, 
+    overdueInvoicesByCard,
+    totalCommittedByCard 
+  } = useMemo(() => {
+    const today = new Date();
+    const todayStr = format(today, "yyyy-MM-dd");
     
-    cardExpenses.forEach((expense) => {
-      if (expense.credit_card_id) {
-        usedLimitByCard[expense.credit_card_id] = (usedLimitByCard[expense.credit_card_id] || 0) + Number(expense.amount);
+    // Group invoices by card
+    const invoicesByCard: Record<string, typeof invoices> = {};
+    invoices.forEach(inv => {
+      if (!invoicesByCard[inv.credit_card_id]) {
+        invoicesByCard[inv.credit_card_id] = [];
       }
-    });
-    
-    fuelLogsForMonth.forEach((log) => {
-      if (log.credit_card_id) {
-        usedLimitByCard[log.credit_card_id] = (usedLimitByCard[log.credit_card_id] || 0) + Number(log.total_value);
-      }
+      invoicesByCard[inv.credit_card_id].push(inv);
     });
 
-    // Calculate TOTAL pending from current month onwards (excluding paid bills) - includes expenses AND fuel
-    const totalPendingByCard: Record<string, number> = {};
-    
-    allCreditCardExpenses.forEach((expense) => {
-      if (expense.credit_card_id) {
-        const expenseMonth = expense.date.substring(0, 7); // YYYY-MM
-        const key = `${expense.credit_card_id}-${expenseMonth}`;
-        
-        // Only count if not paid
-        if (!paidBillsSet.has(key)) {
-          totalPendingByCard[expense.credit_card_id] = (totalPendingByCard[expense.credit_card_id] || 0) + Number(expense.amount);
-        }
-      }
-    });
-    
-    allFuelLogsWithCard.forEach((log) => {
-      if (log.credit_card_id) {
-        const logMonth = log.date.substring(0, 7); // YYYY-MM
-        const key = `${log.credit_card_id}-${logMonth}`;
-        
-        // Only count if not paid
-        if (!paidBillsSet.has(key)) {
-          totalPendingByCard[log.credit_card_id] = (totalPendingByCard[log.credit_card_id] || 0) + Number(log.total_value);
-        }
-      }
+    // For each card, find current invoice (closing_date >= today) and overdue invoices
+    const currentInvoiceByCard: Record<string, typeof invoices[0] | null> = {};
+    const overdueInvoicesByCard: Record<string, typeof invoices> = {};
+    const totalCommittedByCard: Record<string, number> = {};
+
+    creditCards.forEach(card => {
+      const cardInvoices = invoicesByCard[card.id] || [];
+      
+      // Current invoice: first invoice where closing_date >= today (sorted desc, so find last one that meets criteria)
+      // Or the most recent open/closed invoice
+      const openInvoices = cardInvoices.filter(inv => inv.balance > 0);
+      
+      // Find current cycle invoice (closing_date >= today)
+      const currentCycleInvoice = cardInvoices.find(inv => inv.closing_date >= todayStr && inv.status === 'open');
+      currentInvoiceByCard[card.id] = currentCycleInvoice || null;
+      
+      // Overdue invoices: balance > 0 AND due_date < today
+      overdueInvoicesByCard[card.id] = cardInvoices.filter(
+        inv => Number(inv.balance) > 0 && inv.due_date < todayStr
+      );
+      
+      // Total committed: sum of balance from all invoices with balance > 0
+      totalCommittedByCard[card.id] = openInvoices.reduce(
+        (sum, inv) => sum + Number(inv.balance), 
+        0
+      );
     });
 
-    return { expensesByCard, fuelLogsByCard, usedLimitByCard, totalPendingByCard };
-  }, [cardExpenses, fuelLogsForMonth, allCreditCardExpenses, allFuelLogsWithCard, paidBillsSet]);
+    return { invoicesByCard, currentInvoiceByCard, overdueInvoicesByCard, totalCommittedByCard };
+  }, [creditCards, invoices]);
+
+  // Calculate summary totals
+  const { totalLimit, totalCommitted, totalAvailable, availablePercentage } = useMemo(() => {
+    const totalLimit = creditCards.reduce((acc, card) => acc + (Number(card.credit_limit) || 0), 0);
+    const totalCommitted = Object.values(totalCommittedByCard).reduce((acc, val) => acc + val, 0);
+    const totalAvailable = Math.max(0, totalLimit - totalCommitted);
+    const availablePercentage = totalLimit > 0 ? ((totalAvailable / totalLimit) * 100).toFixed(0) : "100";
+    
+    return { totalLimit, totalCommitted, totalAvailable, availablePercentage };
+  }, [creditCards, totalCommittedByCard]);
 
   const createCard = useMutation({
     mutationFn: async () => {
@@ -377,16 +232,7 @@ export default function CreditCards() {
     setDueDay("");
   };
 
-  // Calculate summary totals
-  const { totalLimit, totalPending, totalAvailable, availablePercentage, totalUsed } = useMemo(() => {
-    const totalLimit = creditCards.reduce((acc, card) => acc + (Number(card.credit_limit) || 0), 0);
-    const totalPending = Object.values(totalPendingByCard).reduce((acc, val) => acc + val, 0);
-    const totalUsed = Object.values(usedLimitByCard).reduce((acc, val) => acc + val, 0);
-    const totalAvailable = Math.max(0, totalLimit - totalPending);
-    const availablePercentage = totalLimit > 0 ? ((totalAvailable / totalLimit) * 100).toFixed(0) : "100";
-    
-    return { totalLimit, totalPending, totalAvailable, availablePercentage, totalUsed };
-  }, [creditCards, totalPendingByCard, usedLimitByCard]);
+  const isLoading = isLoadingCards || isLoadingInvoices;
 
   if (isLoading) {
     return (
@@ -407,13 +253,6 @@ export default function CreditCards() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Date Filter */}
-          <GlobalDateFilter
-            preset={preset}
-            onPresetChange={setPreset}
-            customRange={customRange}
-            onCustomRangeChange={setCustomRange}
-          />
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="hero" size="lg">
@@ -546,8 +385,8 @@ export default function CreditCards() {
                   </div>
                   <span className="text-sm text-muted-foreground">Total Comprometido</span>
                 </div>
-                <p className="text-2xl font-bold text-destructive">{formatCurrencyBRL(totalPending)}</p>
-                <p className="text-xs text-muted-foreground mt-1">Fatura do mês: {formatCurrencyBRL(totalUsed)}</p>
+                <p className="text-2xl font-bold text-destructive">{formatCurrencyBRL(totalCommitted)}</p>
+                <p className="text-xs text-muted-foreground mt-1">Soma de faturas em aberto</p>
               </CardContent>
             </Card>
             <Card variant="elevated">
@@ -568,40 +407,24 @@ export default function CreditCards() {
           <div className="grid lg:grid-cols-2 gap-6">
             {creditCards.map((card) => {
               const cardLimit = Number(card.credit_limit) || 0;
-              const cardUsed = usedLimitByCard[card.id] || 0;
-              const cardFuelLogs = fuelLogsByCard[card.id] || [];
-              const cardPending = totalPendingByCard[card.id] || 0;
-              const cardAvailable = Math.max(0, cardLimit - cardPending);
-              const cardUsedPercent = cardLimit > 0 ? (cardPending / cardLimit) * 100 : 0;
-              const cardExpensesList = expensesByCard[card.id] || [];
-              const isPaid = isBillPaid(card.id);
+              const cardCommitted = totalCommittedByCard[card.id] || 0;
+              const cardAvailable = Math.max(0, cardLimit - cardCommitted);
+              const cardUsedPercent = cardLimit > 0 ? (cardCommitted / cardLimit) * 100 : 0;
+              const currentInvoice = currentInvoiceByCard[card.id];
+              const overdueInvoices = overdueInvoicesByCard[card.id] || [];
+              const hasOverdue = overdueInvoices.length > 0;
+              const totalOverdue = overdueInvoices.reduce((sum, inv) => sum + Number(inv.balance), 0);
 
-              // Calculate due date alert
-              const today = new Date();
-              const isCurrentMonth = isSameMonth(dateRange.from || new Date(), today);
-              let daysUntilDue = 0;
-              let isDueSoon = false;
-              let isOverdue = false;
-              
-              if (card.due_day && isCurrentMonth && cardUsed > 0 && !isPaid) {
-                const dueDate = new Date(today.getFullYear(), today.getMonth(), card.due_day);
-                daysUntilDue = differenceInDays(dueDate, today);
-                isDueSoon = daysUntilDue >= 0 && daysUntilDue <= 5;
-                isOverdue = daysUntilDue < 0;
-              }
+              // Get all open invoices for this card to display
+              const cardInvoices = invoicesByCard[card.id] || [];
+              const openInvoices = cardInvoices.filter(inv => Number(inv.balance) > 0);
 
               return (
-                <Card key={card.id} variant="elevated" className={`hover:border-primary/30 transition-colors ${isPaid ? 'border-success/30 bg-success/5' : ''}`}>
+                <Card key={card.id} variant="elevated" className="hover:border-primary/30 transition-colors">
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CardTitle className="text-lg">{card.name}</CardTitle>
-                        {isPaid && (
-                          <span className="text-xs bg-success/20 text-success px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Paga
-                          </span>
-                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">{card.brand || "—"}</span>
@@ -646,16 +469,14 @@ export default function CreditCards() {
                       </Alert>
                     )}
 
-                    {/* Due date alert */}
-                    {(isDueSoon || isOverdue) && !isPaid && (
-                      <Alert variant={isOverdue ? "destructive" : "default"} className={`${isDueSoon && !isOverdue ? 'border-primary bg-primary/10' : ''}`}>
+                    {/* Overdue invoice alert */}
+                    {hasOverdue && (
+                      <Alert variant="destructive">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription className="text-sm">
-                          {isOverdue 
-                            ? `Fatura vencida há ${Math.abs(daysUntilDue)} dia(s)! Valor: ${formatCurrencyBRL(cardUsed)}`
-                            : daysUntilDue === 0 
-                              ? `Fatura vence hoje! Valor: ${formatCurrencyBRL(cardUsed)}`
-                              : `Fatura vence em ${daysUntilDue} dia(s)! Valor: ${formatCurrencyBRL(cardUsed)}`
+                          {overdueInvoices.length === 1 
+                            ? `Fatura vencida em ${format(new Date(overdueInvoices[0].due_date + 'T12:00:00'), "dd/MM", { locale: ptBR })}! Valor: ${formatCurrencyBRL(totalOverdue)}`
+                            : `${overdueInvoices.length} faturas vencidas! Total: ${formatCurrencyBRL(totalOverdue)}`
                           }
                         </AlertDescription>
                       </Alert>
@@ -674,14 +495,9 @@ export default function CreditCards() {
                           />
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-destructive">Comprometido: {formatCurrencyBRL(cardPending)}</span>
+                          <span className="text-destructive">Comprometido: {formatCurrencyBRL(cardCommitted)}</span>
                           <span className="text-success">Disponível: {formatCurrencyBRL(cardAvailable)}</span>
                         </div>
-                        {cardUsed > 0 && cardUsed !== cardPending && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Fatura do mês: {formatCurrencyBRL(cardUsed)}
-                          </p>
-                        )}
                       </div>
                     )}
 
@@ -701,117 +517,76 @@ export default function CreditCards() {
                       </div>
                     </div>
 
-                    {/* View Invoices Button */}
-                    {card.closing_day && card.due_day && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mt-4 border-primary/30 text-primary hover:bg-primary/10"
-                        onClick={() => navigate(`/dashboard/cartoes/${card.id}/faturas`)}
-                      >
-                        <FileText className="w-4 h-4 mr-2" />
-                        Ver Faturas
-                      </Button>
-                    )}
-
-                    {/* Monthly bill breakdown */}
-                    {(cardExpensesList.length > 0 || cardFuelLogs.length > 0) && (
-                      <Collapsible className="pt-4 border-t border-border/50">
+                    {/* Open invoices list */}
+                    {openInvoices.length > 0 && (
+                      <Collapsible className="pt-2">
                         <CollapsibleTrigger asChild>
-                          <Button variant="ghost" className="w-full justify-between p-0 h-auto hover:bg-transparent">
-                            <div className="flex items-center gap-2 text-sm">
-                              <Receipt className="w-4 h-4 text-primary" />
-                              <span>Lançamentos do período</span>
-                              <span className="text-muted-foreground">({cardExpensesList.length + cardFuelLogs.length} lançamentos)</span>
-                            </div>
-                            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                          <Button variant="ghost" className="w-full justify-between p-2 h-auto">
+                            <span className="flex items-center gap-2 text-sm">
+                              <FileText className="w-4 h-4" />
+                              Faturas em aberto ({openInvoices.length})
+                            </span>
+                            <ChevronDown className="w-4 h-4" />
                           </Button>
                         </CollapsibleTrigger>
-                        <CollapsibleContent className="pt-3 space-y-2">
-                          {cardExpensesList.map((expense) => (
-                            <div 
-                              key={expense.id} 
-                              className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30 text-sm"
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-medium capitalize">{expense.category}</span>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span>{new Date(expense.date).toLocaleDateString("pt-BR")}</span>
-                                  {expense.total_installments && expense.total_installments > 1 && (
-                                    <span className="text-primary">
-                                      {expense.current_installment}/{expense.total_installments}x
+                        <CollapsibleContent className="space-y-2 pt-2">
+                          {openInvoices.map(invoice => {
+                            const isOverdue = invoice.status === 'overdue';
+                            const isClosed = invoice.status === 'closed';
+                            return (
+                              <div 
+                                key={invoice.id} 
+                                className={`p-3 rounded-lg border ${isOverdue ? 'border-destructive/50 bg-destructive/5' : isClosed ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/30'}`}
+                              >
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <p className="text-sm font-medium">
+                                      Fatura {format(new Date(invoice.closing_date + 'T12:00:00'), "MMM/yy", { locale: ptBR })}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Vence: {format(new Date(invoice.due_date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })}
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className={`text-sm font-bold ${isOverdue ? 'text-destructive' : ''}`}>
+                                      {formatCurrencyBRL(Number(invoice.balance))}
+                                    </p>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                      isOverdue ? 'bg-destructive/20 text-destructive' : 
+                                      isClosed ? 'bg-primary/20 text-primary' : 
+                                      'bg-muted text-muted-foreground'
+                                    }`}>
+                                      {isOverdue ? 'Vencida' : isClosed ? 'Fechada' : 'Aberta'}
                                     </span>
-                                  )}
+                                  </div>
                                 </div>
                               </div>
-                              <span className="font-medium text-destructive">
-                                {formatCurrencyBRL(expense.amount)}
-                              </span>
-                            </div>
-                          ))}
-                          {cardFuelLogs.map((log) => (
-                            <div 
-                              key={log.id} 
-                              className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30 text-sm"
-                            >
-                              <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
-                                  <Fuel className="w-3 h-3 text-primary" />
-                                  <span className="font-medium">Combustível</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span>{new Date(log.date).toLocaleDateString("pt-BR")}</span>
-                                  <span>{log.station || ""} {Number(log.liters).toFixed(1)}L {log.fuel_type}</span>
-                                </div>
-                              </div>
-                              <span className="font-medium text-destructive">
-                                {formatCurrencyBRL(log.total_value)}
-                              </span>
-                            </div>
-                          ))}
-                          <div className="flex justify-between pt-2 border-t border-border/50 font-medium">
-                            <span>Total da fatura</span>
-                            <span className={isPaid ? "text-success" : "text-destructive"}>
-                              {formatCurrencyBRL(cardUsed)}
-                            </span>
-                          </div>
-                          
-                          {/* Mark as paid/unpaid button */}
-                          <Button
-                            variant={isPaid ? "outline" : "default"}
-                            size="sm"
-                            className={`w-full mt-2 ${isPaid ? 'border-success text-success hover:bg-success/10' : ''}`}
-                            onClick={() => {
-                              if (isPaid) {
-                                unmarkAsPaid.mutate(card.id);
-                              } else {
-                                markAsPaid.mutate({ cardId: card.id, amount: cardUsed });
-                              }
-                            }}
-                            disabled={markAsPaid.isPending || unmarkAsPaid.isPending}
+                            );
+                          })}
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full mt-2"
+                            onClick={() => navigate(`/dashboard/cartoes/${card.id}/faturas`)}
                           >
-                            {markAsPaid.isPending || unmarkAsPaid.isPending ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : isPaid ? (
-                              <>
-                                <CheckCircle2 className="w-4 h-4 mr-2" />
-                                Fatura Paga
-                              </>
-                            ) : (
-                              <>
-                                <Circle className="w-4 h-4 mr-2" />
-                                Marcar como Paga
-                              </>
-                            )}
+                            <FileText className="w-4 h-4 mr-2" />
+                            Ver todas as faturas
                           </Button>
                         </CollapsibleContent>
                       </Collapsible>
                     )}
 
-                    {cardExpensesList.length === 0 && cardFuelLogs.length === 0 && (
-                      <div className="pt-4 border-t border-border/50 text-center text-sm text-muted-foreground">
-                        <p>Nenhum lançamento neste mês</p>
-                      </div>
+                    {/* Link to invoices page */}
+                    {card.closing_day && openInvoices.length === 0 && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => navigate(`/dashboard/cartoes/${card.id}/faturas`)}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Ver faturas
+                      </Button>
                     )}
                   </CardContent>
                 </Card>
@@ -821,7 +596,7 @@ export default function CreditCards() {
         </>
       )}
 
-      {/* Edit Card Dialog */}
+      {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
