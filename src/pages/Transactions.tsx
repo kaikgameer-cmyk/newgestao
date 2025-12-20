@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle, CreditCard, Pencil, DollarSign, Fuel, AlertTriangle, Gauge, Clock } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Search, Loader2, Trash2, PlusCircle, CreditCard, Pencil, DollarSign, Fuel, AlertTriangle, Gauge, Clock, Car } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,8 +28,10 @@ import { GlobalDateFilter } from "@/components/GlobalDateFilter";
 import { DatePreset, useDateFilterPresets } from "@/hooks/useDateFilterPresets";
 import { DateRange } from "react-day-picker";
 import { format, isWithinInterval } from "date-fns";
-import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
+import { parseLocalDate } from "@/lib/dateUtils";
 import { useMaintenance } from "@/hooks/useMaintenance";
+import { IncomeDayForm } from "@/components/income/IncomeDayForm";
+import { useIncomeDay, IncomeDay } from "@/hooks/useIncomeDay";
 
 export default function Transactions() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -38,21 +40,15 @@ export default function Transactions() {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   
+  // Income day form state
+  const [isIncomeDayFormOpen, setIsIncomeDayFormOpen] = useState(false);
+  const [selectedIncomeDate, setSelectedIncomeDate] = useState(new Date());
+  const [editingIncomeDay, setEditingIncomeDay] = useState<IncomeDay | null>(null);
+  
   // Global date filter state
   const [preset, setPreset] = useState<DatePreset>("thisMonth");
   const [customRange, setCustomRange] = useState<DateRange>();
   const { dateRange } = useDateFilterPresets(preset, customRange);
-  
-  // Revenue form
-  const [revenueDate, setRevenueDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [revenueAmount, setRevenueAmount] = useState("");
-  const [revenueApp, setRevenueApp] = useState("");
-  const [revenueAppLabel, setRevenueAppLabel] = useState(""); // For "Outro" custom label
-  const [revenueMethod, setRevenueMethod] = useState("");
-  const [revenueNotes, setRevenueNotes] = useState("");
-  const [revenueKmRodados, setRevenueKmRodados] = useState("");
-  const [revenueHorasTrabalhadas, setRevenueHorasTrabalhadas] = useState("");
-  const [revenueTripsCount, setRevenueTripsCount] = useState("");
   
   // Expense form
   const [expenseDate, setExpenseDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -63,24 +59,22 @@ export default function Transactions() {
   const [expenseInstallments, setExpenseInstallments] = useState("1");
   const [expenseNotes, setExpenseNotes] = useState("");
 
-  // Fuel-specific fields (when category === "combustivel")
+  // Fuel-specific fields
   const [fuelLiters, setFuelLiters] = useState("");
   const [fuelTotalValue, setFuelTotalValue] = useState("");
   const [fuelStation, setFuelStation] = useState("");
   const [fuelOdometerKm, setFuelOdometerKm] = useState("");
   const [fuelType, setFuelType] = useState("");
 
-  // Edit state
+  // Edit state for expenses
   const [editingTransaction, setEditingTransaction] = useState<{
     id: string;
-    type: "receita" | "despesa";
+    type: "despesa";
     date: string;
     amount: string;
     category?: string;
-    app?: string;
     method?: string;
     notes?: string;
-    // Fuel-specific fields for editing
     fuel_log_id?: string | null;
     fuelLiters?: string;
     fuelType?: string;
@@ -94,19 +88,50 @@ export default function Transactions() {
   const { invalidateAll } = useInvalidateFinancialData();
   const queryClient = useQueryClient();
   const { checkMaintenanceAlerts, maintenanceRecords } = useMaintenance();
+  const { deleteIncomeDay } = useIncomeDay();
 
-  const { data: allRevenues = [], isLoading: loadingRevenues } = useQuery({
-    queryKey: ["revenues", user?.id],
+  // Fetch income_days (source of truth for revenues)
+  const { data: allIncomeDays = [], isLoading: loadingIncomeDays } = useQuery({
+    queryKey: ["income_days_with_items", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from("revenues")
+      
+      const { data: days, error: daysError } = await supabase
+        .from("income_days")
         .select("*")
         .eq("user_id", user.id)
         .order("date", { ascending: false })
         .limit(500);
-      if (error) throw error;
-      return data || [];
+      
+      if (daysError) throw daysError;
+      if (!days || days.length === 0) return [];
+      
+      const dayIds = days.map((d) => d.id);
+      
+      const { data: items, error: itemsError } = await supabase
+        .from("income_day_items")
+        .select("*")
+        .in("income_day_id", dayIds);
+      
+      if (itemsError) throw itemsError;
+      
+      return days.map((day) => ({
+        ...day,
+        items: (items || [])
+          .filter((item) => item.income_day_id === day.id)
+          .map((item) => ({
+            id: item.id,
+            platform: item.platform,
+            platform_label: item.platform_label,
+            amount: Number(item.amount),
+            trips: item.trips,
+            payment_method: item.payment_method,
+            notes: item.notes,
+          })),
+        totalAmount: (items || [])
+          .filter((item) => item.income_day_id === day.id)
+          .reduce((sum, item) => sum + Number(item.amount), 0),
+      })) as (IncomeDay & { totalAmount: number })[];
     },
     enabled: !!user,
   });
@@ -127,7 +152,6 @@ export default function Transactions() {
     enabled: !!user,
   });
 
-  // Define type for credit card with limits
   interface CreditCardWithLimits {
     id: string;
     user_id: string;
@@ -157,7 +181,7 @@ export default function Transactions() {
   });
 
   // Filter by selected period
-  const revenues = allRevenues.filter((r) => {
+  const incomeDays = allIncomeDays.filter((r) => {
     const date = parseLocalDate(r.date);
     return isWithinInterval(date, {
       start: dateRange.from!,
@@ -173,21 +197,20 @@ export default function Transactions() {
     });
   });
 
-  // Calculate totals for the period
-  const totalRevenue = revenues.reduce((sum, r) => sum + Number(r.amount), 0);
+  // Calculate totals
+  const totalRevenue = incomeDays.reduce((sum, r) => sum + (r.totalAmount || 0), 0);
   const totalExpense = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
   const netBalance = totalRevenue - totalExpense;
 
-  // Fuel-specific KPIs (for when combustivel filter is active)
+  // Fuel KPIs
   const fuelExpenses = expenses.filter((e) => !!e.fuel_log_id && e.fuel_logs);
-  const fuelKpis = (() => {
+  const fuelKpis = useMemo(() => {
     if (fuelExpenses.length === 0) return null;
     
     const totalLiters = fuelExpenses.reduce((sum, e) => sum + Number(e.fuel_logs?.liters || 0), 0);
     const totalCost = fuelExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
     const avgPricePerLiter = totalLiters > 0 ? totalCost / totalLiters : 0;
     
-    // Calculate average consumption (km/L) from consecutive odometer readings
     const fuelWithOdometer = fuelExpenses
       .filter((e) => e.fuel_logs?.odometer_km)
       .sort((a, b) => Number(a.fuel_logs?.odometer_km) - Number(b.fuel_logs?.odometer_km));
@@ -213,90 +236,7 @@ export default function Transactions() {
       costPerKm,
       fuelingsCount: fuelExpenses.length,
     };
-  })();
-
-  const createRevenue = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("Não autenticado");
-      
-      // Validate required fields
-      const kmRodados = parseInt(revenueKmRodados);
-      const horasTrabalhadas = parseTimeToMinutes(revenueHorasTrabalhadas);
-      const tripsCount = parseInt(revenueTripsCount);
-      
-      if (!kmRodados || kmRodados <= 0) throw new Error("KM rodados é obrigatório");
-      if (!horasTrabalhadas || horasTrabalhadas <= 0) throw new Error("Horas trabalhadas é obrigatório");
-      if (!tripsCount || tripsCount <= 0) throw new Error("Quantidade de viagens é obrigatória");
-      
-      // Save the revenue - use custom label for "outro"
-      const appValue = revenueApp === "outro" && revenueAppLabel ? revenueAppLabel : revenueApp;
-      
-      const { error } = await supabase.from("revenues").insert({
-        user_id: user.id,
-        date: revenueDate,
-        amount: parseFloat(revenueAmount),
-        app: appValue,
-        type: "total_diario",
-        receive_method: revenueMethod || null,
-        notes: revenueNotes || null,
-        trips_count: tripsCount,
-        km_rodados: kmRodados,
-        worked_minutes: horasTrabalhadas,
-      });
-      if (error) throw error;
-      
-      // Also upsert to daily_work_summary (additive for multiple revenues same day)
-      const { data: existing } = await supabase
-        .from("daily_work_summary")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("date", revenueDate)
-        .maybeSingle();
-      
-      if (existing) {
-        // Add to existing values
-        const newKm = (existing.km_rodados || 0) + kmRodados;
-        const newMinutes = (existing.worked_minutes || 0) + horasTrabalhadas;
-        
-        await supabase
-          .from("daily_work_summary")
-          .update({ km_rodados: newKm, worked_minutes: newMinutes })
-          .eq("id", existing.id);
-      } else {
-        await supabase
-          .from("daily_work_summary")
-          .insert({
-            user_id: user.id,
-            date: revenueDate,
-            km_rodados: kmRodados,
-            worked_minutes: horasTrabalhadas,
-          });
-      }
-    },
-    onSuccess: () => {
-      invalidateAll();
-      queryClient.invalidateQueries({ queryKey: ["daily_work_summary"] });
-      setIsDialogOpen(false);
-      resetRevenueForm();
-      toast({ title: "Receita adicionada!" });
-    },
-    onError: (error: any) => {
-      toast({ title: error.message || "Erro ao adicionar receita", variant: "destructive" });
-    },
-  });
-  
-  // Helper to parse HH:MM to minutes
-  const parseTimeToMinutes = (time: string): number => {
-    if (!time) return 0;
-    // Support both HH:MM and decimal formats
-    if (time.includes(":")) {
-      const [hours, mins] = time.split(":").map(Number);
-      return (hours || 0) * 60 + (mins || 0);
-    }
-    // Decimal format (e.g. 10.5 = 10h30min)
-    const decimal = parseFloat(time);
-    return Math.round(decimal * 60);
-  };
+  }, [fuelExpenses]);
 
   const createExpense = useMutation({
     mutationFn: async () => {
@@ -343,7 +283,6 @@ export default function Transactions() {
     },
   });
 
-  // Mutation for fuel expense using atomic RPC
   const createFuelExpense = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
@@ -374,7 +313,6 @@ export default function Transactions() {
       resetExpenseForm();
       toast({ title: "Abastecimento registrado!" });
 
-      // Check for maintenance alerts if odometer was provided
       if (newOdometer && maintenanceRecords.length > 0) {
         const alerts = checkMaintenanceAlerts(newOdometer);
         if (alerts.length > 0) {
@@ -401,7 +339,6 @@ export default function Transactions() {
     },
   });
 
-  // Handle expense form submission
   const handleExpenseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (expenseCategory === "combustivel") {
@@ -410,32 +347,6 @@ export default function Transactions() {
       createExpense.mutate();
     }
   };
-
-  const updateRevenue = useMutation({
-    mutationFn: async () => {
-      if (!editingTransaction) throw new Error("Nenhuma transação selecionada");
-      const { error } = await supabase
-        .from("revenues")
-        .update({
-          date: editingTransaction.date,
-          amount: parseFloat(editingTransaction.amount),
-          app: editingTransaction.app,
-          receive_method: editingTransaction.method || null,
-          notes: editingTransaction.notes || null,
-        })
-        .eq("id", editingTransaction.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      invalidateAll();
-      setIsEditDialogOpen(false);
-      setEditingTransaction(null);
-      toast({ title: "Receita atualizada!" });
-    },
-    onError: () => {
-      toast({ title: "Erro ao atualizar receita", variant: "destructive" });
-    },
-  });
 
   const updateExpense = useMutation({
     mutationFn: async () => {
@@ -463,7 +374,6 @@ export default function Transactions() {
     },
   });
 
-  // Mutation for updating fuel expense atomically
   const updateFuelExpense = useMutation({
     mutationFn: async () => {
       if (!editingTransaction) throw new Error("Nenhuma transação selecionada");
@@ -499,21 +409,9 @@ export default function Transactions() {
     },
   });
 
-  const deleteRevenue = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("revenues").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      invalidateAll();
-      toast({ title: "Receita removida!" });
-    },
-  });
-
   const deleteExpense = useMutation({
     mutationFn: async ({ id, hasFuelLog }: { id: string; hasFuelLog: boolean }) => {
       if (hasFuelLog) {
-        // Use atomic RPC to delete both expense and fuel log
         const { error } = await supabase.rpc('delete_fuel_expense', { p_expense_id: id });
         if (error) throw error;
       } else {
@@ -530,18 +428,6 @@ export default function Transactions() {
     },
   });
 
-  const resetRevenueForm = () => {
-    setRevenueDate(format(new Date(), "yyyy-MM-dd"));
-    setRevenueAmount("");
-    setRevenueApp("");
-    setRevenueAppLabel("");
-    setRevenueMethod("");
-    setRevenueNotes("");
-    setRevenueKmRodados("");
-    setRevenueHorasTrabalhadas("");
-    setRevenueTripsCount("");
-  };
-
   const resetExpenseForm = () => {
     setExpenseDate(format(new Date(), "yyyy-MM-dd"));
     setExpenseAmount("");
@@ -550,7 +436,6 @@ export default function Transactions() {
     setExpenseCreditCardId("");
     setExpenseInstallments("1");
     setExpenseNotes("");
-    // Reset fuel-specific fields
     setFuelLiters("");
     setFuelTotalValue("");
     setFuelStation("");
@@ -560,17 +445,14 @@ export default function Transactions() {
 
   const handleEditClick = (transaction: any) => {
     if (transaction.transactionType === "receita") {
-      setEditingTransaction({
-        id: transaction.id,
-        type: "receita",
-        date: transaction.date,
-        amount: String(transaction.amount),
-        app: transaction.app,
-        method: transaction.receive_method,
-        notes: transaction.notes,
-      });
+      // Open IncomeDayForm for editing
+      const incomeDay = allIncomeDays.find((d) => d.id === transaction.id);
+      if (incomeDay) {
+        setEditingIncomeDay(incomeDay);
+        setSelectedIncomeDate(parseLocalDate(incomeDay.date));
+        setIsIncomeDayFormOpen(true);
+      }
     } else {
-      // Check if this is a fuel expense
       const isFuelExpense = transaction.fuel_log_id || transaction.fuel_logs;
       const fuelLogs = transaction.fuel_logs;
       
@@ -589,46 +471,68 @@ export default function Transactions() {
         fuelStation: fuelLogs?.station || "",
         creditCardId: transaction.credit_card_id || "",
       });
+      setIsEditDialogOpen(true);
     }
-    setIsEditDialogOpen(true);
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingTransaction?.type === "receita") {
-      updateRevenue.mutate();
-    } else if (editingTransaction?.fuel_log_id) {
+    if (editingTransaction?.fuel_log_id) {
       updateFuelExpense.mutate();
     } else {
       updateExpense.mutate();
     }
   };
 
-  // Combine and filter transactions
-  const allTransactions = [
-    ...revenues.map((r) => ({ ...r, transactionType: "receita" as const })),
-    ...expenses.map((e) => ({ ...e, transactionType: "despesa" as const, app: undefined })),
-  ]
-    .filter((t) => {
-      // Type filter
-      if (typeFilter === "combustivel") {
-        // Show only fuel expenses (has fuel_log_id)
-        return t.transactionType === "despesa" && !!(t as any).fuel_log_id;
-      }
-      if (typeFilter !== "all" && t.transactionType !== typeFilter) return false;
-      
-      // Search filter
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        const category = t.transactionType === "receita" ? t.type : t.category;
-        return category?.toLowerCase().includes(search) || t.notes?.toLowerCase().includes(search);
-      }
-      return true;
-    })
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const handleNewRevenue = () => {
+    setEditingIncomeDay(null);
+    setSelectedIncomeDate(new Date());
+    setIsIncomeDayFormOpen(true);
+    setIsDialogOpen(false);
+  };
 
-  const isLoading = loadingRevenues || loadingExpenses;
-  const hasData = allRevenues.length > 0 || allExpenses.length > 0;
+  const handleDeleteIncomeDay = (id: string) => {
+    deleteIncomeDay.mutate(id, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["income_days_with_items"] });
+      },
+    });
+  };
+
+  // Combine transactions for display
+  const allTransactions = useMemo(() => {
+    const revenueTransactions = incomeDays.map((r) => ({
+      ...r,
+      id: r.id!,
+      transactionType: "receita" as const,
+      amount: r.totalAmount || 0,
+      category: "Receita do Dia",
+    }));
+
+    const expenseTransactions = expenses.map((e) => ({
+      ...e,
+      transactionType: "despesa" as const,
+    }));
+
+    return [...revenueTransactions, ...expenseTransactions]
+      .filter((t) => {
+        if (typeFilter === "combustivel") {
+          return t.transactionType === "despesa" && !!(t as any).fuel_log_id;
+        }
+        if (typeFilter !== "all" && t.transactionType !== typeFilter) return false;
+        
+        if (searchTerm) {
+          const search = searchTerm.toLowerCase();
+          const category = t.transactionType === "receita" ? "receita" : t.category;
+          return category?.toLowerCase().includes(search) || t.notes?.toLowerCase().includes(search);
+        }
+        return true;
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [incomeDays, expenses, typeFilter, searchTerm]);
+
+  const isLoading = loadingIncomeDays || loadingExpenses;
+  const hasData = allIncomeDays.length > 0 || allExpenses.length > 0;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -664,87 +568,21 @@ export default function Transactions() {
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="receita" className="space-y-4 mt-4">
-                  <form onSubmit={(e) => { e.preventDefault(); createRevenue.mutate(); }} className="grid gap-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Data *</Label>
-                        <Input type="date" value={revenueDate} onChange={(e) => setRevenueDate(e.target.value)} required />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Valor de entrada *</Label>
-                        <Input type="number" step="0.01" placeholder="0.00" value={revenueAmount} onChange={(e) => setRevenueAmount(e.target.value)} required />
-                      </div>
+                  <div className="text-center py-6 space-y-4">
+                    <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                      <Car className="w-8 h-8 text-primary" />
                     </div>
                     <div className="space-y-2">
-                      <Label>Plataforma *</Label>
-                      <Select value={revenueApp} onValueChange={setRevenueApp} required>
-                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="uber">Uber</SelectItem>
-                          <SelectItem value="99">99</SelectItem>
-                          <SelectItem value="indrive">InDrive</SelectItem>
-                          <SelectItem value="outro">Outro</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <h3 className="font-semibold">Receita do Dia</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Lance sua receita diária com valores por plataforma
+                      </p>
                     </div>
-                    {revenueApp === "outro" && (
-                      <div className="space-y-2">
-                        <Label>Nome da plataforma *</Label>
-                        <Input placeholder="Ex: Drive, Particular" value={revenueAppLabel} onChange={(e) => setRevenueAppLabel(e.target.value)} required />
-                      </div>
-                    )}
-                    
-                    {/* Required: Trips, KM and Hours */}
-                    <div className="grid grid-cols-3 gap-3 pt-3 border-t border-border">
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5">
-                          <TrendingUp className="w-3.5 h-3.5" />
-                          Viagens *
-                        </Label>
-                        <Input 
-                          type="number" 
-                          placeholder="Ex: 15" 
-                          value={revenueTripsCount} 
-                          onChange={(e) => setRevenueTripsCount(e.target.value)} 
-                          required 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5">
-                          <Gauge className="w-3.5 h-3.5" />
-                          KM rodados *
-                        </Label>
-                        <Input 
-                          type="number" 
-                          placeholder="Ex: 200" 
-                          value={revenueKmRodados} 
-                          onChange={(e) => setRevenueKmRodados(e.target.value)} 
-                          required 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" />
-                          Horas *
-                        </Label>
-                        <Input 
-                          placeholder="Ex: 10:30" 
-                          value={revenueHorasTrabalhadas} 
-                          onChange={(e) => setRevenueHorasTrabalhadas(e.target.value)} 
-                          required 
-                        />
-                        <p className="text-[10px] text-muted-foreground">Formato HH:MM</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Observação (opcional)</Label>
-                      <Input placeholder="Ex: Dia cheio" value={revenueNotes} onChange={(e) => setRevenueNotes(e.target.value)} />
-                    </div>
-                    <Button type="submit" variant="hero" className="w-full" disabled={createRevenue.isPending || !revenueKmRodados || !revenueHorasTrabalhadas || !revenueTripsCount}>
-                      {createRevenue.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Receita"}
+                    <Button variant="hero" onClick={handleNewRevenue}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nova Receita do Dia
                     </Button>
-                  </form>
+                  </div>
                 </TabsContent>
                 <TabsContent value="despesa" className="space-y-4 mt-4">
                   <form onSubmit={handleExpenseSubmit} className="grid gap-4">
@@ -771,7 +609,6 @@ export default function Transactions() {
                       </div>
                     </div>
 
-                    {/* Fuel-specific fields - EXACTLY like FuelControl modal */}
                     {expenseCategory === "combustivel" ? (
                       <>
                         <div className="grid grid-cols-2 gap-4">
@@ -872,7 +709,6 @@ export default function Transactions() {
                           </Select>
                         </div>
                         
-                        {/* Limit warning */}
                         {(() => {
                           const selectedCard = creditCards.find(c => c.id === expenseCreditCardId);
                           if (!selectedCard) return null;
@@ -913,7 +749,6 @@ export default function Transactions() {
                           return null;
                         })()}
                         
-                        {/* Only show installments for non-fuel expenses */}
                         {expenseCategory !== "combustivel" && (
                           <div className="space-y-2">
                             <Label>Parcelamento</Label>
@@ -985,7 +820,6 @@ export default function Transactions() {
           </Dialog>
         </div>
 
-        {/* Date Filter */}
         <GlobalDateFilter
           preset={preset}
           onPresetChange={setPreset}
@@ -995,7 +829,7 @@ export default function Transactions() {
         />
       </div>
 
-      {/* Summary Cards - Show fuel KPIs when combustivel filter is active */}
+      {/* Summary Cards */}
       {typeFilter === "combustivel" && fuelKpis ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <Card variant="elevated">
@@ -1095,13 +929,11 @@ export default function Transactions() {
         </div>
       )}
 
-      {/* Edit Dialog */}
+      {/* Edit Expense Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>
-              Editar {editingTransaction?.type === "receita" ? "Receita" : "Despesa"}
-            </DialogTitle>
+            <DialogTitle>Editar Despesa</DialogTitle>
           </DialogHeader>
           {editingTransaction && (
             <form onSubmit={handleEditSubmit} className="grid gap-4 py-4">
@@ -1128,40 +960,7 @@ export default function Transactions() {
                 </div>
               </div>
               
-              {editingTransaction.type === "receita" ? (
-                <>
-                  <div className="space-y-2">
-                    <Label>App *</Label>
-                    <Select 
-                      value={editingTransaction.app || ""} 
-                      onValueChange={(value) => setEditingTransaction({ ...editingTransaction, app: value })}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="uber">Uber</SelectItem>
-                        <SelectItem value="99">99</SelectItem>
-                        <SelectItem value="indrive">InDrive</SelectItem>
-                        <SelectItem value="outro">Outro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Método de recebimento</Label>
-                    <Select 
-                      value={editingTransaction.method || ""} 
-                      onValueChange={(value) => setEditingTransaction({ ...editingTransaction, method: value })}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="conta">Conta</SelectItem>
-                        <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                        <SelectItem value="pix">PIX</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              ) : editingTransaction.fuel_log_id ? (
-                /* Fuel expense edit form */
+              {editingTransaction.fuel_log_id ? (
                 <>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -1176,7 +975,7 @@ export default function Transactions() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Tipo de combustível *</Label>
+                      <Label>Tipo *</Label>
                       <Select 
                         value={editingTransaction.fuelType || ""} 
                         onValueChange={(value) => setEditingTransaction({ ...editingTransaction, fuelType: value })}
@@ -1193,10 +992,9 @@ export default function Transactions() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Km do odômetro</Label>
+                      <Label>Quilometragem</Label>
                       <Input 
                         type="number" 
-                        step="1" 
                         placeholder="Ex: 45000" 
                         value={editingTransaction.fuelOdometerKm || ""} 
                         onChange={(e) => setEditingTransaction({ ...editingTransaction, fuelOdometerKm: e.target.value })} 
@@ -1244,7 +1042,6 @@ export default function Transactions() {
                   )}
                 </>
               ) : (
-                /* Regular expense edit form */
                 <>
                   <div className="space-y-2">
                     <Label>Categoria *</Label>
@@ -1296,9 +1093,9 @@ export default function Transactions() {
                 type="submit" 
                 variant="hero" 
                 className="w-full" 
-                disabled={updateRevenue.isPending || updateExpense.isPending || updateFuelExpense.isPending}
+                disabled={updateExpense.isPending || updateFuelExpense.isPending}
               >
-                {(updateRevenue.isPending || updateExpense.isPending || updateFuelExpense.isPending) ? (
+                {(updateExpense.isPending || updateFuelExpense.isPending) ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : editingTransaction.fuel_log_id ? (
                   <>
@@ -1313,6 +1110,20 @@ export default function Transactions() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Income Day Form Modal (unified) */}
+      <IncomeDayForm
+        open={isIncomeDayFormOpen}
+        onOpenChange={(open) => {
+          setIsIncomeDayFormOpen(open);
+          if (!open) {
+            setEditingIncomeDay(null);
+            queryClient.invalidateQueries({ queryKey: ["income_days_with_items"] });
+          }
+        }}
+        selectedDate={selectedIncomeDate}
+        existingData={editingIncomeDay}
+      />
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -1380,16 +1191,15 @@ export default function Transactions() {
                         <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Data</th>
                         <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Tipo</th>
                         <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell">Categoria</th>
-                        <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden md:table-cell">Método</th>
+                        <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden md:table-cell">Detalhes</th>
                         <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Valor</th>
-                        <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden lg:table-cell">Obs</th>
                         <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
                       {allTransactions.map((transaction) => (
                         <tr
-                          key={transaction.id}
+                          key={`${transaction.transactionType}-${transaction.id}`}
                           className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
                         >
                           <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-center">
@@ -1420,30 +1230,42 @@ export default function Transactions() {
                             <div className="flex flex-col items-center">
                               <span className="capitalize">
                                 {transaction.transactionType === "receita" 
-                                  ? (transaction.app || "—") 
+                                  ? "Receita do Dia" 
                                   : (transaction.category || "—")}
                               </span>
-                              {/* Show fuel details if linked to fuel_logs */}
-                              {transaction.transactionType === "despesa" && transaction.fuel_logs && (
+                              {transaction.transactionType === "despesa" && (transaction as any).fuel_logs && (
                                 <span className="text-xs text-primary flex items-center gap-1 mt-0.5">
                                   <Fuel className="w-3 h-3" />
-                                  {Number(transaction.fuel_logs.liters).toFixed(1)}L
-                                  {transaction.fuel_logs.odometer_km && (
-                                    <> • {new Intl.NumberFormat("pt-BR").format(Number(transaction.fuel_logs.odometer_km))} km</>
+                                  {Number((transaction as any).fuel_logs.liters).toFixed(1)}L
+                                  {(transaction as any).fuel_logs.odometer_km && (
+                                    <> • {new Intl.NumberFormat("pt-BR").format(Number((transaction as any).fuel_logs.odometer_km))} km</>
                                   )}
                                 </span>
                               )}
                             </div>
                           </td>
                           <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-muted-foreground text-center hidden md:table-cell">
-                            <div className="flex flex-col items-center">
-                              <span className="capitalize">{transaction.transactionType === "receita" ? (transaction.receive_method || "—") : (transaction.payment_method || "—")}</span>
-                              {transaction.transactionType === "despesa" && transaction.total_installments && transaction.total_installments > 1 && (
-                                <span className="text-xs text-primary">
-                                  {transaction.current_installment}/{transaction.total_installments}x
+                            {transaction.transactionType === "receita" ? (
+                              <div className="flex items-center justify-center gap-2 text-xs">
+                                <span className="flex items-center gap-1">
+                                  <Car className="w-3 h-3" />
+                                  {(transaction as any).trips || 0}
                                 </span>
-                              )}
-                            </div>
+                                <span className="flex items-center gap-1">
+                                  <Gauge className="w-3 h-3" />
+                                  {(transaction as any).km_rodados || 0}km
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center">
+                                <span className="capitalize">{(transaction as any).payment_method || "—"}</span>
+                                {(transaction as any).total_installments && (transaction as any).total_installments > 1 && (
+                                  <span className="text-xs text-primary">
+                                    {(transaction as any).current_installment}/{(transaction as any).total_installments}x
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td
                             className={`py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-center ${
@@ -1451,11 +1273,6 @@ export default function Transactions() {
                             }`}
                           >
                             {transaction.transactionType === "receita" ? "+" : "-"}R$ {Number(transaction.amount).toFixed(2)}
-                          </td>
-                          <td className="py-3 px-2 sm:px-4 text-xs text-muted-foreground text-center hidden lg:table-cell max-w-[150px]">
-                            <span className="truncate block" title={transaction.notes || undefined}>
-                              {transaction.notes || "—"}
-                            </span>
                           </td>
                           <td className="py-3 px-2 sm:px-4 text-center">
                             <div className="flex items-center justify-center gap-0.5 sm:gap-1">
@@ -1473,11 +1290,11 @@ export default function Transactions() {
                                 className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive"
                                 onClick={() => {
                                   if (transaction.transactionType === "receita") {
-                                    deleteRevenue.mutate(transaction.id);
+                                    handleDeleteIncomeDay(transaction.id!);
                                   } else {
                                     deleteExpense.mutate({ 
                                       id: transaction.id, 
-                                      hasFuelLog: !!transaction.fuel_log_id 
+                                      hasFuelLog: !!(transaction as any).fuel_log_id 
                                     });
                                   }
                                 }}
