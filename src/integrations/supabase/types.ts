@@ -14,6 +14,150 @@ export type Database = {
   }
   public: {
     Tables: {
+      competition_members: {
+        Row: {
+          competition_id: string
+          id: string
+          joined_at: string | null
+          role: string
+          user_id: string
+        }
+        Insert: {
+          competition_id: string
+          id?: string
+          joined_at?: string | null
+          role?: string
+          user_id: string
+        }
+        Update: {
+          competition_id?: string
+          id?: string
+          joined_at?: string | null
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_members_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competition_team_members: {
+        Row: {
+          id: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "competition_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competition_teams: {
+        Row: {
+          competition_id: string
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          competition_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          competition_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_teams_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitions: {
+        Row: {
+          allow_teams: boolean | null
+          code: string
+          created_at: string | null
+          created_by: string
+          description: string | null
+          end_date: string
+          goal_type: string
+          goal_value: number
+          id: string
+          is_public: boolean | null
+          max_members: number | null
+          name: string
+          password_hash: string
+          start_date: string
+          team_size: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          allow_teams?: boolean | null
+          code: string
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          end_date: string
+          goal_type: string
+          goal_value: number
+          id?: string
+          is_public?: boolean | null
+          max_members?: number | null
+          name: string
+          password_hash: string
+          start_date: string
+          team_size?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          allow_teams?: boolean | null
+          code?: string
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          end_date?: string
+          goal_type?: string
+          goal_value?: number
+          id?: string
+          is_public?: boolean | null
+          max_members?: number | null
+          name?: string
+          password_hash?: string
+          start_date?: string
+          team_size?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       credit_card_invoices: {
         Row: {
           balance: number
@@ -1025,6 +1169,25 @@ export type Database = {
         Args: { p_closing_day: number; p_tx_date: string }
         Returns: string
       }
+      create_competition: {
+        Args: {
+          p_allow_teams?: boolean
+          p_description: string
+          p_end_date: string
+          p_goal_type: string
+          p_goal_value: number
+          p_max_members?: number
+          p_name: string
+          p_password: string
+          p_start_date: string
+          p_team_size?: number
+        }
+        Returns: Json
+      }
+      create_competition_teams: {
+        Args: { p_competition_id: string; p_team_count: number }
+        Returns: Json
+      }
       create_fuel_expense: {
         Args: {
           p_credit_card_id?: string
@@ -1040,6 +1203,11 @@ export type Database = {
         Returns: Json
       }
       delete_fuel_expense: { Args: { p_expense_id: string }; Returns: boolean }
+      generate_competition_code: { Args: never; Returns: string }
+      get_competition_leaderboard: {
+        Args: { p_competition_id: string }
+        Returns: Json
+      }
       get_revenue_by_platform: {
         Args: { p_end_date: string; p_start_date: string }
         Returns: {
@@ -1056,6 +1224,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      join_competition: {
+        Args: { p_code: string; p_password: string }
+        Returns: Json
       }
       recalc_invoice: { Args: { p_invoice_id: string }; Returns: undefined }
       recalculate_invoice_total: {
