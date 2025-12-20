@@ -16,7 +16,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt, ChevronLeft, ChevronRight, Calendar, AlertTriangle, CheckCircle2, Circle, Fuel, FileText } from "lucide-react";
+import { Plus, CreditCard as CardIcon, DollarSign, Percent, Loader2, Trash2, ChevronDown, Receipt, ChevronLeft, ChevronRight, Calendar, AlertTriangle, CheckCircle2, Circle, Fuel, FileText, Pencil } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,6 +34,8 @@ import { formatCurrencyBRL } from "@/lib/format";
 export default function CreditCards() {
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingCard, setEditingCard] = useState<any>(null);
   const [name, setName] = useState("");
   const [lastDigits, setLastDigits] = useState("");
   const [brand, setBrand] = useState("");
@@ -320,6 +322,51 @@ export default function CreditCards() {
     },
   });
 
+  const updateCard = useMutation({
+    mutationFn: async () => {
+      if (!editingCard) throw new Error("Nenhum cartão selecionado");
+      if (!editingCard.closing_day || !editingCard.due_day) {
+        throw new Error("Dia de fechamento e vencimento são obrigatórios");
+      }
+      const { error } = await supabase
+        .from("credit_cards")
+        .update({
+          name: editingCard.name,
+          last_digits: editingCard.last_digits || null,
+          brand: editingCard.brand || null,
+          credit_limit: editingCard.credit_limit ? parseFloat(editingCard.credit_limit) : null,
+          best_purchase_day: editingCard.best_purchase_day ? parseInt(editingCard.best_purchase_day) : null,
+          closing_day: parseInt(editingCard.closing_day),
+          due_day: parseInt(editingCard.due_day),
+        })
+        .eq("id", editingCard.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      setIsEditDialogOpen(false);
+      setEditingCard(null);
+      toast({ title: "Cartão atualizado!" });
+    },
+    onError: (error: any) => {
+      toast({ title: error.message || "Erro ao atualizar cartão", variant: "destructive" });
+    },
+  });
+
+  const handleEditCard = (card: any) => {
+    setEditingCard({
+      id: card.id,
+      name: card.name || "",
+      last_digits: card.last_digits || "",
+      brand: card.brand || "",
+      credit_limit: card.credit_limit?.toString() || "",
+      best_purchase_day: card.best_purchase_day?.toString() || "",
+      closing_day: card.closing_day?.toString() || "",
+      due_day: card.due_day?.toString() || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
   const resetForm = () => {
     setName("");
     setLastDigits("");
@@ -561,6 +608,14 @@ export default function CreditCards() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          onClick={() => handleEditCard(card)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
                           onClick={() => deleteCard.mutate(card.id)}
                         >
@@ -573,6 +628,24 @@ export default function CreditCards() {
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Alert for cards without closing_day configured */}
+                    {!card.closing_day && (
+                      <Alert variant="default" className="border-primary bg-primary/10">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-sm">
+                          Configure o dia de fechamento para habilitar o controle de faturas.
+                          <Button 
+                            variant="link" 
+                            size="sm" 
+                            className="p-0 h-auto ml-1 text-primary"
+                            onClick={() => handleEditCard(card)}
+                          >
+                            Configurar agora
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
                     {/* Due date alert */}
                     {(isDueSoon || isOverdue) && !isPaid && (
                       <Alert variant={isOverdue ? "destructive" : "default"} className={`${isDueSoon && !isOverdue ? 'border-primary bg-primary/10' : ''}`}>
@@ -747,6 +820,96 @@ export default function CreditCards() {
           </div>
         </>
       )}
+
+      {/* Edit Card Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Cartão</DialogTitle>
+          </DialogHeader>
+          {editingCard && (
+            <form onSubmit={(e) => { e.preventDefault(); updateCard.mutate(); }} className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Nome do cartão *</Label>
+                <Input 
+                  placeholder="Ex: Nubank" 
+                  value={editingCard.name}
+                  onChange={(e) => setEditingCard({ ...editingCard, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Últimos 4 dígitos</Label>
+                  <Input 
+                    placeholder="0000" 
+                    maxLength={4}
+                    value={editingCard.last_digits}
+                    onChange={(e) => setEditingCard({ ...editingCard, last_digits: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Bandeira</Label>
+                  <Input 
+                    placeholder="Visa, Mastercard..."
+                    value={editingCard.brand}
+                    onChange={(e) => setEditingCard({ ...editingCard, brand: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Limite</Label>
+                <Input 
+                  type="number" 
+                  placeholder="0.00"
+                  value={editingCard.credit_limit}
+                  onChange={(e) => setEditingCard({ ...editingCard, credit_limit: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Dia de fechamento *</Label>
+                  <Input 
+                    type="number" 
+                    min={1} 
+                    max={31} 
+                    placeholder="25"
+                    value={editingCard.closing_day}
+                    onChange={(e) => setEditingCard({ ...editingCard, closing_day: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Dia de vencimento *</Label>
+                  <Input 
+                    type="number" 
+                    min={1} 
+                    max={31} 
+                    placeholder="10"
+                    value={editingCard.due_day}
+                    onChange={(e) => setEditingCard({ ...editingCard, due_day: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Melhor dia de compra</Label>
+                <Input 
+                  type="number" 
+                  min={1} 
+                  max={31} 
+                  placeholder="1"
+                  value={editingCard.best_purchase_day}
+                  onChange={(e) => setEditingCard({ ...editingCard, best_purchase_day: e.target.value })}
+                />
+              </div>
+              <Button type="submit" variant="hero" className="w-full" disabled={updateCard.isPending}>
+                {updateCard.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Alterações"}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
