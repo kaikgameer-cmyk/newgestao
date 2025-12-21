@@ -90,13 +90,22 @@ export function EditPixModal({ open, onOpenChange, competitionId }: EditPixModal
                 placeholder="CPF, e-mail, telefone ou chave aleatória"
                 value={pixKey}
                 onChange={(e) => {
+                  const raw = e.target.value;
+                  setPixKey(raw);
                   const currentType = (pixKeyType || "") as PixKeyType;
-                  const nextType: PixKeyType = currentType || detectPixType(e.target.value);
-                  if (!currentType && nextType) {
-                    setPixKeyType(nextType);
+                  if (!currentType) {
+                    const autoType = detectPixType(raw);
+                    if (autoType) {
+                      setPixKeyType(autoType);
+                    }
                   }
-                  const formatted = formatPixKey(e.target.value, nextType);
-                  setPixKey(formatted);
+                }}
+                onBlur={() => {
+                  const type = (pixKeyType || "") as PixKeyType;
+                  if (type) {
+                    const formatted = formatPixKey(pixKey, type);
+                    setPixKey(formatted);
+                  }
                 }}
               />
               {pixKey.length > 0 && unmaskPixKey(pixKey).trim().length < 5 && (

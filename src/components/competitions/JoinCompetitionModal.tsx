@@ -254,13 +254,22 @@ export default function JoinCompetitionModal({
                         placeholder="CPF, E-mail, Celular ou Chave Aleatória"
                         value={field.value}
                         onChange={(e) => {
+                          const raw = e.target.value;
+                          field.onChange(raw);
                           const currentType = (step2Form.getValues("pix_key_type") || "") as PixKeyType;
-                          const nextType: PixKeyType = currentType || detectPixType(e.target.value);
-                          if (!currentType && nextType) {
-                            step2Form.setValue("pix_key_type", nextType);
+                          if (!currentType) {
+                            const autoType = detectPixType(raw);
+                            if (autoType) {
+                              step2Form.setValue("pix_key_type", autoType);
+                            }
                           }
-                          const formatted = formatPixKey(e.target.value, nextType);
-                          field.onChange(formatted);
+                        }}
+                        onBlur={() => {
+                          const type = (step2Form.getValues("pix_key_type") || "") as PixKeyType;
+                          if (type) {
+                            const formatted = formatPixKey(step2Form.getValues("pix_key"), type);
+                            step2Form.setValue("pix_key", formatted);
+                          }
                         }}
                       />
                     </FormControl>
