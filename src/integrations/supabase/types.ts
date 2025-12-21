@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           competition_id: string
           id: string
+          is_competitor: boolean
           joined_at: string | null
           role: string
           user_id: string
@@ -25,6 +26,7 @@ export type Database = {
         Insert: {
           competition_id: string
           id?: string
+          is_competitor?: boolean
           joined_at?: string | null
           role?: string
           user_id: string
@@ -32,6 +34,7 @@ export type Database = {
         Update: {
           competition_id?: string
           id?: string
+          is_competitor?: boolean
           joined_at?: string | null
           role?: string
           user_id?: string
@@ -111,11 +114,14 @@ export type Database = {
           end_date: string
           goal_type: string
           goal_value: number
+          host_participates: boolean
           id: string
+          is_listed: boolean
           is_public: boolean | null
           max_members: number | null
           name: string
           password_hash: string
+          prize_value: number
           start_date: string
           team_size: number | null
           updated_at: string | null
@@ -129,11 +135,14 @@ export type Database = {
           end_date: string
           goal_type?: string
           goal_value: number
+          host_participates?: boolean
           id?: string
+          is_listed?: boolean
           is_public?: boolean | null
           max_members?: number | null
           name: string
           password_hash: string
+          prize_value: number
           start_date: string
           team_size?: number | null
           updated_at?: string | null
@@ -147,11 +156,14 @@ export type Database = {
           end_date?: string
           goal_type?: string
           goal_value?: number
+          host_participates?: boolean
           id?: string
+          is_listed?: boolean
           is_public?: boolean | null
           max_members?: number | null
           name?: string
           password_hash?: string
+          prize_value?: number
           start_date?: string
           team_size?: number | null
           updated_at?: string | null
@@ -1165,25 +1177,47 @@ export type Database = {
       }
     }
     Functions: {
+      assign_member_to_team: {
+        Args: { p_competition_id: string; p_team_id: string; p_user_id: string }
+        Returns: Json
+      }
       compute_closing_date: {
         Args: { p_closing_day: number; p_tx_date: string }
         Returns: string
       }
-      create_competition: {
-        Args: {
-          p_allow_teams?: boolean
-          p_description: string
-          p_end_date: string
-          p_goal_type: string
-          p_goal_value: number
-          p_max_members?: number
-          p_name: string
-          p_password: string
-          p_start_date: string
-          p_team_size?: number
-        }
-        Returns: Json
-      }
+      create_competition:
+        | {
+            Args: {
+              p_allow_teams?: boolean
+              p_description: string
+              p_end_date: string
+              p_goal_type: string
+              p_goal_value: number
+              p_max_members?: number
+              p_name: string
+              p_password: string
+              p_start_date: string
+              p_team_size?: number
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_allow_teams?: boolean
+              p_description: string
+              p_end_date: string
+              p_goal_type: string
+              p_goal_value: number
+              p_host_participates?: boolean
+              p_max_members?: number
+              p_name: string
+              p_password: string
+              p_prize_value?: number
+              p_start_date: string
+              p_team_size?: number
+            }
+            Returns: Json
+          }
       create_competition_teams: {
         Args: { p_competition_id: string; p_team_count: number }
         Returns: Json
@@ -1207,6 +1241,23 @@ export type Database = {
       get_competition_leaderboard: {
         Args: { p_competition_id: string }
         Returns: Json
+      }
+      get_listed_competitions: {
+        Args: never
+        Returns: {
+          allow_teams: boolean
+          code: string
+          description: string
+          end_date: string
+          goal_value: number
+          id: string
+          is_member: boolean
+          max_members: number
+          member_count: number
+          name: string
+          prize_value: number
+          start_date: string
+        }[]
       }
       get_revenue_by_platform: {
         Args: { p_end_date: string; p_start_date: string }
@@ -1245,6 +1296,10 @@ export type Database = {
       resolve_or_create_invoice_for_user: {
         Args: { p_credit_card_id: string; p_tx_date: string; p_user_id: string }
         Returns: string
+      }
+      unassign_member_from_team: {
+        Args: { p_competition_id: string; p_user_id: string }
+        Returns: Json
       }
       update_fuel_expense: {
         Args: {

@@ -30,7 +30,8 @@ const createSchema = z
   .object({
     name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
     description: z.string().max(500).optional(),
-    goal_value: z.coerce.number().positive("Valor deve ser positivo"),
+    goal_value: z.coerce.number().positive("Meta deve ser maior que zero"),
+    prize_value: z.coerce.number().positive("Prêmio deve ser maior que zero"),
     start_date: z.string().min(1, "Data de início é obrigatória"),
     end_date: z.string().min(1, "Data de fim é obrigatória"),
     password: z.string().min(4, "Senha deve ter pelo menos 4 caracteres"),
@@ -38,6 +39,7 @@ const createSchema = z
     max_members: z.coerce.number().int().positive().optional().or(z.literal("")),
     allow_teams: z.boolean().default(false),
     team_size: z.coerce.number().int().min(2).optional().or(z.literal("")),
+    host_participates: z.boolean().default(true),
   })
   .refine((data) => data.password === data.confirm_password, {
     message: "Senhas não conferem",
@@ -46,6 +48,10 @@ const createSchema = z
   .refine((data) => new Date(data.end_date) >= new Date(data.start_date), {
     message: "Data de fim deve ser após data de início",
     path: ["end_date"],
+  })
+  .refine((data) => !data.allow_teams || (data.team_size && Number(data.team_size) >= 2), {
+    message: "Tamanho do time deve ser no mínimo 2",
+    path: ["team_size"],
   });
 
 type CreateFormValues = z.infer<typeof createSchema>;
@@ -74,6 +80,7 @@ export default function CreateCompetitionModal({
       name: "",
       description: "",
       goal_value: 0,
+      prize_value: 0,
       start_date: today,
       end_date: defaultEnd,
       password: "",
@@ -81,6 +88,7 @@ export default function CreateCompetitionModal({
       max_members: "",
       allow_teams: false,
       team_size: "",
+      host_participates: true,
     },
   });
 
@@ -92,12 +100,14 @@ export default function CreateCompetitionModal({
       description: values.description,
       goal_type: "income_goal",
       goal_value: values.goal_value,
+      prize_value: values.prize_value,
       start_date: values.start_date,
       end_date: values.end_date,
       password: values.password,
       max_members: values.max_members ? Number(values.max_members) : undefined,
       allow_teams: values.allow_teams,
       team_size: values.team_size ? Number(values.team_size) : undefined,
+      host_participates: values.host_participates,
     });
 
     if (result.code) {
@@ -111,7 +121,7 @@ export default function CreateCompetitionModal({
     const textToCopy =
       type === "code"
         ? createdCode
-        : `${window.location.origin}/dashboard/competicoes/entrar?code=${createdCode}`;
+        : `${window.location.origin}/dashboard/competicoes?join=1&code=${createdCode}`;
 
     await navigator.clipboard.writeText(textToCopy);
     setCopied(type);
@@ -165,7 +175,7 @@ export default function CreateCompetitionModal({
               <div className="flex gap-2">
                 <Input
                   readOnly
-                  value={`${window.location.origin}/dashboard/competicoes/entrar?code=${createdCode}`}
+                  value={`${window.location.origin}/dashboard/competicoes?join=1&code=${createdCode}`}
                   className="font-mono text-xs"
                 />
                 <Button
@@ -243,24 +253,45 @@ export default function CreateCompetitionModal({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="goal_value"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Meta de Receita (R$) *</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="5000"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="goal_value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Meta de Receita (R$) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="5000"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="prize_value"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor do Prêmio (R$) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="500"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -347,6 +378,24 @@ export default function CreateCompetitionModal({
 
             <FormField
               control={form.control}
+              name="host_participates"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="space-y-0.5">
+                    <FormLabel>Host vai participar?</FormLabel>
+                    <FormDescription>
+                      Se desativado, você gerencia mas não entra no ranking
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="max_members"
               render={({ field }) => (
                 <FormItem>
@@ -389,7 +438,7 @@ export default function CreateCompetitionModal({
                 name="team_size"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tamanho do Time</FormLabel>
+                    <FormLabel>Tamanho do Time *</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -400,7 +449,7 @@ export default function CreateCompetitionModal({
                       />
                     </FormControl>
                     <FormDescription>
-                      Quantidade de membros por time
+                      Quantidade de membros por time (mínimo 2)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

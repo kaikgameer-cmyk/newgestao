@@ -19,12 +19,19 @@ import {
   Settings,
   LogOut,
   Loader2,
+  Gift,
+  UserMinus,
+  UserPlus,
 } from "lucide-react";
 import {
   useCompetition,
   useCompetitionLeaderboard,
   useLeaveCompetition,
   useCreateTeams,
+  useAssignMemberToTeam,
+  useUnassignMemberFromTeam,
+  type LeaderboardTeam,
+  type AllMember,
 } from "@/hooks/useCompetitions";
 import { useAuth } from "@/hooks/useAuth";
 import { format, differenceInDays, isAfter, isBefore, parseISO } from "date-fns";
@@ -50,13 +57,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-const goalTypeLabels: Record<string, string> = {
-  income_goal: "Meta de Receita",
-  expense_limit: "Limite de Gastos",
-  saving_goal: "Meta de Economia",
-  net_goal: "Meta de Lucro",
-};
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -68,6 +75,7 @@ export default function CompetitionDetails() {
   
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const [showTeamsModal, setShowTeamsModal] = useState(false);
+  const [showManageTeamsModal, setShowManageTeamsModal] = useState(false);
   const [teamCount, setTeamCount] = useState(2);
 
   const { data: competition, isLoading: competitionLoading } = useCompetition(code || "");
@@ -77,6 +85,8 @@ export default function CompetitionDetails() {
   
   const leaveMutation = useLeaveCompetition();
   const createTeamsMutation = useCreateTeams();
+  const assignMutation = useAssignMemberToTeam();
+  const unassignMutation = useUnassignMemberFromTeam();
 
   if (competitionLoading || leaderboardLoading) {
     return (
@@ -122,7 +132,7 @@ export default function CompetitionDetails() {
     const textToCopy =
       type === "code"
         ? competition.code
-        : `${window.location.origin}/dashboard/competicoes/entrar?code=${competition.code}`;
+        : `${window.location.origin}/dashboard/competicoes?join=1&code=${competition.code}`;
 
     await navigator.clipboard.writeText(textToCopy);
     setCopied(type);
@@ -142,11 +152,38 @@ export default function CompetitionDetails() {
     setShowTeamsModal(false);
   };
 
+  const handleAssignToTeam = async (userId: string, teamId: string) => {
+    await assignMutation.mutateAsync({
+      competition_id: competition.id,
+      team_id: teamId,
+      user_id: userId,
+    });
+  };
+
+  const handleUnassignFromTeam = async (userId: string) => {
+    await unassignMutation.mutateAsync({
+      competition_id: competition.id,
+      user_id: userId,
+    });
+  };
+
   const getRankIcon = (index: number) => {
     if (index === 0) return <Trophy className="w-5 h-5 text-yellow-500" />;
     if (index === 1) return <Medal className="w-5 h-5 text-gray-400" />;
     if (index === 2) return <Medal className="w-5 h-5 text-amber-600" />;
     return <span className="w-5 h-5 flex items-center justify-center text-sm font-medium">{index + 1}</span>;
+  };
+
+  // Get members without a team for manual assignment
+  const getMembersWithoutTeam = (): AllMember[] => {
+    if (!leaderboard.all_members || !leaderboard.teams) return leaderboard.all_members || [];
+    
+    const membersInTeams = new Set<string>();
+    leaderboard.teams.forEach(team => {
+      team.members.forEach(m => membersInTeams.add(m.user_id));
+    });
+    
+    return leaderboard.all_members.filter(m => !membersInTeams.has(m.user_id) && m.is_competitor);
   };
 
   return (
@@ -181,14 +218,22 @@ export default function CompetitionDetails() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Meta</CardDescription>
-            <CardTitle className="text-xl">
+            <CardDescription>Meta de Receita</CardDescription>
+            <CardTitle className="text-xl flex items-center gap-2">
+              <Target className="w-5 h-5 text-muted-foreground" />
               {formatCurrency(competition.goal_value)}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <Badge variant="secondary">{goalTypeLabels[competition.goal_type]}</Badge>
-          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Prêmio</CardDescription>
+            <CardTitle className="text-xl flex items-center gap-2 text-primary">
+              <Gift className="w-5 h-5" />
+              {formatCurrency(leaderboard.competition.prize_value || competition.prize_value)}
+            </CardTitle>
+          </CardHeader>
         </Card>
 
         <Card>
@@ -203,28 +248,6 @@ export default function CompetitionDetails() {
             <p className="text-xs text-muted-foreground">
               Dia {elapsedDays} de {totalDays}
             </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Participantes</CardDescription>
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              {leaderboard.members?.length || 0}
-              {competition.max_members && (
-                <span className="text-muted-foreground font-normal text-sm">
-                  / {competition.max_members}
-                </span>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {competition.allow_teams && (
-              <Badge variant="outline">
-                {leaderboard.teams?.length || 0} times
-              </Badge>
-            )}
           </CardContent>
         </Card>
 
@@ -264,12 +287,15 @@ export default function CompetitionDetails() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Settings className="w-4 h-4" />
-              Gerenciar Competição
+              Gerenciar Times
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex gap-2">
             <Button onClick={() => setShowTeamsModal(true)} variant="outline">
-              Criar / Redistribuir Times
+              Auto Dividir Times
+            </Button>
+            <Button onClick={() => setShowManageTeamsModal(true)} variant="outline">
+              Gerenciar Manualmente
             </Button>
           </CardContent>
         </Card>
@@ -295,7 +321,7 @@ export default function CompetitionDetails() {
             <CardHeader>
               <CardTitle>Ranking Individual</CardTitle>
               <CardDescription>
-                Classificação baseada em {goalTypeLabels[competition.goal_type].toLowerCase()}
+                Classificação baseada em receita acumulada
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -320,10 +346,9 @@ export default function CompetitionDetails() {
                             <Crown className="w-3 h-3 inline ml-1 text-primary" />
                           )}
                         </p>
-                        <div className="flex gap-3 text-xs text-muted-foreground">
-                          <span>Receita: {formatCurrency(member.total_income)}</span>
-                          <span>Despesa: {formatCurrency(member.total_expense)}</span>
-                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Receita: {formatCurrency(member.total_income)}
+                        </p>
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-lg">{formatCurrency(member.score)}</p>
@@ -348,7 +373,7 @@ export default function CompetitionDetails() {
             <Card>
               <CardHeader>
                 <CardTitle>Ranking por Times</CardTitle>
-                <CardDescription>Soma dos scores dos membros</CardDescription>
+                <CardDescription>Soma da receita dos membros</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -417,11 +442,11 @@ export default function CompetitionDetails() {
         </AlertDialog>
       )}
 
-      {/* Create Teams Modal */}
+      {/* Auto Create Teams Modal */}
       <Dialog open={showTeamsModal} onOpenChange={setShowTeamsModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Criar Times</DialogTitle>
+            <DialogTitle>Criar Times Automaticamente</DialogTitle>
             <DialogDescription>
               Os participantes serão distribuídos automaticamente
             </DialogDescription>
@@ -438,7 +463,7 @@ export default function CompetitionDetails() {
               className="mt-2"
             />
             <p className="text-xs text-muted-foreground mt-2">
-              {leaderboard.members?.length || 0} participantes serão divididos em {teamCount} times
+              {leaderboard.members?.length || 0} competidores serão divididos em {teamCount} times
             </p>
           </div>
           <DialogFooter>
@@ -451,6 +476,93 @@ export default function CompetitionDetails() {
               ) : (
                 "Criar Times"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Team Management Modal */}
+      <Dialog open={showManageTeamsModal} onOpenChange={setShowManageTeamsModal}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Times Manualmente</DialogTitle>
+            <DialogDescription>
+              Atribua participantes aos times individualmente
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Members without team */}
+            <div>
+              <h4 className="font-medium mb-3 flex items-center gap-2">
+                <UserMinus className="w-4 h-4" />
+                Sem Time ({getMembersWithoutTeam().length})
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {getMembersWithoutTeam().length > 0 ? (
+                  getMembersWithoutTeam().map((member) => (
+                    <div key={member.user_id} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                      <span className="text-sm">{member.display_name}</span>
+                      {leaderboard.teams && leaderboard.teams.length > 0 && (
+                        <Select
+                          onValueChange={(teamId) => handleAssignToTeam(member.user_id, teamId)}
+                        >
+                          <SelectTrigger className="w-[140px] h-8">
+                            <SelectValue placeholder="Mover para..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {leaderboard.teams.map((team) => (
+                              <SelectItem key={team.team_id} value={team.team_id}>
+                                {team.team_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Todos os membros estão em times</p>
+                )}
+              </div>
+            </div>
+
+            {/* Teams */}
+            {leaderboard.teams && leaderboard.teams.map((team) => (
+              <div key={team.team_id} className="border rounded-lg p-4">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  {team.team_name} ({team.members.filter(m => m.user_id).length})
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {team.members.filter(m => m.user_id).map((member) => (
+                    <div key={member.user_id} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                      <span className="text-sm">{member.display_name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleUnassignFromTeam(member.user_id)}
+                      >
+                        <UserMinus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {(!leaderboard.teams || leaderboard.teams.length === 0) && (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Nenhum time criado ainda.</p>
+                <p className="text-sm mt-1">Use "Auto Dividir Times" para criar os times primeiro.</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setShowManageTeamsModal(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>

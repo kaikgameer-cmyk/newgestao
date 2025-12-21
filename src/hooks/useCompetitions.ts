@@ -8,8 +8,9 @@ export interface Competition {
   code: string;
   name: string;
   description: string | null;
-  goal_type: 'income_goal' | 'expense_limit' | 'saving_goal' | 'net_goal';
+  goal_type: 'income_goal';
   goal_value: number;
+  prize_value: number;
   start_date: string;
   end_date: string;
   max_members: number | null;
@@ -18,6 +19,8 @@ export interface Competition {
   created_by: string;
   created_at: string;
   is_public: boolean;
+  host_participates: boolean;
+  is_listed: boolean;
 }
 
 export interface CompetitionMember {
@@ -26,17 +29,24 @@ export interface CompetitionMember {
   role: 'host' | 'member';
   joined_at: string;
   display_name?: string;
+  is_competitor: boolean;
 }
 
 export interface LeaderboardMember {
   user_id: string;
   display_name: string;
   role: string;
+  is_competitor: boolean;
   total_income: number;
-  total_expense: number;
-  net: number;
   score: number;
   progress: number;
+}
+
+export interface AllMember {
+  user_id: string;
+  display_name: string;
+  role: string;
+  is_competitor: boolean;
 }
 
 export interface LeaderboardTeam {
@@ -52,11 +62,29 @@ export interface LeaderboardData {
     name: string;
     goal_type: string;
     goal_value: number;
+    prize_value: number;
     start_date: string;
     end_date: string;
+    host_participates: boolean;
   };
   members: LeaderboardMember[];
+  all_members: AllMember[];
   teams: LeaderboardTeam[] | null;
+}
+
+export interface ListedCompetition {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  goal_value: number;
+  prize_value: number;
+  start_date: string;
+  end_date: string;
+  max_members: number | null;
+  allow_teams: boolean;
+  member_count: number;
+  is_member: boolean;
 }
 
 export function useMyCompetitions() {
@@ -69,16 +97,30 @@ export function useMyCompetitions() {
         .from("competitions")
         .select(`
           *,
-          competition_members!inner(user_id, role)
+          competition_members!inner(user_id, role, is_competitor)
         `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
       
-      // Type assertion since supabase types may not include the new tables yet
       return (data || []) as (Competition & { 
-        competition_members: { user_id: string; role: string }[] 
+        competition_members: { user_id: string; role: string; is_competitor: boolean }[] 
       })[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useListedCompetitions() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["listed-competitions"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_listed_competitions");
+
+      if (error) throw error;
+      return data as ListedCompetition[];
     },
     enabled: !!user,
   });
@@ -154,6 +196,8 @@ export function useCreateCompetition() {
       max_members?: number;
       allow_teams?: boolean;
       team_size?: number;
+      prize_value: number;
+      host_participates?: boolean;
     }) => {
       const { data, error } = await supabase.rpc("create_competition", {
         p_name: params.name,
@@ -166,6 +210,8 @@ export function useCreateCompetition() {
         p_max_members: params.max_members || null,
         p_allow_teams: params.allow_teams || false,
         p_team_size: params.team_size || null,
+        p_prize_value: params.prize_value,
+        p_host_participates: params.host_participates ?? true,
       });
 
       if (error) throw error;
@@ -173,6 +219,7 @@ export function useCreateCompetition() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["listed-competitions"] });
       toast.success("Competição criada com sucesso!");
     },
     onError: (error: Error) => {
@@ -196,6 +243,7 @@ export function useJoinCompetition() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["my-competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["listed-competitions"] });
       if (data.message === "already_member") {
         toast.info("Você já participa desta competição");
       } else {
@@ -231,6 +279,58 @@ export function useCreateTeams() {
   });
 }
 
+export function useAssignMemberToTeam() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { 
+      competition_id: string; 
+      team_id: string; 
+      user_id: string 
+    }) => {
+      const { data, error } = await supabase.rpc("assign_member_to_team", {
+        p_competition_id: params.competition_id,
+        p_team_id: params.team_id,
+        p_user_id: params.user_id,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["competition-leaderboard", variables.competition_id] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Erro ao atribuir membro ao time");
+    },
+  });
+}
+
+export function useUnassignMemberFromTeam() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { 
+      competition_id: string; 
+      user_id: string 
+    }) => {
+      const { data, error } = await supabase.rpc("unassign_member_from_team", {
+        p_competition_id: params.competition_id,
+        p_user_id: params.user_id,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["competition-leaderboard", variables.competition_id] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Erro ao remover membro do time");
+    },
+  });
+}
+
 export function useLeaveCompetition() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -247,6 +347,7 @@ export function useLeaveCompetition() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["listed-competitions"] });
       toast.success("Você saiu da competição");
     },
     onError: (error: Error) => {
