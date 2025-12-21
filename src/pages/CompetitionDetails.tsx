@@ -379,18 +379,18 @@ export default function CompetitionDetails() {
       )}
 
       {/* Leaderboard Tabs */}
-      <Tabs defaultValue="individual">
+      <Tabs defaultValue={leaderboard.teams && leaderboard.teams.length > 0 ? "teams" : "individual"}>
         <TabsList>
-          <TabsTrigger value="individual" className="gap-2">
-            <Trophy className="w-4 h-4" />
-            Ranking Individual
-          </TabsTrigger>
           {leaderboard.teams && leaderboard.teams.length > 0 && (
             <TabsTrigger value="teams" className="gap-2">
               <Users className="w-4 h-4" />
               Ranking por Times
             </TabsTrigger>
           )}
+          <TabsTrigger value="individual" className="gap-2">
+            <Trophy className="w-4 h-4" />
+            Ranking Individual
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="individual" className="mt-4">
