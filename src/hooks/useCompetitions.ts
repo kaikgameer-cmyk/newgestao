@@ -113,7 +113,7 @@ export function useCompetitionsForTabs() {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ["competitions-tabs", user?.id],
+    queryKey: ["competitions-for-tabs", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_competitions_for_tabs");
 
@@ -121,6 +121,7 @@ export function useCompetitionsForTabs() {
       return (data || []) as CompetitionForTabs[];
     },
     enabled: !!user,
+    staleTime: 30000, // Cache for 30 seconds
   });
 }
  
@@ -356,6 +357,7 @@ export function useCreateCompetition() {
       return data as { competition_id: string; code: string };
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["competitions-for-tabs"] });
       queryClient.invalidateQueries({ queryKey: ["my-competitions"] });
       queryClient.invalidateQueries({ queryKey: ["listed-competitions"] });
       toast.success("Competição criada com sucesso!");
@@ -387,6 +389,7 @@ export function useJoinCompetition() {
       return data as { competition_id: string; name: string; message: string };
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["competitions-for-tabs"] });
       queryClient.invalidateQueries({ queryKey: ["my-competitions"] });
       queryClient.invalidateQueries({ queryKey: ["listed-competitions"] });
       queryClient.invalidateQueries({ queryKey: ["finished-competitions"] });

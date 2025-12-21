@@ -1,10 +1,9 @@
 import { parseISO, addDays, isBefore } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
 
 // Timezone: America/Sao_Paulo
 // Competition is active until 23:59:59 of end_date in Sao Paulo timezone
-
-const SAO_PAULO_TZ = "America/Sao_Paulo";
+// NOTE: For the Competitions page, status calculation is done in the backend RPC for consistency
+// This file provides helper functions for remaining time calculations and legacy status checks
 
 export type CompetitionStatus = "upcoming" | "active" | "finished";
 
@@ -17,53 +16,41 @@ export interface CompetitionStatusInfo {
 /**
  * Get the end exclusive timestamp for a competition in Sao Paulo timezone
  * Competition ends at 00:00:00 of end_date + 1 in America/Sao_Paulo
+ * Sao Paulo is UTC-3 (Brazil no longer uses DST since 2019)
  */
 function getEndExclusiveInSaoPaulo(endDate: string): Date {
-  // Parse the end_date as a date string (YYYY-MM-DD)
   const endDateParsed = parseISO(endDate);
-  // Add 1 day to get the exclusive end (00:00 of next day)
   const nextDay = addDays(endDateParsed, 1);
-  // Create a date at midnight in Sao Paulo timezone
-  // We need to create the timestamp that represents 00:00 in Sao Paulo
   const year = nextDay.getFullYear();
   const month = nextDay.getMonth();
   const day = nextDay.getDate();
   
-  // Create a date string for midnight in Sao Paulo and convert it
-  const midnightSaoPauloStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00`;
-  
-  // Parse as if it's Sao Paulo time (add 3 hours offset for UTC, or use proper conversion)
-  // Sao Paulo is UTC-3 (standard) or UTC-2 (daylight saving, but Brazil doesn't use DST since 2019)
-  // To be safe, we compare the current time in Sao Paulo timezone
-  return new Date(midnightSaoPauloStr + "-03:00");
+  // Create a date string for midnight in Sao Paulo (UTC-3)
+  const midnightSaoPauloStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-03:00`;
+  return new Date(midnightSaoPauloStr);
 }
 
 /**
- * Get current time in Sao Paulo timezone for comparison
+ * Get start timestamp for a competition in Sao Paulo timezone
  */
-function getNowInSaoPaulo(): Date {
-  return toZonedTime(new Date(), SAO_PAULO_TZ);
+function getStartInSaoPaulo(startDate: string): Date {
+  const startDateParsed = parseISO(startDate);
+  const year = startDateParsed.getFullYear();
+  const month = startDateParsed.getMonth();
+  const day = startDateParsed.getDate();
+  
+  const midnightSaoPauloStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00-03:00`;
+  return new Date(midnightSaoPauloStr);
 }
 
 /**
  * Calculate competition status based on start_date and end_date
  * The competition is active until 23:59:59 of end_date in America/Sao_Paulo timezone
+ * NOTE: For the main Competitions page, use the computed_status from the RPC instead
  */
 export function getCompetitionStatus(startDate: string, endDate: string): CompetitionStatusInfo {
   const now = new Date();
-  const nowSaoPaulo = getNowInSaoPaulo();
-  
-  // Parse dates - these are DATE only (YYYY-MM-DD), treat as Sao Paulo dates
-  const startDateParsed = parseISO(startDate);
-  const startYear = startDateParsed.getFullYear();
-  const startMonth = startDateParsed.getMonth();
-  const startDay = startDateParsed.getDate();
-  
-  // Start time is 00:00 of start_date in Sao Paulo
-  const startSaoPauloStr = `${startYear}-${String(startMonth + 1).padStart(2, '0')}-${String(startDay).padStart(2, '0')}T00:00:00-03:00`;
-  const startExclusive = new Date(startSaoPauloStr);
-  
-  // End exclusive is 00:00 of end_date + 1 in Sao Paulo
+  const startExclusive = getStartInSaoPaulo(startDate);
   const endExclusive = getEndExclusiveInSaoPaulo(endDate);
   
   if (isBefore(now, startExclusive)) {
@@ -87,36 +74,6 @@ export function getCompetitionStatus(startDate: string, endDate: string): Compet
     label: "Em andamento",
     variant: "default",
   };
-}
-
-/**
- * Get status label for "Minhas" tab (user's competitions)
- */
-export function getMyCompetitionStatusLabel(startDate: string, endDate: string): { label: string; variant: "secondary" | "default" | "outline" } {
-  const status = getCompetitionStatus(startDate, endDate);
-  
-  if (status.status === "upcoming") {
-    return { label: "Aguardando início", variant: "secondary" };
-  }
-  if (status.status === "active") {
-    return { label: "Em andamento", variant: "default" };
-  }
-  return { label: "Finalizada", variant: "outline" };
-}
-
-/**
- * Get status label for "Disponíveis" tab (listed competitions)
- */
-export function getAvailableCompetitionStatusLabel(startDate: string, endDate: string): { label: string; variant: "secondary" | "default" | "outline" } {
-  const status = getCompetitionStatus(startDate, endDate);
-  
-  if (status.status === "upcoming") {
-    return { label: "Participe agora", variant: "secondary" };
-  }
-  if (status.status === "active") {
-    return { label: "Em andamento", variant: "default" };
-  }
-  return { label: "Finalizada", variant: "outline" };
 }
 
 /**
