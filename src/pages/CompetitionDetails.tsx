@@ -69,6 +69,7 @@ import {
   PlatformBreakdownSection,
   DailyFeedSection,
   JoinCTA,
+  JoinCompetitionInline,
 } from "@/components/competitions/details";
 
 export default function CompetitionDetails() {
@@ -91,6 +92,7 @@ export default function CompetitionDetails() {
   } | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
 
   // Use ref to ensure finalization runs only ONCE per mount
   const finalizeAttemptedRef = useRef(false);
@@ -297,10 +299,10 @@ export default function CompetitionDetails() {
         {/* Join CTA for non-members */}
         {!isMember && !isHost && (
           <JoinCTA
-            code={competition.code}
             isJoinable={flags?.is_joinable ?? false}
             participantsCount={dashboardData.participants_count}
             prizeValue={competition.prize_value}
+            onJoinClick={() => setShowJoinModal(true)}
           />
         )}
 
@@ -597,6 +599,16 @@ export default function CompetitionDetails() {
           <DeleteCompetitionDialog
             open={showDeleteDialog}
             onOpenChange={setShowDeleteDialog}
+            competitionId={competition.id}
+            competitionName={competition.name}
+          />
+        )}
+
+        {/* Join Competition Modal (inline, no navigation) */}
+        {competition && (
+          <JoinCompetitionInline
+            open={showJoinModal}
+            onOpenChange={setShowJoinModal}
             competitionId={competition.id}
             competitionName={competition.name}
           />

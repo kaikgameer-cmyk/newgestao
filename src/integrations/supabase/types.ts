@@ -1585,6 +1585,15 @@ export type Database = {
             }
             Returns: Json
           }
+      join_competition_with_password: {
+        Args: {
+          p_competition_id: string
+          p_password: string
+          p_pix_key: string
+          p_pix_key_type: string
+        }
+        Returns: Json
+      }
       mark_finish_result_popup_shown: {
         Args: { p_competition_id: string }
         Returns: boolean

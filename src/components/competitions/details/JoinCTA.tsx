@@ -1,18 +1,15 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, UserPlus, Trophy } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 interface JoinCTAProps {
-  code: string;
   isJoinable: boolean;
   participantsCount: number;
   prizeValue: number;
+  onJoinClick: () => void;
 }
 
-export function JoinCTA({ code, isJoinable, participantsCount, prizeValue }: JoinCTAProps) {
-  const navigate = useNavigate();
-
+export function JoinCTA({ isJoinable, participantsCount, prizeValue, onJoinClick }: JoinCTAProps) {
   if (!isJoinable) {
     return (
       <Card className="bg-muted/50">
@@ -40,7 +37,7 @@ export function JoinCTA({ code, isJoinable, participantsCount, prizeValue }: Joi
         </p>
         <Button 
           size="lg" 
-          onClick={() => navigate(`/competicao/entrar/${code}`)}
+          onClick={onJoinClick}
           className="gap-2"
         >
           <UserPlus className="w-5 h-5" />

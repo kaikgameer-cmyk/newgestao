@@ -5,3 +5,4 @@ export { RankingSection } from "./RankingSection";
 export { PlatformBreakdownSection } from "./PlatformBreakdownSection";
 export { DailyFeedSection } from "./DailyFeedSection";
 export { JoinCTA } from "./JoinCTA";
+export { JoinCompetitionInline } from "./JoinCompetitionInline";
