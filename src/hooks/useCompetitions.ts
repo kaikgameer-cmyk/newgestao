@@ -299,10 +299,17 @@ export function useJoinCompetition() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: { code: string; password: string }) => {
+    mutationFn: async (params: { 
+      code: string; 
+      password: string; 
+      pix_key: string;
+      pix_key_type?: string;
+    }) => {
       const { data, error } = await supabase.rpc("join_competition", {
         p_code: params.code.toUpperCase(),
         p_password: params.password,
+        p_pix_key: params.pix_key,
+        p_pix_key_type: params.pix_key_type || null,
       });
 
       if (error) throw error;
@@ -311,8 +318,9 @@ export function useJoinCompetition() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["my-competitions"] });
       queryClient.invalidateQueries({ queryKey: ["listed-competitions"] });
+      queryClient.invalidateQueries({ queryKey: ["finished-competitions"] });
       if (data.message === "already_member") {
-        toast.info("Você já participa desta competição");
+        toast.info("Você já participa desta competição (PIX atualizado)");
       } else {
         toast.success(`Você entrou na competição "${data.name}"!`);
       }

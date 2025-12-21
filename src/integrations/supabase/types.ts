@@ -20,6 +20,9 @@ export type Database = {
           id: string
           is_competitor: boolean
           joined_at: string | null
+          pix_key: string | null
+          pix_key_type: string | null
+          pix_updated_at: string | null
           role: string
           user_id: string
         }
@@ -28,6 +31,9 @@ export type Database = {
           id?: string
           is_competitor?: boolean
           joined_at?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          pix_updated_at?: string | null
           role?: string
           user_id: string
         }
@@ -36,6 +42,9 @@ export type Database = {
           id?: string
           is_competitor?: boolean
           joined_at?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          pix_updated_at?: string | null
           role?: string
           user_id?: string
         }
@@ -879,6 +888,44 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          competition_id: string
+          created_at: string
+          id: string
+          payload: Json
+          read_at: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          competition_id: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          competition_id?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paid_bills: {
         Row: {
           amount: number
@@ -1430,6 +1477,10 @@ export type Database = {
           total_trips: number
         }[]
       }
+      get_winner_payouts_for_host: {
+        Args: { p_competition_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1441,10 +1492,17 @@ export type Database = {
         Args: { p_competition_id: string; p_user_id: string }
         Returns: boolean
       }
-      join_competition: {
-        Args: { p_code: string; p_password: string }
-        Returns: Json
-      }
+      join_competition:
+        | { Args: { p_code: string; p_password: string }; Returns: Json }
+        | {
+            Args: {
+              p_code: string
+              p_password: string
+              p_pix_key?: string
+              p_pix_key_type?: string
+            }
+            Returns: Json
+          }
       mark_finish_result_popup_shown: {
         Args: { p_competition_id: string }
         Returns: boolean

@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle } from "lucide-react";
+import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle, Bell } from "lucide-react";
 import { useMyCompetitions, useListedCompetitions, useFinishedCompetitions } from "@/hooks/useCompetitions";
+import { useUnreadHostNotifications, useMarkNotificationRead, HostNotification } from "@/hooks/useNotifications";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import JoinCompetitionModal from "@/components/competitions/JoinCompetitionModal";
 import CreateCompetitionModal from "@/components/competitions/CreateCompetitionModal";
+import HostPayoutNotification from "@/components/competitions/HostPayoutNotification";
 import { getCompetitionStatus, getRemainingTime, getMyCompetitionStatusLabel, getAvailableCompetitionStatusLabel } from "@/lib/competitionUtils";
 
 const formatCurrency = (value: number) =>
@@ -22,10 +24,20 @@ export default function Competitions() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [activeTab, setActiveTab] = useState("minhas");
+  const [currentNotification, setCurrentNotification] = useState<HostNotification | null>(null);
   
   const { data: myCompetitions, isLoading: loadingMine } = useMyCompetitions();
   const { data: listedCompetitions, isLoading: loadingListed } = useListedCompetitions();
   const { data: finishedCompetitions, isLoading: loadingFinished } = useFinishedCompetitions();
+  const { data: unreadNotifications } = useUnreadHostNotifications();
+  const markReadMutation = useMarkNotificationRead();
+
+  // Show first unread notification automatically
+  useEffect(() => {
+    if (unreadNotifications && unreadNotifications.length > 0 && !currentNotification) {
+      setCurrentNotification(unreadNotifications[0]);
+    }
+  }, [unreadNotifications, currentNotification]);
 
   // Filter listed to only show non-finished
   const activeListedCompetitions = listedCompetitions?.filter((comp) => {
@@ -101,6 +113,16 @@ export default function Competitions() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {unreadNotifications && unreadNotifications.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setCurrentNotification(unreadNotifications[0])}
+              className="gap-2 border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadNotifications.length} aviso{unreadNotifications.length > 1 ? "s" : ""}
+            </Button>
+          )}
           <Button variant="outline" onClick={() => navigate("/dashboard/competicoes/ranking")} className="gap-2">
             <Crown className="w-4 h-4" />
             Ranking
@@ -401,6 +423,16 @@ export default function Competitions() {
         onOpenChange={setShowJoinModal}
         initialCode={joinCode}
       />
+
+      {currentNotification && (
+        <HostPayoutNotification
+          notification={currentNotification}
+          onMarkRead={(id) => {
+            markReadMutation.mutate(id);
+          }}
+          onClose={() => setCurrentNotification(null)}
+        />
+      )}
     </div>
   );
 }

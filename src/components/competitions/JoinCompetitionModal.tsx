@@ -21,10 +21,17 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { LogIn, Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Key } from "lucide-react";
 import { useJoinCompetition } from "@/hooks/useCompetitions";
 
-const joinSchema = z.object({
+const step1Schema = z.object({
   code: z
     .string()
     .min(6, "Código deve ter 6 caracteres")
@@ -33,7 +40,13 @@ const joinSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
-type JoinFormValues = z.infer<typeof joinSchema>;
+const step2Schema = z.object({
+  pix_key: z.string().min(5, "Chave PIX deve ter no mínimo 5 caracteres"),
+  pix_key_type: z.string().optional(),
+});
+
+type Step1Values = z.infer<typeof step1Schema>;
+type Step2Values = z.infer<typeof step2Schema>;
 
 interface JoinCompetitionModalProps {
   open: boolean;
@@ -48,38 +61,73 @@ export default function JoinCompetitionModal({
 }: JoinCompetitionModalProps) {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [step1Data, setStep1Data] = useState<Step1Values | null>(null);
   
   const joinMutation = useJoinCompetition();
 
-  const form = useForm<JoinFormValues>({
-    resolver: zodResolver(joinSchema),
+  const step1Form = useForm<Step1Values>({
+    resolver: zodResolver(step1Schema),
     defaultValues: {
       code: initialCode,
       password: "",
     },
   });
 
+  const step2Form = useForm<Step2Values>({
+    resolver: zodResolver(step2Schema),
+    defaultValues: {
+      pix_key: "",
+      pix_key_type: "",
+    },
+  });
+
   useEffect(() => {
     if (initialCode && open) {
-      form.setValue("code", initialCode.toUpperCase());
+      step1Form.setValue("code", initialCode.toUpperCase());
     }
-  }, [initialCode, open, form]);
+  }, [initialCode, open, step1Form]);
 
-  const onSubmit = async (values: JoinFormValues) => {
+  useEffect(() => {
+    if (!open) {
+      setStep(1);
+      setStep1Data(null);
+      step1Form.reset();
+      step2Form.reset();
+    }
+  }, [open, step1Form, step2Form]);
+
+  const onStep1Submit = (values: Step1Values) => {
+    setStep1Data(values);
+    setStep(2);
+  };
+
+  const onStep2Submit = async (values: Step2Values) => {
+    if (!step1Data) return;
+
     const result = await joinMutation.mutateAsync({
-      code: values.code,
-      password: values.password,
+      code: step1Data.code,
+      password: step1Data.password,
+      pix_key: values.pix_key,
+      pix_key_type: values.pix_key_type || undefined,
     });
+
     if (result.competition_id) {
-      form.reset();
-      onOpenChange(false);
+      handleClose();
       navigate(`/dashboard/competicoes`);
     }
   };
 
   const handleClose = () => {
-    form.reset();
+    step1Form.reset();
+    step2Form.reset();
+    setStep(1);
+    setStep1Data(null);
     onOpenChange(false);
+  };
+
+  const handleBack = () => {
+    setStep(1);
   };
 
   return (
@@ -87,104 +135,188 @@ export default function JoinCompetitionModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <LogIn className="w-5 h-5" />
-            Entrar em Competição
+            {step === 1 ? (
+              <>
+                <LogIn className="w-5 h-5" />
+                Entrar em Competição
+              </>
+            ) : (
+              <>
+                <Key className="w-5 h-5" />
+                Sua Chave PIX
+              </>
+            )}
           </DialogTitle>
           <DialogDescription>
-            Digite o código e a senha da competição para participar
+            {step === 1
+              ? "Digite o código e a senha da competição para participar"
+              : "Informe sua chave PIX para receber o prêmio caso ganhe"}
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Código da Competição</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="ABC123"
-                      {...field}
-                      onChange={(e) => {
-                        const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-                        field.onChange(value);
-                      }}
-                      maxLength={8}
-                      className="font-mono text-lg tracking-wider uppercase"
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Código de 6 caracteres fornecido pelo host
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`h-2 flex-1 rounded-full ${step >= 1 ? "bg-primary" : "bg-muted"}`} />
+          <div className={`h-2 flex-1 rounded-full ${step >= 2 ? "bg-primary" : "bg-muted"}`} />
+        </div>
 
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Senha</FormLabel>
-                  <FormControl>
-                    <div className="relative">
+        {step === 1 ? (
+          <Form {...step1Form}>
+            <form onSubmit={step1Form.handleSubmit(onStep1Submit)} className="space-y-4">
+              <FormField
+                control={step1Form.control}
+                name="code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Código da Competição</FormLabel>
+                    <FormControl>
                       <Input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••"
+                        placeholder="ABC123"
+                        {...field}
+                        onChange={(e) => {
+                          const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                          field.onChange(value);
+                        }}
+                        maxLength={8}
+                        className="font-mono text-lg tracking-wider uppercase"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Código de 6 caracteres fornecido pelo host
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={step1Form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Senha</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="••••••"
+                          {...field}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full px-3"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleClose}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" className="flex-1">
+                  Próximo
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            </form>
+          </Form>
+        ) : (
+          <Form {...step2Form}>
+            <form onSubmit={step2Form.handleSubmit(onStep2Submit)} className="space-y-4">
+              <FormField
+                control={step2Form.control}
+                name="pix_key"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Chave PIX *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="CPF, E-mail, Celular ou Chave Aleatória"
                         {...field}
                       />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-0 h-full px-3"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1"
-                disabled={joinMutation.isPending}
-              >
-                {joinMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Entrando...
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="w-4 h-4 mr-2" />
-                    Entrar
-                  </>
+                    </FormControl>
+                    <FormDescription>
+                      Esta chave será usada para receber seu prêmio caso você ganhe
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </Button>
-            </div>
-          </form>
-        </Form>
+              />
+
+              <FormField
+                control={step2Form.control}
+                name="pix_key_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo da Chave (opcional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="cpf">CPF</SelectItem>
+                        <SelectItem value="cnpj">CNPJ</SelectItem>
+                        <SelectItem value="email">E-mail</SelectItem>
+                        <SelectItem value="phone">Celular</SelectItem>
+                        <SelectItem value="random">Chave Aleatória</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBack}
+                  className="flex-1"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Voltar
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={joinMutation.isPending}
+                >
+                  {joinMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Entrando...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Entrar
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   );
