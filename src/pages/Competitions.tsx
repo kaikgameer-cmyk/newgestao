@@ -106,25 +106,38 @@ export default function Competitions() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh} className="p-4 md:p-6 space-y-6 min-h-[calc(100vh-4rem)]">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <Trophy className="w-8 h-8 text-primary" />
-            Competições
-          </h1>
+      <header className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <Trophy className="w-8 h-8 text-primary" />
+              Competições
+            </h1>
+            {unreadNotifications && unreadNotifications.length > 0 && (
+              <div className="relative">
+                <Bell className="w-6 h-6 text-yellow-500 animate-pulse" />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadNotifications.length}
+                </span>
+              </div>
+            )}
+          </div>
           <p className="text-muted-foreground mt-1">
             Compete com outros motoristas e ganhe prêmios
           </p>
         </div>
-        {unreadNotifications && unreadNotifications.length > 0 && (
-          <div className="relative">
-            <Bell className="w-6 h-6 text-yellow-500 animate-pulse" />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {unreadNotifications.length}
-            </span>
-          </div>
-        )}
-      </div>
+        <div className="flex flex-wrap justify-end gap-2 sm:gap-3">
+          <Button onClick={() => setShowCreateModal(true)} className="gap-2 min-h-[44px]">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Criar Competição</span>
+            <span className="sm:hidden">Criar</span>
+          </Button>
+          <Button onClick={() => setShowJoinModal(true)} variant="outline" className="gap-2 min-h-[44px]">
+            <LogIn className="w-4 h-4" />
+            Entrar
+          </Button>
+        </div>
+      </header>
 
       <Tabs defaultValue="disponiveis" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -134,17 +147,6 @@ export default function Competitions() {
         </TabsList>
 
         <TabsContent value="minhas" className="space-y-4 mt-4">
-          <div className="flex gap-3">
-            <Button onClick={() => setShowCreateModal(true)} className="gap-2 flex-1">
-              <Plus className="w-4 h-4" />
-              Criar Competição
-            </Button>
-            <Button onClick={() => setShowJoinModal(true)} variant="outline" className="gap-2 flex-1">
-              <LogIn className="w-4 h-4" />
-              Entrar
-            </Button>
-          </div>
-
           {isLoading ? (
             <CompetitionSkeletonGrid count={3} />
           ) : myCompetitions && myCompetitions.length > 0 ? (
