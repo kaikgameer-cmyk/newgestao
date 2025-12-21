@@ -13,12 +13,14 @@ import JoinCompetitionModal from "@/components/competitions/JoinCompetitionModal
 import CreateCompetitionModal from "@/components/competitions/CreateCompetitionModal";
 import HostPayoutNotification from "@/components/competitions/HostPayoutNotification";
 import { getCompetitionStatus, getRemainingTime, getMyCompetitionStatusLabel, getAvailableCompetitionStatusLabel } from "@/lib/competitionUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function Competitions() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -195,8 +197,11 @@ export default function Competitions() {
           ) : myCompetitions && myCompetitions.length > 0 ? (
             <div className="space-y-3">
               {myCompetitions.map((comp) => {
+                const statusInfo = getMyCompetitionStatusLabel(comp.start_date, comp.end_date);
+                const memberCount = comp.competition_members?.length ?? 0;
+                const myMember = comp.competition_members.find((m) => m.user_id === user?.id);
+                const isHost = myMember?.role === "host";
                 const status = getCompetitionStatus(comp.start_date, comp.end_date);
-                const statusLabel = getMyCompetitionStatusLabel(comp.start_date, comp.end_date, comp.role);
                 
                 return (
                   <Card
@@ -210,8 +215,8 @@ export default function Competitions() {
                           <CardTitle className="text-lg">{comp.name}</CardTitle>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Users className="w-4 h-4" />
-                            {comp.member_count} participante{comp.member_count !== 1 ? 's' : ''}
-                            {comp.role === "host" && (
+                            {memberCount} participante{memberCount !== 1 ? 's' : ''}
+                            {isHost && (
                               <Badge variant="outline" className="text-xs">
                                 <Crown className="w-3 h-3 mr-1" />
                                 Host
@@ -220,7 +225,7 @@ export default function Competitions() {
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          {statusLabel}
+                          <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
                         </div>
                       </div>
                     </CardHeader>
@@ -285,10 +290,9 @@ export default function Competitions() {
             <div className="space-y-3">
               {activeListedCompetitions.map((comp) => {
                 const status = getCompetitionStatus(comp.start_date, comp.end_date);
-                const statusLabel = getAvailableCompetitionStatusLabel(
+                const statusInfo = getAvailableCompetitionStatusLabel(
                   comp.start_date,
-                  comp.end_date,
-                  comp.is_member
+                  comp.end_date
                 );
                 const isFull = comp.max_members && comp.member_count >= comp.max_members;
 
@@ -321,7 +325,7 @@ export default function Competitions() {
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          {statusLabel}
+                          <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
                           {isFull && <Badge variant="destructive">Lotada</Badge>}
                         </div>
                       </div>
@@ -388,6 +392,9 @@ export default function Competitions() {
               {finishedCompetitions.map((comp) => {
                 const borderStyle = getFinishedCardStyles(comp.payout);
                 const badge = getFinishedBadge(comp.payout);
+                const memberCount = comp.competition_members?.length ?? 0;
+                const myMember = comp.competition_members.find((m) => m.user_id === user?.id);
+                const isHost = myMember?.role === "host";
 
                 return (
                   <Card
@@ -401,8 +408,8 @@ export default function Competitions() {
                           <CardTitle className="text-lg">{comp.name}</CardTitle>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Users className="w-4 h-4" />
-                            {comp.member_count} participante{comp.member_count !== 1 ? "s" : ""}
-                            {comp.role === "host" && (
+                            {memberCount} participante{memberCount !== 1 ? "s" : ""}
+                            {isHost && (
                               <Badge variant="outline" className="text-xs">
                                 <Crown className="w-3 h-3 mr-1" />
                                 Host
