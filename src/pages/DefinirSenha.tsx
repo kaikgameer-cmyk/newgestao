@@ -195,7 +195,7 @@ export default function DefinirSenha() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-2 mb-4">
-            <img src={logo} alt="Driver Control" className="w-12 h-12" />
+            <img src={logo} alt="Driver Control" className="w-12 h-12 logo-invert" />
             <span className="text-xl font-semibold">Driver Control</span>
           </Link>
 

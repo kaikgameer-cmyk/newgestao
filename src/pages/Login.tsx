@@ -148,7 +148,7 @@ export default function Login() {
         
         <div className="relative z-10 flex flex-col justify-center p-12">
           <Link to="/" className="flex items-center gap-2 mb-12">
-            <img src={logo} alt="Driver Control" className="w-10 h-10" />
+            <img src={logo} alt="Driver Control" className="w-10 h-10 logo-invert" />
             <span className="text-xl font-semibold">Driver Control</span>
           </Link>
           
@@ -193,7 +193,7 @@ export default function Login() {
         <div className="w-full max-w-md space-y-8">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
-            <img src={logo} alt="Driver Control" className="w-10 h-10" />
+            <img src={logo} alt="Driver Control" className="w-10 h-10 logo-invert" />
             <span className="text-xl font-semibold">Driver Control</span>
           </div>
           

@@ -15,7 +15,7 @@ export function HeroSection() {
           {/* Left side - Text */}
           <div className="space-y-8 animate-fade-in-up">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
-              <img src={logo} alt="Driver Control" className="w-5 h-5" />
+              <img src={logo} alt="Driver Control" className="w-5 h-5 logo-invert" />
               <span className="text-sm text-primary font-medium">Para motoristas de app</span>
             </div>
             

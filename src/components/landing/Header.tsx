@@ -8,7 +8,7 @@ export function Header() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <img src={logo} alt="Driver Control" className="w-8 h-8" />
+          <img src={logo} alt="Driver Control" className="w-8 h-8 logo-invert" />
           <span className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
             Driver Control
           </span>

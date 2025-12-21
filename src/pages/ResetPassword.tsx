@@ -207,7 +207,7 @@ export default function ResetPassword() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-2 mb-4">
-            <img src={logo} alt="Driver Control" className="w-10 h-10" />
+            <img src={logo} alt="Driver Control" className="w-10 h-10 logo-invert" />
             <span className="text-xl font-semibold">Driver Control</span>
           </Link>
           

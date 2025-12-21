@@ -112,6 +112,10 @@
 }
 
 @layer utilities {
+  /* Logo invert for dark backgrounds */
+  .logo-invert {
+    filter: invert(1) brightness(2);
+  }
   .text-gradient-primary {
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-primary);

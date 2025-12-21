@@ -160,7 +160,7 @@ export default function DashboardLayout() {
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
             <Link to="/dashboard" className="flex items-center gap-2">
-              <img src={logo} alt="Driver Control" className="w-8 h-8" />
+              <img src={logo} alt="Driver Control" className="w-8 h-8 logo-invert" />
               <span className="font-semibold text-sidebar-foreground">Driver Control</span>
             </Link>
             <Button
@@ -231,7 +231,7 @@ export default function DashboardLayout() {
             <Menu className="w-5 h-5" />
           </Button>
           <Link to="/dashboard" className="flex items-center gap-2">
-            <img src={logo} alt="Driver Control" className="w-8 h-8" />
+            <img src={logo} alt="Driver Control" className="w-8 h-8 logo-invert" />
           </Link>
           <UserAvatar
             avatarUrl={avatarUrl}
