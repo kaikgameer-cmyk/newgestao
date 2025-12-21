@@ -99,6 +99,7 @@ export default function JoinCompetitionModal({
 
   const onStep1Submit = (values: Step1Values) => {
     setStep1Data(values);
+    step2Form.reset({ pix_key: "", pix_key_type: "" });
     setStep(2);
   };
 
