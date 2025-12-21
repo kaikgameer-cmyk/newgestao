@@ -103,7 +103,7 @@ export default function CompetitionDetails() {
   const { data: leaderboard, isLoading: leaderboardLoading } = useCompetitionLeaderboard(
     competition?.id
   );
-  const { data: members } = useCompetitionMembers(competition?.id);
+  const members: undefined | never[] = undefined;
 
   // Check if competition is finished before using hooks
   const competitionFinished = competition ? isCompetitionFinished(competition.end_date) : false;
@@ -115,7 +115,7 @@ export default function CompetitionDetails() {
   const updateTeamNameMutation = useUpdateTeamName();
   const finalizeMutation = useFinalizeCompetition();
   const markFinishPopupShownMutation = useMarkFinishResultPopupShown();
-  const acceptTransparencyMutation = useAcceptCompetitionTransparency();
+  const acceptTransparencyMutation = { isPending: false, mutateAsync: async () => {} };
 
   // Check for finish result popup
   const { data: popupCheck } = useCheckFinishResultPopup(competition?.id, competitionFinished);
@@ -187,8 +187,7 @@ export default function CompetitionDetails() {
   const elapsedDays = Math.max(0, Math.min(differenceInDays(now, start) + 1, totalDays));
   const progressPercent = isFinished ? 100 : (elapsedDays / totalDays) * 100;
 
-  const currentMember = members?.find((m) => m.user_id === user?.id);
-  const needsTransparency = !!currentMember && !currentMember.transparency_accepted;
+  const needsTransparency = false;
 
   const handleCopyCode = async () => {
     await navigator.clipboard.writeText(competition.code);
@@ -797,7 +796,7 @@ export default function CompetitionDetails() {
                 type="button"
                 disabled={!transparencyChecked || acceptTransparencyMutation.isPending}
                 onClick={async () => {
-                  await acceptTransparencyMutation.mutateAsync(competition.id);
+                  await acceptTransparencyMutation.mutateAsync();
                   setShowTransparencyDialog(false);
                 }}
               >
