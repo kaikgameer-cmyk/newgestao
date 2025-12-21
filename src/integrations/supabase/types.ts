@@ -985,7 +985,7 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
-          token: string
+          token: string | null
           token_hash: string
           token_preview: string | null
           type: string
@@ -996,7 +996,7 @@ export type Database = {
           created_at?: string
           expires_at: string
           id?: string
-          token: string
+          token?: string | null
           token_hash: string
           token_preview?: string | null
           type: string
@@ -1007,7 +1007,7 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
-          token?: string
+          token?: string | null
           token_hash?: string
           token_preview?: string | null
           type?: string
