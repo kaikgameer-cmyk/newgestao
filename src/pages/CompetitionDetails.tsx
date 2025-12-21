@@ -490,13 +490,27 @@ export default function CompetitionDetails() {
       </Tabs>
 
       {/* Daily Scores Panel - only show for active or finished competitions */}
-      {(status.status === "active" || isFinished) && (
-        <DailyScoresPanel
-          startDate={competition.start_date}
-          endDate={competition.end_date}
-          goalValue={competition.goal_value}
-        />
-      )}
+      {(status.status === "active" || isFinished) && (() => {
+        // Find user's team and count members
+        let teamMemberCount = 1;
+        if (competition.allow_teams && leaderboard.teams) {
+          const userTeam = leaderboard.teams.find(team => 
+            team.members.some(m => m.user_id === user?.id)
+          );
+          if (userTeam) {
+            teamMemberCount = userTeam.members.filter(m => m.user_id).length;
+          }
+        }
+        
+        return (
+          <DailyScoresPanel
+            startDate={competition.start_date}
+            endDate={competition.end_date}
+            goalValue={competition.goal_value}
+            teamMemberCount={teamMemberCount}
+          />
+        );
+      })()}
 
       {/* Leave Competition */}
       {!isHost && (

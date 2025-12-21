@@ -23,15 +23,19 @@ interface DailyScoresPanelProps {
   endDate: string;
   goalValue: number;
   userId?: string;
+  teamMemberCount?: number;
 }
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export function DailyScoresPanel({ startDate, endDate, goalValue, userId: propUserId }: DailyScoresPanelProps) {
+export function DailyScoresPanel({ startDate, endDate, goalValue, userId: propUserId, teamMemberCount = 1 }: DailyScoresPanelProps) {
   const { user } = useAuth();
   const userId = propUserId || user?.id;
   const [expanded, setExpanded] = useState(false);
+
+  // Divide goal by team member count when in team mode
+  const adjustedGoalValue = teamMemberCount > 1 ? goalValue / teamMemberCount : goalValue;
 
   const { data, isLoading, error } = useDailyCompetitionScores(
     userId,
@@ -55,7 +59,7 @@ export function DailyScoresPanel({ startDate, endDate, goalValue, userId: propUs
   }
 
   const { scores, totalAmount, totalTrips, daysWorked, averagePerDay } = data;
-  const progressPercent = goalValue > 0 ? Math.min((totalAmount / goalValue) * 100, 100) : 0;
+  const progressPercent = adjustedGoalValue > 0 ? Math.min((totalAmount / adjustedGoalValue) * 100, 100) : 0;
   const bestDay = scores.length > 0 ? scores.reduce((a, b) => a.amount > b.amount ? a : b) : null;
 
   // Calculate streak (consecutive days worked)
@@ -129,7 +133,7 @@ export function DailyScoresPanel({ startDate, endDate, goalValue, userId: propUs
           </div>
           <Progress value={progressPercent} className="h-2" />
           <p className="text-xs text-muted-foreground text-right">
-            {formatCurrency(totalAmount)} de {formatCurrency(goalValue)}
+            {formatCurrency(totalAmount)} de {formatCurrency(adjustedGoalValue)}
           </p>
         </div>
 
@@ -154,7 +158,7 @@ export function DailyScoresPanel({ startDate, endDate, goalValue, userId: propUs
               {scores.map((score) => {
                 const date = parseISO(score.date);
                 const isWeekendDay = isWeekend(date);
-                const dayProgress = goalValue > 0 ? (score.amount / (goalValue / 30)) * 100 : 0;
+                const dayProgress = adjustedGoalValue > 0 ? (score.amount / (adjustedGoalValue / 30)) * 100 : 0;
 
                 return (
                   <div
