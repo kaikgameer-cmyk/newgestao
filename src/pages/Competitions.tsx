@@ -141,7 +141,7 @@ export default function Competitions() {
           {isLoading ? (
             <CompetitionSkeletonGrid count={3} />
           ) : myCompetitions && myCompetitions.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-3 animate-fade-in">
               {myCompetitions.map((comp) => {
                 const statusInfo = getMyCompetitionStatusLabel(comp.start_date, comp.end_date);
                 const memberCount = comp.participants_count;
@@ -210,7 +210,7 @@ export default function Competitions() {
               })}
             </div>
           ) : (
-            <Card>
+            <Card className="animate-fade-in">
               <CardContent className="pt-6 text-center space-y-4">
                 <Trophy className="w-16 h-16 text-muted-foreground mx-auto" />
                 <div>
@@ -228,7 +228,7 @@ export default function Competitions() {
           {isLoading ? (
             <CompetitionSkeletonGrid count={4} />
           ) : activeListedCompetitions && activeListedCompetitions.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-3 animate-fade-in">
               {activeListedCompetitions.map((comp) => {
                 const status = getCompetitionStatus(comp.start_date, comp.end_date);
                 const statusInfo = getAvailableCompetitionStatusLabel(
@@ -298,7 +298,7 @@ export default function Competitions() {
               })}
             </div>
           ) : (
-            <Card>
+            <Card className="animate-fade-in">
               <CardContent className="pt-6 text-center space-y-4">
                 <Trophy className="w-16 h-16 text-muted-foreground mx-auto" />
                 <div>
@@ -316,7 +316,7 @@ export default function Competitions() {
           {isLoading ? (
             <CompetitionSkeletonGrid count={3} />
           ) : finishedCompetitions && finishedCompetitions.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-3 animate-fade-in">
               {finishedCompetitions.map((comp) => {
                 const memberCount = comp.participants_count;
                 const isHost = comp.user_is_host;
@@ -379,7 +379,7 @@ export default function Competitions() {
               })}
             </div>
           ) : (
-            <Card>
+            <Card className="animate-fade-in">
               <CardContent className="pt-6 text-center space-y-4">
                 <Trophy className="w-16 h-16 text-muted-foreground mx-auto" />
                 <p className="font-medium">Nenhuma competição finalizada ainda</p>

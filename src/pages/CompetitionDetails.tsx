@@ -266,7 +266,7 @@ export default function CompetitionDetails() {
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-start gap-4">
         <Button
@@ -412,6 +412,7 @@ export default function CompetitionDetails() {
       {leaderboardLoading ? (
         <LeaderboardSkeleton />
       ) : (
+        <div className="animate-fade-in">
         <Tabs defaultValue={leaderboard?.teams && leaderboard.teams.length > 0 ? "teams" : "individual"}>
           <TabsList>
             {leaderboard?.teams && leaderboard.teams.length > 0 && (
@@ -521,6 +522,7 @@ export default function CompetitionDetails() {
           </TabsContent>
         )}
         </Tabs>
+        </div>
       )}
 
       {/* Daily Scores Panel - only show for active or finished competitions */}
