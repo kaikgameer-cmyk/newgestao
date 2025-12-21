@@ -26,7 +26,7 @@ export default function RankingPage() {
   const getPositionIcon = (position: number) => {
     switch (position) {
       case 1:
-        return <Trophy className="w-6 h-6 text-yellow-500" />;
+        return <Trophy className="w-6 h-6 text-primary" />;
       case 2:
         return <Medal className="w-6 h-6 text-gray-400" />;
       case 3:
@@ -43,7 +43,7 @@ export default function RankingPage() {
   const getPositionStyle = (position: number) => {
     switch (position) {
       case 1:
-        return "bg-yellow-500/10 border-yellow-500/30";
+        return "bg-primary/10 border-primary/30";
       case 2:
         return "bg-gray-400/10 border-gray-400/30";
       case 3:

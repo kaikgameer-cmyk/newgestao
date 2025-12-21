@@ -33,11 +33,11 @@ export function PlatformSettings() {
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newPlatformName, setNewPlatformName] = useState("");
-  const [newPlatformColor, setNewPlatformColor] = useState("#FFC700");
+  const [newPlatformColor, setNewPlatformColor] = useState("#2563eb");
 
   const [editingPlatformId, setEditingPlatformId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
-  const [editingColor, setEditingColor] = useState("#FFC700");
+  const [editingColor, setEditingColor] = useState("#2563eb");
 
   // Initialize user platforms when component mounts
   useEffect(() => {
@@ -69,7 +69,7 @@ export function PlatformSettings() {
   const openEditDialog = (platform: { id: string; name: string; color: string }) => {
     setEditingPlatformId(platform.id);
     setEditingName(platform.name);
-    setEditingColor(platform.color || "#FFC700");
+    setEditingColor(platform.color || "#2563eb");
   };
 
   const handleUpdatePlatform = () => {
@@ -78,7 +78,7 @@ export function PlatformSettings() {
     const trimmedName = editingName.trim();
     if (!trimmedName) return;
 
-    const safeColor = /^#[0-9A-Fa-f]{6}$/.test(editingColor) ? editingColor : "#FFC700";
+    const safeColor = /^#[0-9A-Fa-f]{6}$/.test(editingColor) ? editingColor : "#2563eb";
 
     updatePlatform.mutate(
       { platformId: editingPlatformId, name: trimmedName, color: safeColor },

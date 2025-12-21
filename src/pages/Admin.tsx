@@ -474,7 +474,7 @@ export default function AdminPage() {
       case "active":
         return <Badge className="bg-green-500/20 text-green-500 border-green-500/30"><CheckCircle className="w-3 h-3 mr-1" />Ativa</Badge>;
       case "past_due":
-        return <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30"><AlertTriangle className="w-3 h-3 mr-1" />Pendente</Badge>;
+        return <Badge className="bg-primary/10 text-primary border-primary/30"><AlertTriangle className="w-3 h-3 mr-1" />Pendente</Badge>;
       case "canceled":
         return <Badge className="bg-red-500/20 text-red-500 border-red-500/30"><XCircle className="w-3 h-3 mr-1" />Cancelada</Badge>;
       default:

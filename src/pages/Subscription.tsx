@@ -41,7 +41,7 @@ export default function SubscriptionPage() {
       return <Badge className="bg-green-500/20 text-green-500 border-green-500/30">Ativa</Badge>;
     }
     if (isPastDue) {
-      return <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30">Pagamento Pendente</Badge>;
+      return <Badge className="bg-primary/10 text-primary border-primary/30">Pagamento Pendente</Badge>;
     }
     if (isCanceled) {
       return <Badge className="bg-red-500/20 text-red-500 border-red-500/30">Cancelada</Badge>;
@@ -51,7 +51,7 @@ export default function SubscriptionPage() {
 
   const getStatusIcon = () => {
     if (isActive) return <CheckCircle className="w-5 h-5 text-green-500" />;
-    if (isPastDue) return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
+    if (isPastDue) return <AlertTriangle className="w-5 h-5 text-primary" />;
     if (isCanceled) return <XCircle className="w-5 h-5 text-red-500" />;
     return <XCircle className="w-5 h-5 text-muted-foreground" />;
   };

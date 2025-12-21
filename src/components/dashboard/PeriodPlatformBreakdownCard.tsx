@@ -18,7 +18,7 @@ export function PeriodPlatformBreakdownCard({
 
   const getColorForPlatform = (key: string): string => {
     const platform = platforms.find((p) => p.key === key);
-    return platform?.color || "#FFC700";
+    return platform?.color || "#2563eb";
   };
 
   const getDisplayName = (revenue: PlatformRevenue): string => {
