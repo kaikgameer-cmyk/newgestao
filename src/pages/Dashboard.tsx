@@ -17,8 +17,9 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useAuth } from "@/hooks/useAuth";
 import { useCombinedExpenses } from "@/hooks/useCombinedExpenses";
 import { useRecurringExpenses, calculateDailyRecurringAmount, calculatePeriodRecurringAmount } from "@/hooks/useRecurringExpenses";
@@ -51,6 +52,7 @@ const DAY_NAMES = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // New unified filter state with URL persistence
   const filter = useDashboardFilter();
@@ -290,7 +292,18 @@ export default function Dashboard() {
       ? `Meta de ${format(periodStart, "dd/MM/yyyy")}`
       : `Meta do Período (${daysCount} dias)`;
 
+    const handleDayRefresh = async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["revenues"] }),
+        queryClient.invalidateQueries({ queryKey: ["income-day"] }),
+        queryClient.invalidateQueries({ queryKey: ["income-days"] }),
+        queryClient.invalidateQueries({ queryKey: ["combined-expenses"] }),
+        queryClient.invalidateQueries({ queryKey: ["revenue-by-platform"] }),
+      ]);
+    };
+
     return (
+      <PullToRefresh onRefresh={handleDayRefresh} className="h-full">
       <div className="p-4 sm:p-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4">
@@ -489,11 +502,22 @@ export default function Dashboard() {
           />
         )}
       </div>
+      </PullToRefresh>
     );
   }
 
+  const handlePeriodRefresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["revenues"] }),
+      queryClient.invalidateQueries({ queryKey: ["income-days"] }),
+      queryClient.invalidateQueries({ queryKey: ["combined-expenses"] }),
+      queryClient.invalidateQueries({ queryKey: ["revenue-by-platform"] }),
+    ]);
+  };
+
   // === NON-DAY MODES (week, month, year) ===
   return (
+    <PullToRefresh onRefresh={handlePeriodRefresh} className="h-full">
     <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
@@ -757,5 +781,6 @@ export default function Dashboard() {
         <ProfitComparisonChart userId={user?.id} />
       )}
     </div>
+    </PullToRefresh>
   );
 }
