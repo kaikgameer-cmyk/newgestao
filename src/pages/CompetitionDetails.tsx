@@ -74,7 +74,7 @@ import { FinishResultPopup, FinishStatus } from "@/components/competitions/Finis
 import { DailyScoresPanel } from "@/components/competitions/DailyScoresPanel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CompetitionDetailsSkeleton } from "@/components/competitions/CompetitionDetailsSkeleton";
+import { CompetitionDetailsSkeleton, LeaderboardSkeleton } from "@/components/competitions/CompetitionDetailsSkeleton";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -409,19 +409,22 @@ export default function CompetitionDetails() {
       )}
 
       {/* Leaderboard Tabs */}
-      <Tabs defaultValue={leaderboard.teams && leaderboard.teams.length > 0 ? "teams" : "individual"}>
-        <TabsList>
-          {leaderboard.teams && leaderboard.teams.length > 0 && (
-            <TabsTrigger value="teams" className="gap-2">
-              <Users className="w-4 h-4" />
-              Ranking por Times
+      {leaderboardLoading ? (
+        <LeaderboardSkeleton />
+      ) : (
+        <Tabs defaultValue={leaderboard?.teams && leaderboard.teams.length > 0 ? "teams" : "individual"}>
+          <TabsList>
+            {leaderboard?.teams && leaderboard.teams.length > 0 && (
+              <TabsTrigger value="teams" className="gap-2">
+                <Users className="w-4 h-4" />
+                Ranking por Times
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="individual" className="gap-2">
+              <Trophy className="w-4 h-4" />
+              Ranking Individual
             </TabsTrigger>
-          )}
-          <TabsTrigger value="individual" className="gap-2">
-            <Trophy className="w-4 h-4" />
-            Ranking Individual
-          </TabsTrigger>
-        </TabsList>
+          </TabsList>
 
         <TabsContent value="individual" className="mt-4">
           <Card>
@@ -432,7 +435,7 @@ export default function CompetitionDetails() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {leaderboard.members && leaderboard.members.length > 0 ? (
+              {leaderboard?.members && leaderboard.members.length > 0 ? (
                 <div className="space-y-3">
                   {leaderboard.members.map((member, index) => (
                     <div
@@ -475,7 +478,7 @@ export default function CompetitionDetails() {
           </Card>
         </TabsContent>
 
-        {leaderboard.teams && leaderboard.teams.length > 0 && (
+        {leaderboard?.teams && leaderboard.teams.length > 0 && (
           <TabsContent value="teams" className="mt-4">
             <Card>
               <CardHeader>
@@ -517,7 +520,8 @@ export default function CompetitionDetails() {
             </Card>
           </TabsContent>
         )}
-      </Tabs>
+        </Tabs>
+      )}
 
       {/* Daily Scores Panel - only show for active or finished competitions */}
       {(status.status === "active" || isFinished) && (() => {

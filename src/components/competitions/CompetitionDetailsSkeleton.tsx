@@ -66,44 +66,8 @@ export function CompetitionDetailsSkeleton() {
         </Card>
       </div>
 
-      {/* Leaderboard Tabs Skeleton */}
-      <div className="space-y-4">
-        {/* Tab List */}
-        <div className="flex gap-2">
-          <Skeleton className="h-10 w-40 rounded-md" />
-          <Skeleton className="h-10 w-36 rounded-md" />
-        </div>
-
-        {/* Ranking Card */}
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-64 mt-1" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {/* Ranking Items */}
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-4 p-3 rounded-lg bg-muted/50"
-              >
-                {/* Rank Icon */}
-                <Skeleton className="h-8 w-8 rounded-full" />
-                {/* Name and Info */}
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-5 w-32" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-                {/* Score */}
-                <div className="text-right space-y-2">
-                  <Skeleton className="h-6 w-20 ml-auto" />
-                  <Skeleton className="h-3 w-16 ml-auto" />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Leaderboard Skeleton */}
+      <LeaderboardSkeleton />
 
       {/* Daily Scores Skeleton */}
       <Card>
@@ -130,6 +94,48 @@ export function CompetitionDetailsSkeleton() {
             <Skeleton className="h-10 w-32 rounded-md" />
             <Skeleton className="h-10 w-28 rounded-md" />
           </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export function LeaderboardSkeleton() {
+  return (
+    <div className="space-y-4 animate-fade-in">
+      {/* Tab List */}
+      <div className="flex gap-2">
+        <Skeleton className="h-10 w-40 rounded-md" />
+        <Skeleton className="h-10 w-36 rounded-md" />
+      </div>
+
+      {/* Ranking Card */}
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-4 w-64 mt-1" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Ranking Items */}
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 p-3 rounded-lg bg-muted/50"
+            >
+              {/* Rank Icon */}
+              <Skeleton className="h-8 w-8 rounded-full" />
+              {/* Name and Info */}
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+              {/* Score */}
+              <div className="text-right space-y-2">
+                <Skeleton className="h-6 w-20 ml-auto" />
+                <Skeleton className="h-3 w-16 ml-auto" />
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>
