@@ -12,7 +12,7 @@ import { ptBR } from "date-fns/locale";
 import JoinCompetitionModal from "@/components/competitions/JoinCompetitionModal";
 import CreateCompetitionModal from "@/components/competitions/CreateCompetitionModal";
 import HostPayoutNotification from "@/components/competitions/HostPayoutNotification";
-import { getCompetitionStatus, getRemainingTime, getMyCompetitionStatusLabel, getAvailableCompetitionStatusLabel } from "@/lib/competitionUtils";
+import { getRemainingTime } from "@/lib/competitionUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { CompetitionSkeletonGrid } from "@/components/competitions/CompetitionCardSkeleton";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -85,23 +85,31 @@ export default function Competitions() {
     setCurrentNotification(null);
   };
 
-  const getDaysInfo = (startDate: string, endDate: string) => {
-    const status = getCompetitionStatus(startDate, endDate);
-    const remaining = getRemainingTime(endDate);
+  // Use computed_label from backend when available, fallback to local calculation
+  const getDaysInfo = (comp: typeof competitions[0]) => {
+    // If it's finished, show "Encerrada"
+    if (comp.computed_status === "finished" || comp.computed_label === "Finalizada") {
+      return "Encerrada";
+    }
     
-    if (status.status === "upcoming") {
+    // For running competitions, calculate remaining time
+    if (comp.computed_label === "Em andamento") {
+      const remaining = getRemainingTime(comp.end_date);
+      if (remaining.days > 0) {
+        return `${remaining.days}d ${remaining.hours}h restantes`;
+      }
+      return `${remaining.hours}h restantes`;
+    }
+    
+    // For future competitions
+    if (comp.computed_label === "Aguardando início" || comp.computed_label === "Participe agora") {
       const now = new Date();
-      const start = parseISO(startDate);
+      const start = parseISO(comp.start_date);
       const daysToStart = Math.ceil((start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       return `Começa em ${daysToStart} dia${daysToStart !== 1 ? 's' : ''}`;
     }
-    if (status.status === "finished") {
-      return "Encerrada";
-    }
-    if (remaining.days > 0) {
-      return `${remaining.days}d ${remaining.hours}h restantes`;
-    }
-    return `${remaining.hours}h restantes`;
+    
+    return "";
   };
 
   return (
@@ -152,10 +160,8 @@ export default function Competitions() {
           ) : myCompetitions && myCompetitions.length > 0 ? (
             <div className="space-y-3 animate-fade-in">
               {myCompetitions.map((comp) => {
-                const statusInfo = getMyCompetitionStatusLabel(comp.start_date, comp.end_date);
                 const memberCount = comp.participants_count;
                 const isHost = comp.user_is_host;
-                const status = getCompetitionStatus(comp.start_date, comp.end_date);
                 
                 return (
                   <Card
@@ -179,7 +185,9 @@ export default function Competitions() {
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                          <Badge variant={comp.computed_label === "Finalizada" ? "outline" : comp.computed_label === "Aguardando início" ? "secondary" : "default"}>
+                            {comp.computed_label}
+                          </Badge>
                         </div>
                       </div>
                     </CardHeader>
@@ -207,9 +215,9 @@ export default function Competitions() {
                           {format(parseISO(comp.start_date), "dd/MM/yy", { locale: ptBR })} -{" "}
                           {format(parseISO(comp.end_date), "dd/MM/yy", { locale: ptBR })}
                         </span>
-                        {status.status === "active" && (
+                        {comp.computed_label === "Em andamento" && (
                           <span className="ml-auto text-primary font-medium">
-                            {getDaysInfo(comp.start_date, comp.end_date)}
+                            {getDaysInfo(comp)}
                           </span>
                         )}
                       </div>
@@ -239,11 +247,6 @@ export default function Competitions() {
           ) : activeListedCompetitions && activeListedCompetitions.length > 0 ? (
             <div className="space-y-3 animate-fade-in">
               {activeListedCompetitions.map((comp) => {
-                const status = getCompetitionStatus(comp.start_date, comp.end_date);
-                const statusInfo = getAvailableCompetitionStatusLabel(
-                  comp.start_date,
-                  comp.end_date
-                );
 
                 return (
                   <Card
@@ -267,7 +270,9 @@ export default function Competitions() {
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+                          <Badge variant={comp.computed_label === "Participe agora" ? "secondary" : "default"}>
+                            {comp.computed_label}
+                          </Badge>
                         </div>
                       </div>
                     </CardHeader>
@@ -295,9 +300,14 @@ export default function Competitions() {
                           {format(parseISO(comp.start_date), "dd/MM/yy", { locale: ptBR })} -{" "}
                           {format(parseISO(comp.end_date), "dd/MM/yy", { locale: ptBR })}
                         </span>
-                        {status.status === "active" && (
+                        {comp.computed_label === "Em andamento" && (
                           <span className="ml-auto text-primary font-medium">
-                            {getDaysInfo(comp.start_date, comp.end_date)}
+                            {getDaysInfo(comp)}
+                          </span>
+                        )}
+                        {comp.computed_label === "Participe agora" && (
+                          <span className="ml-auto text-primary font-medium">
+                            {getDaysInfo(comp)}
                           </span>
                         )}
                       </div>
