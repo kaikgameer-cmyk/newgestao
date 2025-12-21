@@ -14,6 +14,7 @@ import CreateCompetitionModal from "@/components/competitions/CreateCompetitionM
 import HostPayoutNotification from "@/components/competitions/HostPayoutNotification";
 import { getCompetitionStatus, getRemainingTime, getMyCompetitionStatusLabel, getAvailableCompetitionStatusLabel } from "@/lib/competitionUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { CompetitionSkeletonGrid } from "@/components/competitions/CompetitionCardSkeleton";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -138,11 +139,7 @@ export default function Competitions() {
           </div>
 
           {isLoading ? (
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-              </CardContent>
-            </Card>
+            <CompetitionSkeletonGrid count={3} />
           ) : myCompetitions && myCompetitions.length > 0 ? (
             <div className="space-y-3">
               {myCompetitions.map((comp) => {
@@ -229,11 +226,7 @@ export default function Competitions() {
 
         <TabsContent value="disponiveis" className="space-y-4 mt-4">
           {isLoading ? (
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-              </CardContent>
-            </Card>
+            <CompetitionSkeletonGrid count={4} />
           ) : activeListedCompetitions && activeListedCompetitions.length > 0 ? (
             <div className="space-y-3">
               {activeListedCompetitions.map((comp) => {
@@ -321,11 +314,7 @@ export default function Competitions() {
 
         <TabsContent value="finalizadas" className="space-y-4 mt-4">
           {isLoading ? (
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-              </CardContent>
-            </Card>
+            <CompetitionSkeletonGrid count={3} />
           ) : finishedCompetitions && finishedCompetitions.length > 0 ? (
             <div className="space-y-3">
               {finishedCompetitions.map((comp) => {
