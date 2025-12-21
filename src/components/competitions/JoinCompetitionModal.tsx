@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { LogIn, Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Key } from "lucide-react";
 import { useJoinCompetition } from "@/hooks/useCompetitions";
-import { formatPixKey, unmaskPixKey } from "@/lib/pixMasks";
+import { formatPixKey, unmaskPixKey, detectPixType, PixKeyType } from "@/lib/pixMasks";
 
 const step1Schema = z.object({
   code: z
@@ -254,8 +254,12 @@ export default function JoinCompetitionModal({
                         placeholder="CPF, E-mail, Celular ou Chave Aleatória"
                         value={field.value}
                         onChange={(e) => {
-                          const keyType = step2Form.getValues("pix_key_type") || "";
-                          const formatted = formatPixKey(e.target.value, keyType);
+                          const currentType = (step2Form.getValues("pix_key_type") || "") as PixKeyType;
+                          const nextType: PixKeyType = currentType || detectPixType(e.target.value);
+                          if (!currentType && nextType) {
+                            step2Form.setValue("pix_key_type", nextType);
+                          }
+                          const formatted = formatPixKey(e.target.value, nextType);
                           field.onChange(formatted);
                         }}
                       />
@@ -276,11 +280,12 @@ export default function JoinCompetitionModal({
                     <FormLabel>Tipo da Chave *</FormLabel>
                     <Select 
                       value={field.value || ""}
-                      onValueChange={(value) => {
-                        field.onChange(value);
+                      onValueChange={(value: string) => {
+                        const typedValue = value as PixKeyType;
+                        field.onChange(typedValue);
                         // Re-format the pix_key when type changes
                         const currentKey = unmaskPixKey(step2Form.getValues("pix_key"));
-                        step2Form.setValue("pix_key", formatPixKey(currentKey, value));
+                        step2Form.setValue("pix_key", formatPixKey(currentKey, typedValue));
                       }}
                     >
                       <FormControl>
