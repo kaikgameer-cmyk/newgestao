@@ -487,7 +487,37 @@ export function useLeaveCompetition() {
   });
 }
 
-// Hook to finalize a competition and get winner
+// Hook to lazily finalize a competition when needed (idempotent)
+export function useFinalizeCompetitionIfNeeded() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (competitionId: string) => {
+      const { data, error } = await supabase.rpc("finalize_competition_if_needed", {
+        p_competition_id: competitionId,
+      });
+
+      if (error) throw error;
+      return data as {
+        finalized?: boolean;
+        already_finalized?: boolean;
+        winner_type: "team" | "individual" | "none";
+        winner_team_id: string | null;
+        winner_user_id: string | null;
+        winner_total: number;
+        meta_reached: boolean;
+        payout_per_winner?: number;
+      };
+    },
+    onSuccess: (_, competitionId) => {
+      queryClient.invalidateQueries({ queryKey: ["competition-leaderboard", competitionId] });
+      queryClient.invalidateQueries({ queryKey: ["finish-result-popup", competitionId] });
+      queryClient.invalidateQueries({ queryKey: ["finished-competitions"] });
+    },
+  });
+}
+
+// Hook to finalize a competition explicitly and get winner
 export function useFinalizeCompetition() {
   const queryClient = useQueryClient();
 

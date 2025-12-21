@@ -32,7 +32,7 @@ import {
   useAssignMemberToTeam,
   useUnassignMemberFromTeam,
   useUpdateTeamName,
-  useFinalizeCompetition,
+  useFinalizeCompetitionIfNeeded,
   useCheckFinishResultPopup,
   useMarkFinishResultPopupShown,
   type LeaderboardTeam,
@@ -113,7 +113,7 @@ export default function CompetitionDetails() {
   const assignMutation = useAssignMemberToTeam();
   const unassignMutation = useUnassignMemberFromTeam();
   const updateTeamNameMutation = useUpdateTeamName();
-  const finalizeMutation = useFinalizeCompetition();
+  const finalizeMutation = useFinalizeCompetitionIfNeeded();
   const markFinishPopupShownMutation = useMarkFinishResultPopupShown();
   const acceptTransparencyMutation = { isPending: false, mutateAsync: async () => {} };
 

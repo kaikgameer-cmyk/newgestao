@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle, Bell } from "lucide-react";
-import { useMyCompetitions, useListedCompetitions, useFinishedCompetitions } from "@/hooks/useCompetitions";
+import { useMyCompetitions, useListedCompetitions, useFinishedCompetitions, useFinalizeCompetitionIfNeeded } from "@/hooks/useCompetitions";
 import { useUnreadHostNotifications, useMarkNotificationRead, HostNotification } from "@/hooks/useNotifications";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,12 +25,14 @@ export default function Competitions() {
   const [joinCode, setJoinCode] = useState("");
   const [activeTab, setActiveTab] = useState("minhas");
   const [currentNotification, setCurrentNotification] = useState<HostNotification | null>(null);
+  const [finalizedIds, setFinalizedIds] = useState<string[]>([]);
   
   const { data: myCompetitions, isLoading: loadingMine } = useMyCompetitions();
   const { data: listedCompetitions, isLoading: loadingListed } = useListedCompetitions();
   const { data: finishedCompetitions, isLoading: loadingFinished } = useFinishedCompetitions();
   const { data: unreadNotifications } = useUnreadHostNotifications();
   const markReadMutation = useMarkNotificationRead();
+  const finalizeIfNeeded = useFinalizeCompetitionIfNeeded();
 
   // Show first unread notification automatically
   useEffect(() => {
@@ -38,6 +40,18 @@ export default function Competitions() {
       setCurrentNotification(unreadNotifications[0]);
     }
   }, [unreadNotifications, currentNotification]);
+
+  // Lazily finalize finished competitions when this page is opened
+  useEffect(() => {
+    if (!finishedCompetitions || finishedCompetitions.length === 0) return;
+
+    finishedCompetitions.forEach((competition) => {
+      if (!finalizedIds.includes(competition.id)) {
+        finalizeIfNeeded.mutate(competition.id);
+        setFinalizedIds((prev) => [...prev, competition.id]);
+      }
+    });
+  }, [finishedCompetitions, finalizeIfNeeded, finalizedIds]);
 
   // Filter listed to only show non-finished
   const activeListedCompetitions = listedCompetitions?.filter((comp) => {
