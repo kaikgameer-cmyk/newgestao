@@ -491,14 +491,23 @@ export default function CompetitionDetails() {
 
       {/* Daily Scores Panel - only show for active or finished competitions */}
       {(status.status === "active" || isFinished) && (() => {
-        // Find user's team and count members
+        // Find user's team and count members - only if user is a competitor in a team
         let teamMemberCount = 1;
-        if (competition.allow_teams && leaderboard.teams) {
+        
+        // Check if user is a competitor
+        const userMember = leaderboard.all_members?.find(m => m.user_id === user?.id);
+        const isCompetitor = userMember?.is_competitor ?? true;
+        
+        if (isCompetitor && competition.allow_teams && leaderboard.teams) {
           const userTeam = leaderboard.teams.find(team => 
             team.members.some(m => m.user_id === user?.id)
           );
           if (userTeam) {
-            teamMemberCount = userTeam.members.filter(m => m.user_id).length;
+            // Only count members that actually exist (have user_id)
+            const actualMemberCount = userTeam.members.filter(m => m.user_id).length;
+            if (actualMemberCount > 1) {
+              teamMemberCount = actualMemberCount;
+            }
           }
         }
         
