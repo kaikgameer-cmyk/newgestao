@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Clock } from "lucide-react";
+import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Clock, Crown } from "lucide-react";
 import { useMyCompetitions, useListedCompetitions } from "@/hooks/useCompetitions";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -62,10 +62,14 @@ export default function Competitions() {
             Desafie amigos e acompanhe seu progresso
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => navigate("/dashboard/competicoes/ranking")} className="gap-2">
+            <Crown className="w-4 h-4" />
+            Ranking
+          </Button>
           <Button onClick={() => setShowCreateModal(true)} className="gap-2">
             <Plus className="w-4 h-4" />
-            Criar Competição
+            Criar
           </Button>
           <Button variant="outline" onClick={() => setShowJoinModal(true)} className="gap-2">
             <LogIn className="w-4 h-4" />

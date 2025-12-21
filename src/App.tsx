@@ -28,6 +28,7 @@ import NotFound from "./pages/NotFound";
 import Competitions from "./pages/Competitions";
 import CompetitionDetails from "./pages/CompetitionDetails";
 import JoinCompetition from "./pages/JoinCompetition";
+import Ranking from "./pages/Ranking";
 
 const App = () => {
   const [queryClient] = useState(() => new QueryClient());
@@ -67,6 +68,7 @@ const App = () => {
             <Route path="admin" element={<AdminPage />} />
             <Route path="competicoes" element={<Competitions />} />
             <Route path="competicoes/entrar" element={<JoinCompetition />} />
+            <Route path="competicoes/ranking" element={<Ranking />} />
             <Route path="competicoes/:code" element={<CompetitionDetails />} />
           </Route>
           <Route path="*" element={<NotFound />} />
