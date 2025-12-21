@@ -1003,6 +1003,7 @@ export type Database = {
       }
       platforms: {
         Row: {
+          color: string
           created_at: string
           id: string
           is_active: boolean
@@ -1012,6 +1013,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          color?: string
           created_at?: string
           id?: string
           is_active?: boolean
@@ -1021,6 +1023,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          color?: string
           created_at?: string
           id?: string
           is_active?: boolean
