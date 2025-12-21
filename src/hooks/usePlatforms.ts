@@ -154,9 +154,9 @@ export function usePlatforms() {
         throw new Error("Já existe uma plataforma com esse nome");
       }
  
-       const safeColor = /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "#FFC700";
+       const safeColor = /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "#2563eb";
  
-       // Insert platform
+        // Insert platform
        const { data: newPlatform, error: platformError } = await supabase
          .from("platforms")
          .insert({
@@ -169,7 +169,7 @@ export function usePlatforms() {
          })
          .select()
          .single();
- 
+
        if (platformError) {
          // Tratar erro de unicidade vindo do backend
          if ((platformError as any)?.code === "23505") {
@@ -226,8 +226,8 @@ export function usePlatforms() {
 
       const trimmedName = name.trim();
       if (!trimmedName) throw new Error("Nome é obrigatório");
-
-      const safeColor = /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "#FFC700";
+ 
+      const safeColor = /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "#2563eb";
 
       const { error } = await supabase
         .from("platforms")

@@ -13,7 +13,7 @@ interface ExpensesByCategoryChartProps {
 }
 
 const COLORS = [
-  "hsl(48, 96%, 53%)",  // Primary yellow
+  "hsl(var(--primary))",  // Primary action color
   "hsl(142, 76%, 36%)", // Green
   "hsl(0, 84%, 60%)",   // Red
   "hsl(217, 91%, 60%)", // Blue

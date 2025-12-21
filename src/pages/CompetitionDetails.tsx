@@ -247,7 +247,7 @@ export default function CompetitionDetails() {
   };
 
   const getRankIcon = (index: number) => {
-    if (index === 0) return <Trophy className="w-5 h-5 text-yellow-500" />;
+    if (index === 0) return <Trophy className="w-5 h-5 text-primary" />;
     if (index === 1) return <Medal className="w-5 h-5 text-gray-400" />;
     if (index === 2) return <Medal className="w-5 h-5 text-amber-600" />;
     return <span className="w-5 h-5 flex items-center justify-center text-sm font-medium">{index + 1}</span>;

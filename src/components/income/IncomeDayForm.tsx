@@ -64,7 +64,7 @@ export function IncomeDayForm({
           is_other: false,
           is_active: false,
           user_id: null,
-          color: "#FFC700",
+          color: "#2563eb",
         });
 
       }

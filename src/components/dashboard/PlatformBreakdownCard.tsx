@@ -45,7 +45,7 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
     if (byName?.color) return byName.color;
 
     // Fallback para dados antigos
-    return "#FFC700";
+    return "#2563eb";
   };
 
   return (
