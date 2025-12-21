@@ -1225,6 +1225,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_competition_member: {
+        Args: { p_competition_id: string; p_user_id: string }
+        Returns: boolean
+      }
       join_competition: {
         Args: { p_code: string; p_password: string }
         Returns: Json
