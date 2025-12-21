@@ -1491,6 +1491,10 @@ export type Database = {
         Returns: Json
       }
       generate_competition_code: { Args: never; Returns: string }
+      get_competition_dashboard: {
+        Args: { p_competition_id: string }
+        Returns: Json
+      }
       get_competition_id_by_code: { Args: { p_code: string }; Returns: string }
       get_competition_leaderboard: {
         Args: { p_competition_id: string }
