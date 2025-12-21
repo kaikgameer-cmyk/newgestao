@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, Settings as SettingsIcon, Calendar, DollarSign, Loader2, LogOut, Phone, MapPin, Mail } from "lucide-react";
+import { User, Settings as SettingsIcon, Calendar, DollarSign, Loader2, LogOut, Phone, MapPin, Mail, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { PlatformSettings } from "@/components/settings/PlatformSettings";
+import { AvatarUpload } from "@/components/settings/AvatarUpload";
 import { z } from "zod";
 
 // Validation schema for profile
@@ -53,7 +54,7 @@ export default function SettingsPage() {
       if (!user) return null;
       const { data, error } = await supabase
         .from("profiles")
-        .select("first_name, last_name, whatsapp, email, city, start_week_day, currency, name")
+        .select("first_name, last_name, whatsapp, email, city, start_week_day, currency, name, avatar_url")
         .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
@@ -154,6 +155,7 @@ export default function SettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
       queryClient.invalidateQueries({ queryKey: ["onboarding-profile"] });
       toast({
         title: "Configurações salvas",
@@ -222,7 +224,22 @@ export default function SettingsPage() {
               <CardTitle className="text-lg">Perfil</CardTitle>
             </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            {/* Avatar Upload */}
+            <div className="pb-4 border-b border-border">
+              <Label className="flex items-center gap-2 mb-3">
+                <Camera className="w-4 h-4 text-muted-foreground" />
+                Foto do Perfil
+              </Label>
+              <AvatarUpload
+                userId={user?.id || ""}
+                currentAvatarUrl={profile?.avatar_url}
+                firstName={profile?.first_name}
+                lastName={profile?.last_name}
+                email={user?.email}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="first_name">Nome *</Label>

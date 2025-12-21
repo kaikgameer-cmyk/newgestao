@@ -5,13 +5,11 @@ import { User, Session } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
-  Calendar,
   Receipt,
   CreditCard,
   Wrench,
   Repeat,
   Settings,
-  LogOut,
   Menu,
   X,
   Crown,
@@ -26,9 +24,11 @@ import logo from "@/assets/logo.png";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
-import { Badge } from "@/components/ui/badge";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { UserMenu } from "@/components/user/UserMenu";
+import { UserAvatar } from "@/components/user/UserAvatar";
 
 export default function DashboardLayout() {
   const [user, setUser] = useState<User | null>(null);
@@ -55,6 +55,9 @@ export default function DashboardLayout() {
 
   // Onboarding hook
   const { needsOnboarding, loadingProfile: loadingOnboarding } = useOnboarding();
+
+  // User profile hook
+  const { profile, avatarUrl } = useUserProfile();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -193,45 +196,16 @@ export default function DashboardLayout() {
             })}
           </nav>
 
-          {/* Subscription status */}
-          {!subscriptionLoading && hasSubscription && subscriptionIsActive && (
-            <div className="px-4 py-2 border-t border-sidebar-border">
-              <div className="flex items-center gap-2 text-xs">
-                <Crown className="w-3.5 h-3.5 text-primary" />
-                <span className="text-sidebar-foreground">
-                  {subscription?.plan_name}
-                </span>
-                {daysRemaining <= 7 && (
-                  <Badge variant="outline" className="text-xs px-1.5 py-0 border-yellow-500 text-yellow-500">
-                    {daysRemaining}d
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* User section */}
-          <div className="p-4 border-t border-sidebar-border">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="text-primary font-semibold">
-                  {user.email?.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">
-                  {user.email}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-sidebar-foreground hover:text-destructive"
-              onClick={handleLogout}
-            >
-              <LogOut className="w-4 h-4" />
-              Sair
-            </Button>
+          <div className="p-3 border-t border-sidebar-border">
+            <UserMenu
+              user={user}
+              profile={profile}
+              subscription={subscription}
+              subscriptionIsActive={subscriptionIsActive}
+              onLogout={handleLogout}
+              variant="sidebar"
+            />
           </div>
         </div>
       </aside>
@@ -259,7 +233,13 @@ export default function DashboardLayout() {
           <Link to="/dashboard" className="flex items-center gap-2">
             <img src={logo} alt="Driver Control" className="w-8 h-8" />
           </Link>
-          <div className="w-10" /> {/* Spacer */}
+          <UserAvatar
+            avatarUrl={avatarUrl}
+            firstName={profile?.first_name}
+            lastName={profile?.last_name}
+            email={user.email}
+            size="sm"
+          />
         </header>
 
         {/* Page content */}

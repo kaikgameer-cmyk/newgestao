@@ -933,6 +933,7 @@ export type Database = {
       profiles: {
         Row: {
           apps_used: string[] | null
+          avatar_url: string | null
           city: string | null
           created_at: string
           currency: string | null
@@ -949,6 +950,7 @@ export type Database = {
         }
         Insert: {
           apps_used?: string[] | null
+          avatar_url?: string | null
           city?: string | null
           created_at?: string
           currency?: string | null
@@ -965,6 +967,7 @@ export type Database = {
         }
         Update: {
           apps_used?: string[] | null
+          avatar_url?: string | null
           city?: string | null
           created_at?: string
           currency?: string | null
