@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle, Bell } from "lucide-react";
-import { useMyCompetitions, useListedCompetitions, useFinishedCompetitions, useFinalizeCompetitionIfNeeded } from "@/hooks/useCompetitions";
+import { useCompetitionsForTabs } from "@/hooks/useCompetitions";
 import { useUnreadHostNotifications, useMarkNotificationRead, useDismissNotification, HostNotification } from "@/hooks/useNotifications";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -25,21 +25,26 @@ export default function Competitions() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinCode, setJoinCode] = useState("");
-  const [activeTab, setActiveTab] = useState("minhas");
+  const [activeTab, setActiveTab] = useState("disponiveis");
   const [currentNotification, setCurrentNotification] = useState<HostNotification | null>(null);
-  const [finalizedIds, setFinalizedIds] = useState<string[]>([]);
   const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(() => {
     const stored = sessionStorage.getItem("dismissed_notifications");
     return stored ? new Set(JSON.parse(stored)) : new Set();
   });
   
-  const { data: myCompetitions, isLoading: loadingMine } = useMyCompetitions();
-  const { data: listedCompetitions, isLoading: loadingListed } = useListedCompetitions();
-  const { data: finishedCompetitions, isLoading: loadingFinished } = useFinishedCompetitions();
+  const { data: competitions, isLoading } = useCompetitionsForTabs();
   const { data: unreadNotifications } = useUnreadHostNotifications();
   const markReadMutation = useMarkNotificationRead();
   const dismissMutation = useDismissNotification();
-  const finalizeIfNeeded = useFinalizeCompetitionIfNeeded();
+
+  // Derived lists for tabs
+  const myCompetitions = (competitions || []).filter((comp) => comp.computed_status === "mine");
+  const activeListedCompetitions = (competitions || []).filter(
+    (comp) => comp.computed_status === "available"
+  );
+  const finishedCompetitions = (competitions || []).filter(
+    (comp) => comp.computed_status === "finished"
+  );
 
   // Show first unread notification automatically (with session guard)
   useEffect(() => {
@@ -72,14 +77,6 @@ export default function Competitions() {
     setCurrentNotification(null);
   };
 
-  // Filter listed to only show non-finished
-  const activeListedCompetitions = listedCompetitions?.filter((comp) => {
-    const now = new Date();
-    const endExclusive = new Date(comp.end_date);
-    endExclusive.setDate(endExclusive.getDate() + 1);
-    return now < endExclusive;
-  });
-
   const getDaysInfo = (startDate: string, endDate: string) => {
     const status = getCompetitionStatus(startDate, endDate);
     const remaining = getRemainingTime(endDate);
@@ -97,45 +94,6 @@ export default function Competitions() {
       return `${remaining.days}d ${remaining.hours}h restantes`;
     }
     return `${remaining.hours}h restantes`;
-  };
-
-  const handleJoinFromListed = (code: string) => {
-    setJoinCode(code);
-    setShowJoinModal(true);
-  };
-
-  const getFinishedCardStyles = (payout: { status: string; payout_value: number } | null) => {
-    if (!payout) return "border-zinc-800";
-    
-    switch (payout.status) {
-      case "winner":
-        return "border-green-400/60 shadow-[0_0_0_1px_rgba(74,222,128,0.30),0_0_18px_rgba(74,222,128,0.15)]";
-      case "loser":
-        return "border-red-400/60 shadow-[0_0_0_1px_rgba(248,113,113,0.30),0_0_18px_rgba(248,113,113,0.15)]";
-      case "no_winner":
-      default:
-        return "border-zinc-700";
-    }
-  };
-
-  const getFinishedBadge = (payout: { status: string; payout_value: number } | null) => {
-    if (!payout) return null;
-    
-    switch (payout.status) {
-      case "winner":
-        return (
-          <Badge variant="default" className="bg-green-500 hover:bg-green-600">
-            <Trophy className="w-3 h-3 mr-1" />
-            Vencedor - {formatCurrency(payout.payout_value)}
-          </Badge>
-        );
-      case "loser":
-        return <Badge variant="secondary">Não foi dessa vez</Badge>;
-      case "no_winner":
-        return <Badge variant="outline">Sem vencedor</Badge>;
-      default:
-        return null;
-    }
   };
 
   return (
@@ -160,10 +118,10 @@ export default function Competitions() {
         )}
       </div>
 
-      <Tabs defaultValue="minhas" value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs defaultValue="disponiveis" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="minhas">Minhas</TabsTrigger>
           <TabsTrigger value="disponiveis">Disponíveis</TabsTrigger>
+          <TabsTrigger value="minhas">Minhas</TabsTrigger>
           <TabsTrigger value="finalizadas">Finalizadas</TabsTrigger>
         </TabsList>
 
@@ -179,7 +137,7 @@ export default function Competitions() {
             </Button>
           </div>
 
-          {loadingMine ? (
+          {isLoading ? (
             <Card>
               <CardContent className="pt-6 text-center">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
@@ -189,16 +147,15 @@ export default function Competitions() {
             <div className="space-y-3">
               {myCompetitions.map((comp) => {
                 const statusInfo = getMyCompetitionStatusLabel(comp.start_date, comp.end_date);
-                const memberCount = comp.competition_members?.length ?? 0;
-                const myMember = comp.competition_members.find((m) => m.user_id === user?.id);
-                const isHost = myMember?.role === "host";
+                const memberCount = comp.participants_count;
+                const isHost = comp.user_is_host;
                 const status = getCompetitionStatus(comp.start_date, comp.end_date);
                 
                 return (
                   <Card
                     key={comp.id}
                     className="cursor-pointer hover:border-primary/50 transition-colors"
-                    onClick={() => navigate(`/dashboard/competicoes/${comp.code}`)}
+                    onClick={() => navigate(`/dashboard/competicoes/${comp.id}`)}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
@@ -271,7 +228,7 @@ export default function Competitions() {
         </TabsContent>
 
         <TabsContent value="disponiveis" className="space-y-4 mt-4">
-          {loadingListed ? (
+          {isLoading ? (
             <Card>
               <CardContent className="pt-6 text-center">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
@@ -285,19 +242,12 @@ export default function Competitions() {
                   comp.start_date,
                   comp.end_date
                 );
-                const isFull = comp.max_members && comp.member_count >= comp.max_members;
 
                 return (
                   <Card
                     key={comp.id}
-                    className={`cursor-pointer hover:border-primary/50 transition-colors ${
-                      comp.is_member ? "border-primary/30" : ""
-                    }`}
-                    onClick={() =>
-                      comp.is_member
-                        ? navigate(`/dashboard/competicoes/${comp.code}`)
-                        : handleJoinFromListed(comp.code)
-                    }
+                    className="cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => navigate(`/dashboard/competicoes/${comp.id}`)}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
@@ -305,9 +255,8 @@ export default function Competitions() {
                           <CardTitle className="text-lg">{comp.name}</CardTitle>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Users className="w-4 h-4" />
-                            {comp.member_count}
-                            {comp.max_members ? ` / ${comp.max_members}` : ""} participante
-                            {comp.member_count !== 1 ? "s" : ""}
+                            {comp.participants_count} participante
+                            {comp.participants_count !== 1 ? "s" : ""}
                             {comp.allow_teams && (
                               <Badge variant="outline" className="text-xs">
                                 Times
@@ -317,7 +266,6 @@ export default function Competitions() {
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
-                          {isFull && <Badge variant="destructive">Lotada</Badge>}
                         </div>
                       </div>
                     </CardHeader>
@@ -372,7 +320,7 @@ export default function Competitions() {
         </TabsContent>
 
         <TabsContent value="finalizadas" className="space-y-4 mt-4">
-          {loadingFinished ? (
+          {isLoading ? (
             <Card>
               <CardContent className="pt-6 text-center">
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
@@ -381,17 +329,14 @@ export default function Competitions() {
           ) : finishedCompetitions && finishedCompetitions.length > 0 ? (
             <div className="space-y-3">
               {finishedCompetitions.map((comp) => {
-                const borderStyle = getFinishedCardStyles(comp.payout);
-                const badge = getFinishedBadge(comp.payout);
-                const memberCount = comp.competition_members?.length ?? 0;
-                const myMember = comp.competition_members.find((m) => m.user_id === user?.id);
-                const isHost = myMember?.role === "host";
+                const memberCount = comp.participants_count;
+                const isHost = comp.user_is_host;
 
                 return (
                   <Card
                     key={comp.id}
-                    className={`cursor-pointer hover:opacity-90 transition-opacity ${borderStyle}`}
-                    onClick={() => navigate(`/dashboard/competicoes/${comp.code}`)}
+                    className="cursor-pointer hover:opacity-90 transition-opacity border-zinc-700"
+                    onClick={() => navigate(`/dashboard/competicoes/${comp.id}`)}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
@@ -408,7 +353,10 @@ export default function Competitions() {
                             )}
                           </div>
                         </div>
-                        {badge}
+                        <Badge variant="outline" className="ml-auto">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Finalizada
+                        </Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-2">
@@ -435,10 +383,6 @@ export default function Competitions() {
                           {format(parseISO(comp.start_date), "dd/MM/yy", { locale: ptBR })} -{" "}
                           {format(parseISO(comp.end_date), "dd/MM/yy", { locale: ptBR })}
                         </span>
-                        <Badge variant="outline" className="ml-auto">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Finalizada
-                        </Badge>
                       </div>
                     </CardContent>
                   </Card>

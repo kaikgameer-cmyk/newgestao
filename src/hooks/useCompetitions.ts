@@ -89,6 +89,41 @@ export interface ListedCompetition {
   is_member: boolean;
 }
 
+export type CompetitionTabStatus = "available" | "mine" | "finished";
+
+export interface CompetitionForTabs {
+  id: string;
+  name: string;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  prize_value: number;
+  goal_value: number;
+  allow_teams: boolean;
+  host_user_id: string;
+  participants_count: number;
+  user_is_member: boolean;
+  user_is_host: boolean;
+  computed_status: CompetitionTabStatus;
+  computed_label: string;
+  meta_reached: boolean;
+}
+
+export function useCompetitionsForTabs() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["competitions-tabs", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_competitions_for_tabs");
+
+      if (error) throw error;
+      return (data || []) as CompetitionForTabs[];
+    },
+    enabled: !!user,
+  });
+}
+ 
 export function useMyCompetitions() {
   const { user } = useAuth();
 
