@@ -601,3 +601,61 @@ export function useUserPayouts() {
     enabled: !!user,
   });
 }
+
+// Hook to get member's PIX info for a competition
+export function useMemberPix(competitionId: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["member-pix", competitionId, user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("competition_members")
+        .select("pix_key, pix_key_type")
+        .eq("competition_id", competitionId!)
+        .eq("user_id", user!.id)
+        .single();
+
+      if (error) throw error;
+      return data as { pix_key: string | null; pix_key_type: string | null };
+    },
+    enabled: !!user && !!competitionId,
+  });
+}
+
+// Hook to update member's PIX info
+export function useUpdateMemberPix() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      competition_id,
+      pix_key,
+      pix_key_type,
+    }: {
+      competition_id: string;
+      pix_key: string;
+      pix_key_type: string | null;
+    }) => {
+      const { error } = await supabase
+        .from("competition_members")
+        .update({
+          pix_key,
+          pix_key_type,
+          pix_updated_at: new Date().toISOString(),
+        })
+        .eq("competition_id", competition_id)
+        .eq("user_id", user!.id);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, { competition_id }) => {
+      toast.success("Chave PIX atualizada");
+      queryClient.invalidateQueries({ queryKey: ["member-pix", competition_id] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Erro ao atualizar PIX");
+    },
+  });
+}
