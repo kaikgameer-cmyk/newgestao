@@ -27,12 +27,17 @@ export function PlatformSettings() {
     togglePlatform,
     createPlatform,
     deletePlatform,
+    updatePlatform,
     isPlatformEnabled,
   } = usePlatforms();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newPlatformName, setNewPlatformName] = useState("");
   const [newPlatformColor, setNewPlatformColor] = useState("#FFC700");
+
+  const [editingPlatformId, setEditingPlatformId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [editingColor, setEditingColor] = useState("#FFC700");
 
   // Initialize user platforms when component mounts
   useEffect(() => {
@@ -56,6 +61,30 @@ export function PlatformSettings() {
           setNewPlatformName("");
           setNewPlatformColor("#FFC700");
           setIsCreateDialogOpen(false);
+        },
+      }
+    );
+  };
+
+  const openEditDialog = (platform: { id: string; name: string; color: string }) => {
+    setEditingPlatformId(platform.id);
+    setEditingName(platform.name);
+    setEditingColor(platform.color || "#FFC700");
+  };
+
+  const handleUpdatePlatform = () => {
+    if (!editingPlatformId) return;
+
+    const trimmedName = editingName.trim();
+    if (!trimmedName) return;
+
+    const safeColor = /^#[0-9A-Fa-f]{6}$/.test(editingColor) ? editingColor : "#FFC700";
+
+    updatePlatform.mutate(
+      { platformId: editingPlatformId, name: trimmedName, color: safeColor },
+      {
+        onSuccess: () => {
+          setEditingPlatformId(null);
         },
       }
     );
@@ -265,6 +294,59 @@ export function PlatformSettings() {
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : null}
               Criar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Platform Dialog */}
+      <Dialog open={!!editingPlatformId} onOpenChange={(open) => !open && setEditingPlatformId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar plataforma ou receita</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="edit-platform-name">Nome</Label>
+              <Input
+                id="edit-platform-name"
+                placeholder="Nome da plataforma"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Cor</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={editingColor}
+                  onChange={(e) => setEditingColor(e.target.value)}
+                  className="h-9 w-9 rounded-md border border-border bg-background p-1 cursor-pointer"
+                />
+                <span className="text-xs text-muted-foreground">
+                  Ajuste a cor para identificar melhor esta plataforma/fonte de receita.
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingPlatformId(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="hero"
+              onClick={handleUpdatePlatform}
+              disabled={!editingName.trim() || updatePlatform.isPending}
+            >
+              {updatePlatform.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
