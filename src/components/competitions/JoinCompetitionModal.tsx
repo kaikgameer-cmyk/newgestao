@@ -80,7 +80,7 @@ export default function JoinCompetitionModal({
     resolver: zodResolver(step2Schema),
     defaultValues: {
       pix_key: "",
-      pix_key_type: "random",
+      pix_key_type: "" as unknown as Step2Values["pix_key_type"],
     },
   });
 
@@ -101,7 +101,7 @@ export default function JoinCompetitionModal({
 
   const onStep1Submit = (values: Step1Values) => {
     setStep1Data(values);
-    step2Form.reset({ pix_key: "", pix_key_type: "random" });
+    step2Form.reset({ pix_key: "", pix_key_type: "" as unknown as Step2Values["pix_key_type"] });
     setStep(2);
   };
 
@@ -255,7 +255,7 @@ export default function JoinCompetitionModal({
                         placeholder="CPF, E-mail, Celular ou Chave Aleatória"
                         {...field}
                         value={field.value ?? ""}
-                        onChange={field.onChange}
+                        onChange={(e) => field.onChange(e.target.value)}
                       />
                     </FormControl>
                     <FormDescription>
