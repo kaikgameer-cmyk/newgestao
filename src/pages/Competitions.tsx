@@ -187,20 +187,20 @@ export default function Competitions() {
                 const status = getCompetitionStatus(competition.start_date, competition.end_date);
 
                 return (
-                  <Card key={competition.id}>
+                  <Card 
+                    key={competition.id}
+                    className={`transition-all duration-200 ${
+                      competition.is_member 
+                        ? "border-green-400/60 ring-1 ring-green-400/40 shadow-[0_0_18px_rgba(74,222,128,0.18)]" 
+                        : ""
+                    }`}
+                  >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-2">
                         <CardTitle className="text-lg line-clamp-1">
                           {competition.name}
                         </CardTitle>
-                        <div className="flex gap-1">
-                          {competition.is_member && (
-                            <Badge variant="outline" className="text-green-500 border-green-500">
-                              Participando
-                            </Badge>
-                          )}
-                          <Badge variant={status.variant}>{status.label}</Badge>
-                        </div>
+                        <Badge variant={status.variant}>{status.label}</Badge>
                       </div>
                       <CardDescription className="line-clamp-2">
                         {competition.description || "Meta de Receita"}
