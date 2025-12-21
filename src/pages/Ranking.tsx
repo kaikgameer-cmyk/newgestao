@@ -4,6 +4,7 @@ import { useGlobalRanking } from "@/hooks/useGlobalRanking";
 import { UserAvatar } from "@/components/user/UserAvatar";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { AchievementBadges } from "@/components/competitions/AchievementBadges";
 
 export default function RankingPage() {
   const { data: ranking, isLoading } = useGlobalRanking();
@@ -165,14 +166,22 @@ export default function RankingPage() {
                         lastName={entry.display_name.split(" ")[1]}
                         size="sm"
                       />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="font-medium truncate flex items-center gap-2">
                           {entry.display_name}
                           {isCurrentUser && (
                             <span className="text-xs text-primary">(você)</span>
                           )}
                         </div>
-                        <div className="sm:hidden text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <AchievementBadges
+                            wins={entry.wins}
+                            participations={entry.participations}
+                            totalPrizes={entry.total_prizes}
+                            compact
+                          />
+                        </div>
+                        <div className="sm:hidden text-xs text-muted-foreground mt-1">
                           {entry.wins} vitórias • {formatCurrency(entry.total_prizes)}
                         </div>
                       </div>
