@@ -71,6 +71,7 @@ import {
 } from "@/components/ui/select";
 import { getCompetitionStatus, getRemainingTime, isCompetitionFinished } from "@/lib/competitionUtils";
 import { WinnerPopup } from "@/components/competitions/WinnerPopup";
+import { DailyScoresPanel } from "@/components/competitions/DailyScoresPanel";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -487,6 +488,15 @@ export default function CompetitionDetails() {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Daily Scores Panel - only show for active or finished competitions */}
+      {(status.status === "active" || isFinished) && (
+        <DailyScoresPanel
+          startDate={competition.start_date}
+          endDate={competition.end_date}
+          goalValue={competition.goal_value}
+        />
+      )}
 
       {/* Leave Competition */}
       {!isHost && (
