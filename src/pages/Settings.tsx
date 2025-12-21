@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, Settings as SettingsIcon, Calendar, DollarSign, Loader2, LogOut } from "lucide-react";
+import { User, Settings as SettingsIcon, Calendar, DollarSign, Loader2, LogOut, Phone, MapPin, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,6 +19,18 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { PlatformSettings } from "@/components/settings/PlatformSettings";
+import { z } from "zod";
+
+// Validation schema for profile
+const profileSchema = z.object({
+  first_name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
+  last_name: z.string().min(2, "Sobrenome deve ter pelo menos 2 caracteres"),
+  whatsapp: z
+    .string()
+    .min(10, "WhatsApp inválido")
+    .regex(/^[\d\s\(\)\-\+]+$/, "Formato de telefone inválido"),
+  city: z.string().min(2, "Cidade deve ter pelo menos 2 caracteres"),
+});
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -26,11 +38,13 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [city, setCity] = useState("");
-  const [appsUsed, setAppsUsed] = useState("");
   const [startWeekDay, setStartWeekDay] = useState("monday");
   const [currency, setCurrency] = useState("BRL");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Fetch profile
   const { data: profile, isLoading: loadingProfile } = useQuery({
@@ -39,7 +53,7 @@ export default function SettingsPage() {
       if (!user) return null;
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("first_name, last_name, whatsapp, email, city, start_week_day, currency, name")
         .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
@@ -74,30 +88,63 @@ export default function SettingsPage() {
   // Update form when profile loads
   useEffect(() => {
     if (profile) {
-      setName(profile.name || "");
+      // Handle both new and legacy fields
+      setFirstName(profile.first_name || "");
+      setLastName(profile.last_name || "");
+      setWhatsapp(profile.whatsapp || "");
       setCity(profile.city || "");
-      setAppsUsed(profile.apps_used?.join(", ") || "");
       setStartWeekDay(profile.start_week_day || "monday");
       setCurrency(profile.currency || "BRL");
     }
   }, [profile]);
+
+  // Format WhatsApp input
+  const formatWhatsApp = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+  };
+
+  const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWhatsapp(formatWhatsApp(e.target.value));
+  };
 
   // Save profile mutation
   const saveProfile = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
       
-      const appsArray = appsUsed
-        .split(",")
-        .map((app) => app.trim())
-        .filter((app) => app.length > 0);
+      // Validate fields
+      const validation = profileSchema.safeParse({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        whatsapp: whatsapp.trim(),
+        city: city.trim(),
+      });
+
+      if (!validation.success) {
+        const fieldErrors: Record<string, string> = {};
+        validation.error.errors.forEach((err) => {
+          if (err.path[0]) {
+            fieldErrors[err.path[0] as string] = err.message;
+          }
+        });
+        setErrors(fieldErrors);
+        throw new Error("Validação falhou");
+      }
+
+      setErrors({});
 
       const { error } = await supabase
         .from("profiles")
         .update({
-          name,
-          city: city || null,
-          apps_used: appsArray.length > 0 ? appsArray : null,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          whatsapp: whatsapp.trim(),
+          city: city.trim(),
+          name: `${firstName.trim()} ${lastName.trim()}`.trim(), // Keep legacy field updated
           start_week_day: startWeekDay,
           currency,
         })
@@ -107,17 +154,20 @@ export default function SettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["onboarding-profile"] });
       toast({
         title: "Configurações salvas",
         description: "Suas preferências foram atualizadas com sucesso.",
       });
     },
-    onError: () => {
-      toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível salvar suas configurações.",
-        variant: "destructive",
-      });
+    onError: (error) => {
+      if (error.message !== "Validação falhou") {
+        toast({
+          title: "Erro ao salvar",
+          description: "Não foi possível salvar suas configurações.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -173,35 +223,81 @@ export default function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Seu nome"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">Nome *</Label>
+                <Input
+                  id="first_name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="João"
+                  className={errors.first_name ? "border-destructive" : ""}
+                />
+                {errors.first_name && (
+                  <p className="text-xs text-destructive">{errors.first_name}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last_name">Sobrenome *</Label>
+                <Input
+                  id="last_name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Silva"
+                  className={errors.last_name ? "border-destructive" : ""}
+                />
+                {errors.last_name && (
+                  <p className="text-xs text-destructive">{errors.last_name}</p>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="city">Cidade</Label>
+              <Label htmlFor="whatsapp" className="flex items-center gap-2">
+                <Phone className="w-4 h-4 text-muted-foreground" />
+                WhatsApp *
+              </Label>
+              <Input
+                id="whatsapp"
+                value={whatsapp}
+                onChange={handleWhatsAppChange}
+                placeholder="(11) 99999-9999"
+                className={errors.whatsapp ? "border-destructive" : ""}
+              />
+              {errors.whatsapp && (
+                <p className="text-xs text-destructive">{errors.whatsapp}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email" className="flex items-center gap-2">
+                <Mail className="w-4 h-4 text-muted-foreground" />
+                Email
+              </Label>
+              <Input
+                id="email"
+                value={user?.email || profile?.email || ""}
+                readOnly
+                disabled
+                className="bg-muted cursor-not-allowed"
+              />
+              <p className="text-xs text-muted-foreground">
+                Seu email não pode ser alterado
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="city" className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-muted-foreground" />
+                Cidade *
+              </Label>
               <Input
                 id="city"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                placeholder="Sua cidade"
+                placeholder="São Paulo"
+                className={errors.city ? "border-destructive" : ""}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="apps">Apps que você usa</Label>
-              <Input
-                id="apps"
-                value={appsUsed}
-                onChange={(e) => setAppsUsed(e.target.value)}
-                placeholder="Ex: Uber, 99, InDrive"
-              />
-              <p className="text-xs text-muted-foreground">
-                Separe por vírgula os apps que você trabalha
-              </p>
+              {errors.city && (
+                <p className="text-xs text-destructive">{errors.city}</p>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -27,6 +27,8 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { Badge } from "@/components/ui/badge";
+import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
+import { useOnboarding } from "@/hooks/useOnboarding";
 
 export default function DashboardLayout() {
   const [user, setUser] = useState<User | null>(null);
@@ -50,6 +52,9 @@ export default function DashboardLayout() {
 
   // Admin hook - use the optimized version
   const { isAdmin, isLoading: adminLoading, isFetched: adminFetched } = useIsAdmin();
+
+  // Onboarding hook
+  const { needsOnboarding, loadingProfile: loadingOnboarding } = useOnboarding();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -233,9 +238,12 @@ export default function DashboardLayout() {
 
       {/* Subscription Paywall */}
       <SubscriptionPaywall 
-        open={showPaywall} 
+        open={showPaywall && !needsOnboarding} 
         reason={getPaywallReason()}
       />
+
+      {/* Onboarding Modal - takes priority over paywall */}
+      {!loadingOnboarding && <OnboardingModal open={needsOnboarding} />}
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">

@@ -859,33 +859,48 @@ export type Database = {
           city: string | null
           created_at: string
           currency: string | null
+          email: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           name: string | null
+          onboarding_completed: boolean
           start_week_day: string | null
           updated_at: string
           user_id: string
+          whatsapp: string | null
         }
         Insert: {
           apps_used?: string[] | null
           city?: string | null
           created_at?: string
           currency?: string | null
+          email?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           name?: string | null
+          onboarding_completed?: boolean
           start_week_day?: string | null
           updated_at?: string
           user_id: string
+          whatsapp?: string | null
         }
         Update: {
           apps_used?: string[] | null
           city?: string | null
           created_at?: string
           currency?: string | null
+          email?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           name?: string | null
+          onboarding_completed?: boolean
           start_week_day?: string | null
           updated_at?: string
           user_id?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }

@@ -13,11 +13,14 @@ import {
 } from "@/components/ui/dialog";
 import { Car, Loader2, Plus, Trash2 } from "lucide-react";
 import { usePlatforms } from "@/hooks/usePlatforms";
+import { useToast } from "@/hooks/use-toast";
 
 export function PlatformSettings() {
+  const { toast } = useToast();
   const {
     platforms,
     userPlatforms,
+    enabledPlatforms,
     loadingPlatforms,
     loadingUserPlatforms,
     initializeUserPlatforms,
@@ -104,66 +107,93 @@ export function PlatformSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* System Platforms */}
-          {systemPlatforms.map((platform) => (
-            <div
-              key={platform.key}
-              className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${getPlatformColor(platform.key)}`} />
-                <Label htmlFor={`platform-${platform.key}`} className="font-medium cursor-pointer">
-                  {platform.name}
-                </Label>
+          {systemPlatforms.map((platform) => {
+            const isEnabled = isPlatformEnabled(platform.key);
+            // Check if this is the last enabled platform
+            const isLastEnabled = isEnabled && enabledPlatforms.length === 1;
+
+            return (
+              <div
+                key={platform.key}
+                className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${getPlatformColor(platform.key)}`} />
+                  <Label htmlFor={`platform-${platform.key}`} className="font-medium cursor-pointer">
+                    {platform.name}
+                  </Label>
+                </div>
+                <Switch
+                  id={`platform-${platform.key}`}
+                  checked={isEnabled}
+                  onCheckedChange={(checked) => {
+                    if (!checked && isLastEnabled) {
+                      toast({
+                        title: "Pelo menos uma plataforma é obrigatória",
+                        description: "Você precisa ter ao menos uma plataforma habilitada.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    togglePlatform.mutate({ platformKey: platform.key, enabled: checked });
+                  }}
+                  disabled={togglePlatform.isPending}
+                />
               </div>
-              <Switch
-                id={`platform-${platform.key}`}
-                checked={isPlatformEnabled(platform.key)}
-                onCheckedChange={(checked) =>
-                  togglePlatform.mutate({ platformKey: platform.key, enabled: checked })
-                }
-                disabled={togglePlatform.isPending}
-              />
-            </div>
-          ))}
+            );
+          })}
 
           {/* Divider if there are custom platforms */}
           {customPlatforms.length > 0 && (
             <div className="border-t border-border pt-4 mt-4">
               <p className="text-xs text-muted-foreground mb-3">Suas plataformas customizadas</p>
-              {customPlatforms.map((platform) => (
-                <div
-                  key={platform.key}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-primary" />
-                    <Label htmlFor={`platform-${platform.key}`} className="font-medium cursor-pointer">
-                      {platform.name}
-                    </Label>
+              {customPlatforms.map((platform) => {
+                const isEnabled = isPlatformEnabled(platform.key);
+                const isLastEnabled = isEnabled && enabledPlatforms.length === 1;
+
+                return (
+                  <div
+                    key={platform.key}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-3 h-3 rounded-full bg-primary" />
+                      <Label htmlFor={`platform-${platform.key}`} className="font-medium cursor-pointer">
+                        {platform.name}
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={`platform-${platform.key}`}
+                        checked={isEnabled}
+                        onCheckedChange={(checked) => {
+                          if (!checked && isLastEnabled) {
+                            toast({
+                              title: "Pelo menos uma plataforma é obrigatória",
+                              description: "Você precisa ter ao menos uma plataforma habilitada.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          togglePlatform.mutate({ platformKey: platform.key, enabled: checked });
+                        }}
+                        disabled={togglePlatform.isPending}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() =>
+                          deletePlatform.mutate({ platformId: platform.id, platformKey: platform.key })
+                        }
+                        disabled={deletePlatform.isPending}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id={`platform-${platform.key}`}
-                      checked={isPlatformEnabled(platform.key)}
-                      onCheckedChange={(checked) =>
-                        togglePlatform.mutate({ platformKey: platform.key, enabled: checked })
-                      }
-                      disabled={togglePlatform.isPending}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() =>
-                        deletePlatform.mutate({ platformId: platform.id, platformKey: platform.key })
-                      }
-                      disabled={deletePlatform.isPending}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
