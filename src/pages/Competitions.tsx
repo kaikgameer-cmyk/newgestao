@@ -4,13 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Clock, Crown } from "lucide-react";
-import { useMyCompetitions, useListedCompetitions } from "@/hooks/useCompetitions";
+import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle } from "lucide-react";
+import { useMyCompetitions, useListedCompetitions, useFinishedCompetitions } from "@/hooks/useCompetitions";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import JoinCompetitionModal from "@/components/competitions/JoinCompetitionModal";
 import CreateCompetitionModal from "@/components/competitions/CreateCompetitionModal";
-import { getCompetitionStatus, getRemainingTime } from "@/lib/competitionUtils";
+import { getCompetitionStatus, getRemainingTime, getMyCompetitionStatusLabel, getAvailableCompetitionStatusLabel } from "@/lib/competitionUtils";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -25,6 +25,15 @@ export default function Competitions() {
   
   const { data: myCompetitions, isLoading: loadingMine } = useMyCompetitions();
   const { data: listedCompetitions, isLoading: loadingListed } = useListedCompetitions();
+  const { data: finishedCompetitions, isLoading: loadingFinished } = useFinishedCompetitions();
+
+  // Filter listed to only show non-finished
+  const activeListedCompetitions = listedCompetitions?.filter((comp) => {
+    const now = new Date();
+    const endExclusive = new Date(comp.end_date);
+    endExclusive.setDate(endExclusive.getDate() + 1);
+    return now < endExclusive;
+  });
 
   const getDaysInfo = (startDate: string, endDate: string) => {
     const status = getCompetitionStatus(startDate, endDate);
@@ -48,6 +57,35 @@ export default function Competitions() {
   const handleJoinFromListed = (code: string) => {
     setJoinCode(code);
     setShowJoinModal(true);
+  };
+
+  const getFinishedCardStyles = (payout: { status: string; payout_value: number } | null) => {
+    if (!payout) return "border-zinc-800";
+    
+    switch (payout.status) {
+      case "winner":
+        return "border-green-400/60 shadow-[0_0_0_1px_rgba(74,222,128,0.30),0_0_18px_rgba(74,222,128,0.15)]";
+      case "loser":
+        return "border-red-400/60 shadow-[0_0_0_1px_rgba(248,113,113,0.30),0_0_18px_rgba(248,113,113,0.15)]";
+      case "no_winner":
+      default:
+        return "border-zinc-700";
+    }
+  };
+
+  const getFinishedResultText = (payout: { status: string; payout_value: number } | null) => {
+    if (!payout) return null;
+    
+    switch (payout.status) {
+      case "winner":
+        return { text: `Você ganhou: ${formatCurrency(payout.payout_value)}`, className: "text-green-400" };
+      case "loser":
+        return { text: "Não foi dessa vez", className: "text-red-400" };
+      case "no_winner":
+        return { text: "Meta não atingida", className: "text-muted-foreground" };
+      default:
+        return null;
+    }
   };
 
   return (
@@ -79,7 +117,7 @@ export default function Competitions() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-lg">
           <TabsTrigger value="minhas" className="gap-2">
             <Trophy className="w-4 h-4" />
             Minhas
@@ -87,6 +125,10 @@ export default function Competitions() {
           <TabsTrigger value="disponiveis" className="gap-2">
             <Users className="w-4 h-4" />
             Disponíveis
+          </TabsTrigger>
+          <TabsTrigger value="finalizadas" className="gap-2">
+            <CheckCircle className="w-4 h-4" />
+            Finalizadas
           </TabsTrigger>
         </TabsList>
 
@@ -98,7 +140,7 @@ export default function Competitions() {
           ) : myCompetitions && myCompetitions.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {myCompetitions.map((competition) => {
-                const status = getCompetitionStatus(competition.start_date, competition.end_date);
+                const statusInfo = getMyCompetitionStatusLabel(competition.start_date, competition.end_date);
                 const isHost = competition.competition_members.some(
                   (m) => m.role === "host"
                 );
@@ -120,7 +162,7 @@ export default function Competitions() {
                               Host
                             </Badge>
                           )}
-                          <Badge variant={status.variant}>{status.label}</Badge>
+                          <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
                         </div>
                       </div>
                       <CardDescription className="line-clamp-2">
@@ -158,7 +200,7 @@ export default function Competitions() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Trophy className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-medium mb-2">Nenhuma competição ainda</h3>
+                <h3 className="text-lg font-medium mb-2">Nenhuma competição ativa</h3>
                 <p className="text-muted-foreground mb-4 max-w-sm">
                   Crie uma competição para desafiar amigos ou entre em uma usando o código
                 </p>
@@ -181,10 +223,10 @@ export default function Competitions() {
             <div className="flex items-center justify-center py-12">
               <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
-          ) : listedCompetitions && listedCompetitions.length > 0 ? (
+          ) : activeListedCompetitions && activeListedCompetitions.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {listedCompetitions.map((competition) => {
-                const status = getCompetitionStatus(competition.start_date, competition.end_date);
+              {activeListedCompetitions.map((competition) => {
+                const statusInfo = getAvailableCompetitionStatusLabel(competition.start_date, competition.end_date);
 
                 return (
                   <Card 
@@ -200,7 +242,7 @@ export default function Competitions() {
                         <CardTitle className="text-lg line-clamp-1">
                           {competition.name}
                         </CardTitle>
-                        <Badge variant={status.variant}>{status.label}</Badge>
+                        <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
                       </div>
                       <CardDescription className="line-clamp-2">
                         {competition.description || "Meta de Receita"}
@@ -262,6 +304,86 @@ export default function Competitions() {
                 <h3 className="text-lg font-medium mb-2">Nenhuma competição disponível</h3>
                 <p className="text-muted-foreground mb-4 max-w-sm">
                   Não há competições públicas no momento. Crie a sua ou entre com um código!
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="finalizadas" className="space-y-4 mt-6">
+          {loadingFinished ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : finishedCompetitions && finishedCompetitions.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {finishedCompetitions.map((competition) => {
+                const isHost = competition.competition_members.some(
+                  (m) => m.role === "host"
+                );
+                const resultText = getFinishedResultText(competition.payout);
+
+                return (
+                  <Card
+                    key={competition.id}
+                    className={`cursor-pointer hover:border-primary/50 transition-all duration-200 ${getFinishedCardStyles(competition.payout)}`}
+                    onClick={() => navigate(`/dashboard/competicoes/${competition.code}`)}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-lg line-clamp-1">
+                          {competition.name}
+                        </CardTitle>
+                        <div className="flex gap-1">
+                          {isHost && (
+                            <Badge variant="outline" className="text-primary border-primary">
+                              Host
+                            </Badge>
+                          )}
+                          {competition.payout?.status === "no_winner" && (
+                            <Badge variant="outline">Sem vencedor</Badge>
+                          )}
+                          <Badge variant="outline">Finalizada</Badge>
+                        </div>
+                      </div>
+                      <CardDescription className="line-clamp-2">
+                        {competition.description || "Meta de Receita"}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Target className="w-4 h-4" />
+                        <span>Meta: {formatCurrency(competition.goal_value)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Gift className="w-4 h-4 text-primary" />
+                        <span>Prêmio: {formatCurrency(competition.prize_value)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="w-4 h-4" />
+                        <span>
+                          {format(parseISO(competition.start_date), "dd/MM", { locale: ptBR })} -{" "}
+                          {format(parseISO(competition.end_date), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                      </div>
+                      {resultText && (
+                        <div className={`flex items-center gap-2 text-sm font-medium ${resultText.className}`}>
+                          <Trophy className="w-4 h-4" />
+                          <span>{resultText.text}</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <CheckCircle className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium mb-2">Nenhuma competição finalizada</h3>
+                <p className="text-muted-foreground mb-4 max-w-sm">
+                  Suas competições finalizadas aparecerão aqui com o resultado
                 </p>
               </CardContent>
             </Card>

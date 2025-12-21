@@ -45,6 +45,36 @@ export function getCompetitionStatus(startDate: string, endDate: string): Compet
 }
 
 /**
+ * Get status label for "Minhas" tab (user's competitions)
+ */
+export function getMyCompetitionStatusLabel(startDate: string, endDate: string): { label: string; variant: "secondary" | "default" | "outline" } {
+  const status = getCompetitionStatus(startDate, endDate);
+  
+  if (status.status === "upcoming") {
+    return { label: "Aguardando início", variant: "secondary" };
+  }
+  if (status.status === "active") {
+    return { label: "Em andamento", variant: "default" };
+  }
+  return { label: "Finalizada", variant: "outline" };
+}
+
+/**
+ * Get status label for "Disponíveis" tab (listed competitions)
+ */
+export function getAvailableCompetitionStatusLabel(startDate: string, endDate: string): { label: string; variant: "secondary" | "default" | "outline" } {
+  const status = getCompetitionStatus(startDate, endDate);
+  
+  if (status.status === "upcoming") {
+    return { label: "Participe agora", variant: "secondary" };
+  }
+  if (status.status === "active") {
+    return { label: "Em andamento", variant: "default" };
+  }
+  return { label: "Finalizada", variant: "outline" };
+}
+
+/**
  * Check if competition has finished (for triggering finalization)
  */
 export function isCompetitionFinished(endDate: string): boolean {

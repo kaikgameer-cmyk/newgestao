@@ -103,8 +103,72 @@ export function useMyCompetitions() {
 
       if (error) throw error;
       
-      return (data || []) as (Competition & { 
+      // Filter to only include non-finished competitions
+      const now = new Date();
+      const filtered = (data || []).filter((comp) => {
+        const endExclusive = new Date(comp.end_date);
+        endExclusive.setDate(endExclusive.getDate() + 1);
+        return now < endExclusive; // Not finished yet
+      });
+      
+      return filtered as (Competition & { 
         competition_members: { user_id: string; role: string; is_competitor: boolean }[] 
+      })[];
+    },
+    enabled: !!user,
+  });
+}
+
+export function useFinishedCompetitions() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["finished-competitions", user?.id],
+    queryFn: async () => {
+      // Get all competitions user is member of
+      const { data: competitions, error: compError } = await supabase
+        .from("competitions")
+        .select(`
+          *,
+          competition_members!inner(user_id, role, is_competitor)
+        `)
+        .order("end_date", { ascending: false });
+
+      if (compError) throw compError;
+      
+      // Filter to only include finished competitions
+      const now = new Date();
+      const finished = (competitions || []).filter((comp) => {
+        const endExclusive = new Date(comp.end_date);
+        endExclusive.setDate(endExclusive.getDate() + 1);
+        return now >= endExclusive; // Finished
+      });
+      
+      // Get user's payouts for these competitions
+      const finishedIds = finished.map(c => c.id);
+      let payoutsMap: Record<string, { status: string; payout_value: number }> = {};
+      
+      if (finishedIds.length > 0) {
+        const { data: payouts, error: payError } = await supabase
+          .from("competition_payouts")
+          .select("competition_id, status, payout_value")
+          .eq("user_id", user?.id)
+          .in("competition_id", finishedIds);
+        
+        if (!payError && payouts) {
+          payoutsMap = payouts.reduce((acc, p) => {
+            acc[p.competition_id] = { status: p.status, payout_value: p.payout_value };
+            return acc;
+          }, {} as Record<string, { status: string; payout_value: number }>);
+        }
+      }
+      
+      return finished.map(comp => ({
+        ...comp,
+        payout: payoutsMap[comp.id] || null
+      })) as (Competition & { 
+        competition_members: { user_id: string; role: string; is_competitor: boolean }[];
+        payout: { status: "winner" | "loser" | "no_winner"; payout_value: number } | null;
       })[];
     },
     enabled: !!user,
