@@ -26,14 +26,14 @@ export function MaintenanceStatusBadge({
     warning: {
       label: "Próxima",
       icon: AlertTriangle,
-      className: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+      className: "bg-primary/10 text-primary border-primary/20",
     },
     overdue: {
       label: "Vencida",
       icon: AlertCircle,
       className: "bg-red-500/10 text-red-500 border-red-500/20",
     },
-  };
+  } as const;
 
   const { label, icon: Icon, className } = config[status];
 
@@ -48,7 +48,7 @@ export function MaintenanceStatusBadge({
           className={cn(
             "text-sm font-medium",
             status === "ok" && "text-green-500",
-            status === "warning" && "text-yellow-500",
+            status === "warning" && "text-primary",
             status === "overdue" && "text-red-500"
           )}
         >
