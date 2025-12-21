@@ -74,6 +74,7 @@ import { FinishResultPopup, FinishStatus } from "@/components/competitions/Finis
 import { DailyScoresPanel } from "@/components/competitions/DailyScoresPanel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CompetitionDetailsSkeleton } from "@/components/competitions/CompetitionDetailsSkeleton";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -152,11 +153,7 @@ export default function CompetitionDetails() {
   };
 
   if (competitionLoading) {
-    return (
-      <div className="p-4 md:p-6 flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <CompetitionDetailsSkeleton />;
   }
 
   if (!competition) {
