@@ -5,6 +5,7 @@ import { useCompetitionHistory } from "@/hooks/useCompetitionHistory";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Link } from "react-router-dom";
+import { AchievementBadges } from "@/components/competitions/AchievementBadges";
 
 export function CompetitionHistory() {
   const { data: history, isLoading } = useCompetitionHistory();
@@ -79,6 +80,16 @@ export function CompetitionHistory() {
             <div className="text-2xl font-bold text-amber-500">{formatCurrency(stats.totalEarned)}</div>
             <div className="text-xs text-muted-foreground">Prêmios ganhos</div>
           </div>
+        </div>
+
+        {/* Achievements */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground">Conquistas</h3>
+          <AchievementBadges
+            wins={stats.wins}
+            participations={stats.total}
+            totalPrizes={stats.totalEarned}
+          />
         </div>
 
         {/* Competition List */}
