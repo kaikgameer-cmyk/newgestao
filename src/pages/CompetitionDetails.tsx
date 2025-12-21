@@ -25,7 +25,7 @@ import {
   Clock,
 } from "lucide-react";
 import {
-  useCompetition,
+  useCompetitionById,
   useCompetitionLeaderboard,
   useLeaveCompetition,
   useCreateTeams,
@@ -79,7 +79,7 @@ const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function CompetitionDetails() {
-  const { code } = useParams<{ code: string }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -99,7 +99,10 @@ export default function CompetitionDetails() {
   const [showTransparencyDialog, setShowTransparencyDialog] = useState(false);
   const [transparencyChecked, setTransparencyChecked] = useState(false);
 
-  const { data: competition, isLoading: competitionLoading } = useCompetition(code || "");
+  // Fetch competition by ID (or fallback to code for backward compatibility)
+  const { data: competition, isLoading: competitionLoading } = useCompetitionById(id);
+  
+  // Leaderboard loaded separately to avoid blocking basic info display
   const { data: leaderboard, isLoading: leaderboardLoading } = useCompetitionLeaderboard(
     competition?.id
   );

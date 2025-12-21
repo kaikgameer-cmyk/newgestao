@@ -249,6 +249,39 @@ export function useCompetition(code: string) {
   });
 }
 
+export function useCompetitionById(id: string | undefined) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["competition-by-id", id],
+    queryFn: async () => {
+      // Try to find by ID first
+      let { data, error } = await supabase
+        .from("competitions")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+      // If not found by ID, try by code (for backward compatibility)
+      if (!data && id) {
+        const codeResult = await supabase
+          .from("competitions")
+          .select("*")
+          .eq("code", id.toUpperCase())
+          .maybeSingle();
+        
+        if (!codeResult.error) {
+          data = codeResult.data;
+        }
+      }
+
+      if (error) throw error;
+      return data as Competition | null;
+    },
+    enabled: !!user && !!id,
+  });
+}
+
 export function useCompetitionMembers(competitionId: string | undefined) {
   const { user } = useAuth();
 
