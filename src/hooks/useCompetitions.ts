@@ -331,6 +331,33 @@ export function useUnassignMemberFromTeam() {
   });
 }
 
+export function useUpdateTeamName() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { 
+      team_id: string;
+      name: string;
+      competition_id: string;
+    }) => {
+      const { data, error } = await supabase.rpc("update_team_name", {
+        p_team_id: params.team_id,
+        p_name: params.name,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["competition-leaderboard", variables.competition_id] });
+      toast.success("Nome do time atualizado!");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Erro ao atualizar nome do time");
+    },
+  });
+}
+
 export function useLeaveCompetition() {
   const queryClient = useQueryClient();
   const { user } = useAuth();

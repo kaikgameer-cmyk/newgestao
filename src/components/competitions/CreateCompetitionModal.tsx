@@ -22,7 +22,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Eye, EyeOff, Loader2, Copy, Check, Link2, Trophy } from "lucide-react";
+import { Eye, EyeOff, Loader2, Copy, Check, Trophy } from "lucide-react";
 import { useCreateCompetition } from "@/hooks/useCompetitions";
 import { format, addDays } from "date-fns";
 
@@ -67,7 +67,7 @@ export default function CreateCompetitionModal({
 }: CreateCompetitionModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [createdCode, setCreatedCode] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const createMutation = useCreateCompetition();
 
@@ -115,17 +115,11 @@ export default function CreateCompetitionModal({
     }
   };
 
-  const handleCopy = async (type: "code" | "link") => {
+  const handleCopyCode = async () => {
     if (!createdCode) return;
-
-    const textToCopy =
-      type === "code"
-        ? createdCode
-        : `${window.location.origin}/dashboard/competicoes?join=1&code=${createdCode}`;
-
-    await navigator.clipboard.writeText(textToCopy);
-    setCopied(type);
-    setTimeout(() => setCopied(null), 2000);
+    await navigator.clipboard.writeText(createdCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleClose = () => {
@@ -144,7 +138,7 @@ export default function CreateCompetitionModal({
               Competição Criada!
             </DialogTitle>
             <DialogDescription>
-              Compartilhe o código e senha com os participantes
+              Envie o código + senha para seus amigos
             </DialogDescription>
           </DialogHeader>
 
@@ -158,45 +152,24 @@ export default function CreateCompetitionModal({
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => handleCopy("code")}
+                  onClick={handleCopyCode}
                   className="shrink-0"
                 >
-                  {copied === "code" ? (
+                  {copied ? (
                     <Check className="w-4 h-4 text-green-500" />
                   ) : (
                     <Copy className="w-4 h-4" />
                   )}
                 </Button>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Link de Convite</label>
-              <div className="flex gap-2">
-                <Input
-                  readOnly
-                  value={`${window.location.origin}/dashboard/competicoes?join=1&code=${createdCode}`}
-                  className="font-mono text-xs"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handleCopy("link")}
-                  className="shrink-0"
-                >
-                  {copied === "link" ? (
-                    <Check className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <Link2 className="w-4 h-4" />
-                  )}
-                </Button>
-              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Clique para copiar o código
+              </p>
             </div>
 
             <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
               <p className="text-sm text-yellow-500 font-medium">
-                ⚠️ A senha é obrigatória para entrar. Não esqueça de compartilhá-la
-                separadamente!
+                ⚠️ A senha é obrigatória para entrar. Envie o código e a senha separadamente para os participantes!
               </p>
             </div>
           </div>
