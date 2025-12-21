@@ -114,12 +114,7 @@ export function useAdminGetHostPayouts(competitionId: string | undefined) {
   return useQuery({
     queryKey: ["admin-host-payouts", competitionId],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_winner_payouts_for_host", {
-        p_competition_id: competitionId,
-      });
-
-      if (error) throw error;
-      return data as {
+      type HostPayouts = {
         meta_reached: boolean;
         competition_name?: string;
         competition_code?: string;
@@ -137,6 +132,32 @@ export function useAdminGetHostPayouts(competitionId: string | undefined) {
         }[];
         message?: string;
       };
+
+      const { data, error } = await supabase.rpc("get_winner_payouts_for_host", {
+        p_competition_id: competitionId,
+      });
+
+      if (error) {
+        if (error.message?.includes("Competição ainda não finalizou")) {
+          const fallback: HostPayouts = {
+            meta_reached: false,
+            competition_name: undefined,
+            competition_code: undefined,
+            goal_value: undefined,
+            prize_value: undefined,
+            winner_type: undefined,
+            winner_total: undefined,
+            winners: [],
+            message:
+              "Competição ainda não finalizou ou está em modo de teste sem vencedor. Use 'Simular: META ATINGIDA' para ver os detalhes de payout.",
+          };
+          return fallback;
+        }
+
+        throw error;
+      }
+
+      return data as HostPayouts;
     },
     enabled: !!competitionId,
   });
