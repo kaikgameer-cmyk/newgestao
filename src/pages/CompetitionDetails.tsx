@@ -131,13 +131,17 @@ export default function CompetitionDetails() {
   // Check for finish result popup
   const { data: popupCheck } = useCheckFinishResultPopup(competition?.id, competitionFinished);
 
-  // Effect to finalize competition and show winner popup
+  // Track if finalization has been attempted
+  const [finalizationAttempted, setFinalizationAttempted] = useState(false);
+
+  // Effect to finalize competition and show winner popup (runs only once)
   useEffect(() => {
-    if (competitionFinished && competition?.id && !finalizeMutation.isPending) {
+    if (competitionFinished && competition?.id && !finalizationAttempted && !finalizeMutation.isPending) {
+      setFinalizationAttempted(true);
       // Try to finalize (idempotent)
       finalizeMutation.mutate(competition.id);
     }
-  }, [competitionFinished, competition?.id]);
+  }, [competitionFinished, competition?.id, finalizationAttempted, finalizeMutation]);
 
   // Effect to show finish result popup when check returns
   useEffect(() => {
