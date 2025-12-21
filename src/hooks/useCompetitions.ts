@@ -382,3 +382,72 @@ export function useLeaveCompetition() {
     },
   });
 }
+
+// Hook to finalize a competition and get winner
+export function useFinalizeCompetition() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (competitionId: string) => {
+      const { data, error } = await supabase.rpc("finalize_competition", {
+        p_competition_id: competitionId,
+      });
+
+      if (error) throw error;
+      return data as {
+        finalized?: boolean;
+        already_finalized?: boolean;
+        winner_type: "team" | "individual";
+        winner_team_id: string | null;
+        winner_user_id: string | null;
+        winner_score: number;
+      };
+    },
+    onSuccess: (_, competitionId) => {
+      queryClient.invalidateQueries({ queryKey: ["competition-leaderboard", competitionId] });
+    },
+  });
+}
+
+// Hook to check if user should see winner popup
+export function useCheckWinnerPopup(competitionId: string | undefined, isFinished: boolean) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["winner-popup", competitionId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("check_competition_winner_popup", {
+        p_competition_id: competitionId,
+      });
+
+      if (error) throw error;
+      return data as {
+        show_popup: boolean;
+        reason?: string;
+        winner_type?: "team" | "individual";
+        winner_name?: string;
+        winner_score?: number;
+      };
+    },
+    enabled: !!user && !!competitionId && isFinished,
+  });
+}
+
+// Hook to mark winner popup as shown
+export function useMarkWinnerPopupShown() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (competitionId: string) => {
+      const { data, error } = await supabase.rpc("mark_winner_popup_shown", {
+        p_competition_id: competitionId,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, competitionId) => {
+      queryClient.invalidateQueries({ queryKey: ["winner-popup", competitionId] });
+    },
+  });
+}

@@ -49,6 +49,51 @@ export type Database = {
           },
         ]
       }
+      competition_results: {
+        Row: {
+          competition_id: string
+          created_at: string
+          finished_at: string
+          winner_score: number
+          winner_team_id: string | null
+          winner_type: string
+          winner_user_id: string | null
+        }
+        Insert: {
+          competition_id: string
+          created_at?: string
+          finished_at?: string
+          winner_score?: number
+          winner_team_id?: string | null
+          winner_type: string
+          winner_user_id?: string | null
+        }
+        Update: {
+          competition_id?: string
+          created_at?: string
+          finished_at?: string
+          winner_score?: number
+          winner_team_id?: string | null
+          winner_type?: string
+          winner_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_results_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: true
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_results_winner_team_id_fkey"
+            columns: ["winner_team_id"]
+            isOneToOne: false
+            referencedRelation: "competition_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competition_team_members: {
         Row: {
           id: string
@@ -97,6 +142,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "competition_teams_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competition_user_popups: {
+        Row: {
+          competition_id: string
+          id: string
+          popup_type: string
+          shown_at: string
+          user_id: string
+        }
+        Insert: {
+          competition_id: string
+          id?: string
+          popup_type?: string
+          shown_at?: string
+          user_id: string
+        }
+        Update: {
+          competition_id?: string
+          id?: string
+          popup_type?: string
+          shown_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_user_popups_competition_id_fkey"
             columns: ["competition_id"]
             isOneToOne: false
             referencedRelation: "competitions"
@@ -1196,6 +1273,10 @@ export type Database = {
         Args: { p_competition_id: string; p_team_id: string; p_user_id: string }
         Returns: Json
       }
+      check_competition_winner_popup: {
+        Args: { p_competition_id: string }
+        Returns: Json
+      }
       compute_closing_date: {
         Args: { p_closing_day: number; p_tx_date: string }
         Returns: string
@@ -1252,6 +1333,10 @@ export type Database = {
         Returns: Json
       }
       delete_fuel_expense: { Args: { p_expense_id: string }; Returns: boolean }
+      finalize_competition: {
+        Args: { p_competition_id: string }
+        Returns: Json
+      }
       generate_competition_code: { Args: never; Returns: string }
       get_competition_leaderboard: {
         Args: { p_competition_id: string }
@@ -1298,6 +1383,10 @@ export type Database = {
       join_competition: {
         Args: { p_code: string; p_password: string }
         Returns: Json
+      }
+      mark_winner_popup_shown: {
+        Args: { p_competition_id: string }
+        Returns: boolean
       }
       recalc_invoice: { Args: { p_invoice_id: string }; Returns: undefined }
       recalculate_invoice_total: {

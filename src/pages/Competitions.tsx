@@ -4,12 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift } from "lucide-react";
+import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Clock } from "lucide-react";
 import { useMyCompetitions, useListedCompetitions } from "@/hooks/useCompetitions";
-import { format, differenceInDays, isAfter, isBefore, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import JoinCompetitionModal from "@/components/competitions/JoinCompetitionModal";
 import CreateCompetitionModal from "@/components/competitions/CreateCompetitionModal";
+import { getCompetitionStatus, getRemainingTime } from "@/lib/competitionUtils";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -25,34 +26,23 @@ export default function Competitions() {
   const { data: myCompetitions, isLoading: loadingMine } = useMyCompetitions();
   const { data: listedCompetitions, isLoading: loadingListed } = useListedCompetitions();
 
-  const getStatus = (startDate: string, endDate: string) => {
-    const now = new Date();
-    const start = parseISO(startDate);
-    const end = parseISO(endDate);
-    
-    if (isBefore(now, start)) {
-      return { label: "Aguardando", variant: "secondary" as const };
-    }
-    if (isAfter(now, end)) {
-      return { label: "Finalizada", variant: "outline" as const };
-    }
-    return { label: "Em andamento", variant: "default" as const };
-  };
-
   const getDaysInfo = (startDate: string, endDate: string) => {
-    const now = new Date();
-    const start = parseISO(startDate);
-    const end = parseISO(endDate);
+    const status = getCompetitionStatus(startDate, endDate);
+    const remaining = getRemainingTime(endDate);
     
-    if (isBefore(now, start)) {
-      const daysToStart = differenceInDays(start, now);
+    if (status.status === "upcoming") {
+      const now = new Date();
+      const start = parseISO(startDate);
+      const daysToStart = Math.ceil((start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       return `Começa em ${daysToStart} dia${daysToStart !== 1 ? 's' : ''}`;
     }
-    if (isAfter(now, end)) {
+    if (status.status === "finished") {
       return "Encerrada";
     }
-    const daysLeft = differenceInDays(end, now);
-    return `${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''}`;
+    if (remaining.days > 0) {
+      return `${remaining.days}d ${remaining.hours}h restantes`;
+    }
+    return `${remaining.hours}h restantes`;
   };
 
   const handleJoinFromListed = (code: string) => {
@@ -104,7 +94,7 @@ export default function Competitions() {
           ) : myCompetitions && myCompetitions.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {myCompetitions.map((competition) => {
-                const status = getStatus(competition.start_date, competition.end_date);
+                const status = getCompetitionStatus(competition.start_date, competition.end_date);
                 const isHost = competition.competition_members.some(
                   (m) => m.role === "host"
                 );
@@ -190,7 +180,7 @@ export default function Competitions() {
           ) : listedCompetitions && listedCompetitions.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {listedCompetitions.map((competition) => {
-                const status = getStatus(competition.start_date, competition.end_date);
+                const status = getCompetitionStatus(competition.start_date, competition.end_date);
 
                 return (
                   <Card key={competition.id}>

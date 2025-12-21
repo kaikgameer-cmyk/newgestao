@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,7 @@ import {
   UserMinus,
   UserPlus,
   Pencil,
+  Clock,
 } from "lucide-react";
 import {
   useCompetition,
@@ -31,11 +32,14 @@ import {
   useAssignMemberToTeam,
   useUnassignMemberFromTeam,
   useUpdateTeamName,
+  useFinalizeCompetition,
+  useCheckWinnerPopup,
+  useMarkWinnerPopupShown,
   type LeaderboardTeam,
   type AllMember,
 } from "@/hooks/useCompetitions";
 import { useAuth } from "@/hooks/useAuth";
-import { format, differenceInDays, isAfter, isBefore, parseISO } from "date-fns";
+import { format, differenceInDays, parseISO, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   AlertDialog,
@@ -65,6 +69,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getCompetitionStatus, getRemainingTime, isCompetitionFinished } from "@/lib/competitionUtils";
+import { WinnerPopup } from "@/components/competitions/WinnerPopup";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -80,17 +86,58 @@ export default function CompetitionDetails() {
   const [teamCount, setTeamCount] = useState(2);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = useState("");
+  const [showWinnerPopup, setShowWinnerPopup] = useState(false);
+  const [winnerInfo, setWinnerInfo] = useState<{
+    type: "team" | "individual";
+    name: string;
+    score: number;
+  } | null>(null);
 
   const { data: competition, isLoading: competitionLoading } = useCompetition(code || "");
   const { data: leaderboard, isLoading: leaderboardLoading } = useCompetitionLeaderboard(
     competition?.id
   );
   
+  // Check if competition is finished before using hooks
+  const competitionFinished = competition ? isCompetitionFinished(competition.end_date) : false;
+  
   const leaveMutation = useLeaveCompetition();
   const createTeamsMutation = useCreateTeams();
   const assignMutation = useAssignMemberToTeam();
   const unassignMutation = useUnassignMemberFromTeam();
   const updateTeamNameMutation = useUpdateTeamName();
+  const finalizeMutation = useFinalizeCompetition();
+  const markPopupShownMutation = useMarkWinnerPopupShown();
+  
+  // Check for winner popup
+  const { data: popupCheck } = useCheckWinnerPopup(competition?.id, competitionFinished);
+
+  // Effect to finalize competition and show winner popup
+  useEffect(() => {
+    if (competitionFinished && competition?.id && !finalizeMutation.isPending) {
+      // Try to finalize (idempotent)
+      finalizeMutation.mutate(competition.id);
+    }
+  }, [competitionFinished, competition?.id]);
+
+  // Effect to show winner popup when check returns
+  useEffect(() => {
+    if (popupCheck?.show_popup && popupCheck.winner_type && popupCheck.winner_name !== undefined) {
+      setWinnerInfo({
+        type: popupCheck.winner_type,
+        name: popupCheck.winner_name || "Vencedor",
+        score: popupCheck.winner_score || 0,
+      });
+      setShowWinnerPopup(true);
+    }
+  }, [popupCheck]);
+
+  const handleCloseWinnerPopup = async () => {
+    setShowWinnerPopup(false);
+    if (competition?.id) {
+      await markPopupShownMutation.mutateAsync(competition.id);
+    }
+  };
 
   if (competitionLoading || leaderboardLoading) {
     return (
@@ -120,17 +167,16 @@ export default function CompetitionDetails() {
   const now = new Date();
   const start = parseISO(competition.start_date);
   const end = parseISO(competition.end_date);
+  const endExclusive = addDays(end, 1);
   
-  const getStatus = () => {
-    if (isBefore(now, start)) return { label: "Aguardando", variant: "secondary" as const };
-    if (isAfter(now, end)) return { label: "Finalizada", variant: "outline" as const };
-    return { label: "Em andamento", variant: "default" as const };
-  };
+  // Use the utility for correct status calculation
+  const status = getCompetitionStatus(competition.start_date, competition.end_date);
+  const isFinished = isCompetitionFinished(competition.end_date);
+  const remaining = getRemainingTime(competition.end_date);
 
-  const status = getStatus();
   const totalDays = differenceInDays(end, start) + 1;
   const elapsedDays = Math.max(0, Math.min(differenceInDays(now, start) + 1, totalDays));
-  const progressPercent = (elapsedDays / totalDays) * 100;
+  const progressPercent = isFinished ? 100 : (elapsedDays / totalDays) * 100;
 
   const handleCopyCode = async () => {
     await navigator.clipboard.writeText(competition.code);
@@ -267,9 +313,23 @@ export default function CompetitionDetails() {
           </CardHeader>
           <CardContent className="space-y-2">
             <Progress value={progressPercent} className="h-2" />
-            <p className="text-xs text-muted-foreground">
-              Dia {elapsedDays} de {totalDays}
-            </p>
+            {isFinished ? (
+              <p className="text-xs text-muted-foreground">Competição encerrada</p>
+            ) : status.status === "active" ? (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                <span>
+                  {remaining.days > 0 
+                    ? `${remaining.days}d ${remaining.hours}h restantes`
+                    : `${remaining.hours}h restantes`
+                  }
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Dia {elapsedDays} de {totalDays}
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -627,6 +687,17 @@ export default function CompetitionDetails() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Winner Popup */}
+      {winnerInfo && (
+        <WinnerPopup
+          open={showWinnerPopup}
+          onClose={handleCloseWinnerPopup}
+          winnerType={winnerInfo.type}
+          winnerName={winnerInfo.name}
+          winnerScore={winnerInfo.score}
+        />
+      )}
     </div>
   );
 }
