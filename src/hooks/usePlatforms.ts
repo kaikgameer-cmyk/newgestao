@@ -205,6 +205,48 @@ export function usePlatforms() {
     },
   });
 
+  // Update custom platform (only user's own)
+  const updatePlatform = useMutation({
+    mutationFn: async ({
+      platformId,
+      name,
+      color,
+    }: {
+      platformId: string;
+      name: string;
+      color: string;
+    }) => {
+      if (!user) throw new Error("Não autenticado");
+
+      const trimmedName = name.trim();
+      if (!trimmedName) throw new Error("Nome é obrigatório");
+
+      const safeColor = /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "#FFC700";
+
+      const { error } = await supabase
+        .from("platforms")
+        .update({ name: trimmedName, color: safeColor })
+        .eq("id", platformId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platforms"] });
+      toast({
+        title: "Plataforma atualizada",
+        description: "As alterações foram salvas com sucesso.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao atualizar plataforma",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Delete custom platform (only user's own)
   const deletePlatform = useMutation({
     mutationFn: async ({ platformId, platformKey }: { platformId: string; platformKey: string }) => {
@@ -256,6 +298,7 @@ export function usePlatforms() {
     initializeUserPlatforms,
     togglePlatform,
     createPlatform,
+    updatePlatform,
     deletePlatform,
     isPlatformEnabled,
   };
