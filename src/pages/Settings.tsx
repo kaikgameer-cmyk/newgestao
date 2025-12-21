@@ -20,6 +20,7 @@ import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { PlatformSettings } from "@/components/settings/PlatformSettings";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
+import { CompetitionHistory } from "@/components/settings/CompetitionHistory";
 import { z } from "zod";
 
 // Validation schema for profile
@@ -362,6 +363,9 @@ export default function SettingsPage() {
 
       {/* Platform Settings */}
       <PlatformSettings />
+
+      {/* Competition History */}
+      <CompetitionHistory />
 
       {/* Quick Stats */}
       <Card variant="elevated">
