@@ -30,6 +30,8 @@ export interface CompetitionMember {
   joined_at: string;
   display_name?: string;
   is_competitor: boolean;
+  transparency_accepted: boolean;
+  transparency_accepted_at: string | null;
 }
 
 export interface LeaderboardMember {

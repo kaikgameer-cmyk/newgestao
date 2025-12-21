@@ -72,6 +72,8 @@ import {
 import { getCompetitionStatus, getRemainingTime, isCompetitionFinished } from "@/lib/competitionUtils";
 import { FinishResultPopup, FinishStatus } from "@/components/competitions/FinishResultPopup";
 import { DailyScoresPanel } from "@/components/competitions/DailyScoresPanel";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -94,12 +96,15 @@ export default function CompetitionDetails() {
     winnerName?: string;
     winnerType?: "team" | "individual" | "none";
   } | null>(null);
+  const [showTransparencyDialog, setShowTransparencyDialog] = useState(false);
+  const [transparencyChecked, setTransparencyChecked] = useState(false);
 
   const { data: competition, isLoading: competitionLoading } = useCompetition(code || "");
   const { data: leaderboard, isLoading: leaderboardLoading } = useCompetitionLeaderboard(
     competition?.id
   );
-  
+  const { data: members } = useCompetitionMembers(competition?.id);
+
   // Check if competition is finished before using hooks
   const competitionFinished = competition ? isCompetitionFinished(competition.end_date) : false;
   
@@ -110,7 +115,8 @@ export default function CompetitionDetails() {
   const updateTeamNameMutation = useUpdateTeamName();
   const finalizeMutation = useFinalizeCompetition();
   const markFinishPopupShownMutation = useMarkFinishResultPopupShown();
-  
+  const acceptTransparencyMutation = useAcceptCompetitionTransparency();
+
   // Check for finish result popup
   const { data: popupCheck } = useCheckFinishResultPopup(competition?.id, competitionFinished);
 
@@ -180,6 +186,9 @@ export default function CompetitionDetails() {
   const totalDays = differenceInDays(end, start) + 1;
   const elapsedDays = Math.max(0, Math.min(differenceInDays(now, start) + 1, totalDays));
   const progressPercent = isFinished ? 100 : (elapsedDays / totalDays) * 100;
+
+  const currentMember = members?.find((m) => m.user_id === user?.id);
+  const needsTransparency = !!currentMember && !currentMember.transparency_accepted;
 
   const handleCopyCode = async () => {
     await navigator.clipboard.writeText(competition.code);
@@ -268,7 +277,7 @@ export default function CompetitionDetails() {
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div className="flex-1">
+        <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold">{competition.name}</h1>
             {isHost && (
@@ -280,7 +289,27 @@ export default function CompetitionDetails() {
             <Badge variant={status.variant}>{status.label}</Badge>
           </div>
           {competition.description && (
-            <p className="text-muted-foreground mt-1">{competition.description}</p>
+            <p className="text-muted-foreground">{competition.description}</p>
+          )}
+          {!isHost && needsTransparency && (
+            <Alert className="mt-2">
+              <AlertTitle>Compromisso de transparência pendente</AlertTitle>
+              <AlertDescription className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <span className="text-sm">
+                  Para competir de verdade, você precisa aceitar o compromisso de lançar seus
+                  resultados com honestidade e transparência.
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setTransparencyChecked(false);
+                    setShowTransparencyDialog(true);
+                  }}
+                >
+                  Ler e aceitar compromisso
+                </Button>
+              </AlertDescription>
+            </Alert>
           )}
         </div>
       </div>
@@ -722,6 +751,66 @@ export default function CompetitionDetails() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Transparência: reabrir termo para membros antigos */}
+      {!isHost && needsTransparency && (
+        <Dialog open={showTransparencyDialog} onOpenChange={setShowTransparencyDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Compromisso de Transparência</DialogTitle>
+              <DialogDescription>
+                Antes de competir, confirme seu compromisso de lançar apenas valores reais.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-sm text-muted-foreground">
+                Esta competição é baseada nos lançamentos de receita feitos por você. Para manter
+                tudo justo, lance apenas valores reais e seja 100% transparente. Não tente
+                manipular resultados — o objetivo aqui é evolução, disciplina e competição
+                saudável. Ao participar, você concorda em respeitar as regras e os outros
+                participantes.
+              </p>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="transparency-accept"
+                  checked={transparencyChecked}
+                  onCheckedChange={(checked) => setTransparencyChecked(!!checked)}
+                />
+                <label
+                  htmlFor="transparency-accept"
+                  className="text-sm leading-snug cursor-pointer select-none"
+                >
+                  Eu concordo e me comprometo a lançar meus resultados com total honestidade e
+                  transparência.
+                </label>
+              </div>
+            </div>
+            <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between gap-2">
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setShowTransparencyDialog(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                disabled={!transparencyChecked || acceptTransparencyMutation.isPending}
+                onClick={async () => {
+                  await acceptTransparencyMutation.mutateAsync(competition.id);
+                  setShowTransparencyDialog(false);
+                }}
+              >
+                {acceptTransparencyMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Confirmar e continuar"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Finish Result Popup */}
       {finishInfo && (
