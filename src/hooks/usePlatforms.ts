@@ -153,57 +153,63 @@ export function usePlatforms() {
       if (existingPlatform) {
         throw new Error("Já existe uma plataforma com esse nome");
       }
-
-      const safeColor = /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "#FFC700";
-
-      // Insert platform
-      const { data: newPlatform, error: platformError } = await supabase
-        .from("platforms")
-        .insert({
-          user_id: user.id,
-          key: slug,
-          name: trimmedName,
-          is_active: true,
-          is_other: false,
-          color: safeColor,
-        })
-        .select()
-        .single();
-
-      if (platformError) throw platformError;
-
-      // Auto-enable the new platform for the user
-      const { error: prefError } = await supabase
-        .from("user_platforms")
-        .upsert(
-          {
-            user_id: user.id,
-            platform_key: newPlatform.key,
-            enabled: true,
-          },
-          { onConflict: "user_id,platform_key" }
-        );
-
-      if (prefError) throw prefError;
-
-      return newPlatform;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["platforms"] });
-      queryClient.invalidateQueries({ queryKey: ["user_platforms"] });
-      toast({
-        title: "Plataforma criada",
-        description: "A plataforma foi cadastrada com sucesso.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao criar plataforma",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+ 
+       const safeColor = /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "#FFC700";
+ 
+       // Insert platform
+       const { data: newPlatform, error: platformError } = await supabase
+         .from("platforms")
+         .insert({
+           user_id: user.id,
+           key: slug,
+           name: trimmedName,
+           is_active: true,
+           is_other: false,
+           color: safeColor,
+         })
+         .select()
+         .single();
+ 
+       if (platformError) {
+         // Tratar erro de unicidade vindo do backend
+         if ((platformError as any)?.code === "23505") {
+           throw new Error("Já existe uma plataforma com esse nome");
+         }
+         throw platformError;
+       }
+ 
+       // Auto-enable the new platform for the user
+       const { error: prefError } = await supabase
+         .from("user_platforms")
+         .upsert(
+           {
+             user_id: user.id,
+             platform_key: newPlatform.key,
+             enabled: true,
+           },
+           { onConflict: "user_id,platform_key" }
+         );
+ 
+       if (prefError) throw prefError;
+ 
+       return newPlatform;
+     },
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ["platforms"] });
+       queryClient.invalidateQueries({ queryKey: ["user_platforms"] });
+       toast({
+         title: "Plataforma criada",
+         description: "A plataforma foi cadastrada com sucesso.",
+       });
+     },
+     onError: (error: Error) => {
+       toast({
+         title: "Erro ao criar plataforma",
+         description: error.message,
+         variant: "destructive",
+       });
+     },
+   });
 
   // Update custom platform (only user's own)
   const updatePlatform = useMutation({
@@ -238,10 +244,15 @@ export function usePlatforms() {
         description: "As alterações foram salvas com sucesso.",
       });
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      const message =
+        error?.code === "23505" || /unique|duplicado|duplicate/i.test(error?.message || "")
+          ? "Já existe uma plataforma com esse nome"
+          : error?.message || "Não foi possível atualizar a plataforma";
+ 
       toast({
         title: "Erro ao atualizar plataforma",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     },
