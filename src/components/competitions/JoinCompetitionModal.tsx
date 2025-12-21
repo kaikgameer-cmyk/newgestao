@@ -41,8 +41,10 @@ const step1Schema = z.object({
 });
 
 const step2Schema = z.object({
-  pix_key: z.string().min(5, "Chave PIX deve ter no mínimo 5 caracteres"),
-  pix_key_type: z.string().min(1, "Selecione o tipo da chave"),
+  pix_key: z.string().min(5, "Informe uma chave Pix válida"),
+  pix_key_type: z.enum(["cpf", "cnpj", "email", "phone", "random"], {
+    required_error: "Selecione o tipo da chave",
+  }),
 });
 
 type Step1Values = z.infer<typeof step1Schema>;
@@ -78,7 +80,7 @@ export default function JoinCompetitionModal({
     resolver: zodResolver(step2Schema),
     defaultValues: {
       pix_key: "",
-      pix_key_type: "",
+      pix_key_type: "random",
     },
   });
 
@@ -99,7 +101,7 @@ export default function JoinCompetitionModal({
 
   const onStep1Submit = (values: Step1Values) => {
     setStep1Data(values);
-    step2Form.reset({ pix_key: "", pix_key_type: "" });
+    step2Form.reset({ pix_key: "", pix_key_type: "random" });
     setStep(2);
   };
 
@@ -252,6 +254,8 @@ export default function JoinCompetitionModal({
                       <Input
                         placeholder="CPF, E-mail, Celular ou Chave Aleatória"
                         {...field}
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
                       />
                     </FormControl>
                     <FormDescription>
@@ -268,8 +272,8 @@ export default function JoinCompetitionModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo da Chave *</FormLabel>
-                    <Select 
-                      value={field.value || ""}
+                    <Select
+                      value={field.value ?? ""}
                       onValueChange={field.onChange}
                     >
                       <FormControl>
