@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,13 +16,10 @@ const formatCurrency = (value: number) =>
 
 export default function Competitions() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const initialCode = searchParams.get("code") || "";
-  const shouldJoin = searchParams.get("join") === "1";
   
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(shouldJoin || !!initialCode);
-  const [joinCode, setJoinCode] = useState(initialCode);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
   const [activeTab, setActiveTab] = useState("minhas");
   
   const { data: myCompetitions, isLoading: loadingMine } = useMyCompetitions();

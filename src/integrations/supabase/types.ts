@@ -1316,6 +1316,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_team_name: {
+        Args: { p_name: string; p_team_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "admin" | "user"

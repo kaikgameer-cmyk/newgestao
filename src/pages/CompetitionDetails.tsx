@@ -12,7 +12,6 @@ import {
   Target,
   Copy,
   Check,
-  Link2,
   ArrowLeft,
   Crown,
   Medal,
@@ -22,6 +21,7 @@ import {
   Gift,
   UserMinus,
   UserPlus,
+  Pencil,
 } from "lucide-react";
 import {
   useCompetition,
@@ -30,6 +30,7 @@ import {
   useCreateTeams,
   useAssignMemberToTeam,
   useUnassignMemberFromTeam,
+  useUpdateTeamName,
   type LeaderboardTeam,
   type AllMember,
 } from "@/hooks/useCompetitions";
@@ -73,10 +74,12 @@ export default function CompetitionDetails() {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const [copied, setCopied] = useState(false);
   const [showTeamsModal, setShowTeamsModal] = useState(false);
   const [showManageTeamsModal, setShowManageTeamsModal] = useState(false);
   const [teamCount, setTeamCount] = useState(2);
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [editingTeamName, setEditingTeamName] = useState("");
 
   const { data: competition, isLoading: competitionLoading } = useCompetition(code || "");
   const { data: leaderboard, isLoading: leaderboardLoading } = useCompetitionLeaderboard(
@@ -87,6 +90,7 @@ export default function CompetitionDetails() {
   const createTeamsMutation = useCreateTeams();
   const assignMutation = useAssignMemberToTeam();
   const unassignMutation = useUnassignMemberFromTeam();
+  const updateTeamNameMutation = useUpdateTeamName();
 
   if (competitionLoading || leaderboardLoading) {
     return (
@@ -128,15 +132,10 @@ export default function CompetitionDetails() {
   const elapsedDays = Math.max(0, Math.min(differenceInDays(now, start) + 1, totalDays));
   const progressPercent = (elapsedDays / totalDays) * 100;
 
-  const handleCopy = async (type: "code" | "link") => {
-    const textToCopy =
-      type === "code"
-        ? competition.code
-        : `${window.location.origin}/dashboard/competicoes?join=1&code=${competition.code}`;
-
-    await navigator.clipboard.writeText(textToCopy);
-    setCopied(type);
-    setTimeout(() => setCopied(null), 2000);
+  const handleCopyCode = async () => {
+    await navigator.clipboard.writeText(competition.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleLeave = async () => {
@@ -165,6 +164,29 @@ export default function CompetitionDetails() {
       competition_id: competition.id,
       user_id: userId,
     });
+  };
+
+  const handleStartEditTeamName = (teamId: string, currentName: string) => {
+    setEditingTeamId(teamId);
+    setEditingTeamName(currentName);
+  };
+
+  const handleSaveTeamName = async (teamId: string) => {
+    if (editingTeamName.trim().length < 2) {
+      return;
+    }
+    await updateTeamNameMutation.mutateAsync({
+      team_id: teamId,
+      name: editingTeamName,
+      competition_id: competition.id,
+    });
+    setEditingTeamId(null);
+    setEditingTeamName("");
+  };
+
+  const handleCancelEditTeamName = () => {
+    setEditingTeamId(null);
+    setEditingTeamName("");
   };
 
   const getRankIcon = (index: number) => {
@@ -253,30 +275,24 @@ export default function CompetitionDetails() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Compartilhar</CardDescription>
+            <CardDescription>Código</CardDescription>
             <CardTitle className="text-lg font-mono tracking-wider">
               {competition.code}
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex gap-2">
+          <CardContent>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleCopy("code")}
+              onClick={handleCopyCode}
               className="gap-1"
             >
-              {copied === "code" ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-              Código
+              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              Copiar Código
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleCopy("link")}
-              className="gap-1"
-            >
-              {copied === "link" ? <Check className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
-              Link
-            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Envie o código + senha para convidar
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -530,10 +546,54 @@ export default function CompetitionDetails() {
             {/* Teams */}
             {leaderboard.teams && leaderboard.teams.map((team) => (
               <div key={team.team_id} className="border rounded-lg p-4">
-                <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  {team.team_name} ({team.members.filter(m => m.user_id).length})
-                </h4>
+                <div className="flex items-center justify-between mb-3">
+                  {editingTeamId === team.team_id ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <Input
+                        value={editingTeamName}
+                        onChange={(e) => setEditingTeamName(e.target.value)}
+                        className="h-8 max-w-[200px]"
+                        placeholder="Nome do time"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveTeamName(team.team_id);
+                          if (e.key === 'Escape') handleCancelEditTeamName();
+                        }}
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => handleSaveTeamName(team.team_id)}
+                        disabled={editingTeamName.trim().length < 2 || updateTeamNameMutation.isPending}
+                      >
+                        {updateTeamNameMutation.isPending ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Check className="w-3 h-3" />
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleCancelEditTeamName}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  ) : (
+                    <h4 className="font-medium flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      {team.team_name} ({team.members.filter(m => m.user_id).length})
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => handleStartEditTeamName(team.team_id, team.team_name)}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                    </h4>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {team.members.filter(m => m.user_id).map((member) => (
                     <div key={member.user_id} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
