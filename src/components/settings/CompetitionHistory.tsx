@@ -8,7 +8,10 @@ import { Link } from "react-router-dom";
 import { AchievementBadges } from "@/components/competitions/AchievementBadges";
 
 export function CompetitionHistory() {
-  const { data: history, isLoading } = useCompetitionHistory();
+  const { data, isLoading } = useCompetitionHistory();
+  
+  const history = data?.items || [];
+  const historyStats = data?.stats;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -31,10 +34,10 @@ export function CompetitionHistory() {
   };
 
   const stats = {
-    total: history?.length || 0,
-    wins: history?.filter((h) => h.is_winner).length || 0,
-    active: history?.filter((h) => h.status === "active").length || 0,
-    totalEarned: history?.filter((h) => h.is_winner).reduce((sum, h) => sum + h.prize_value, 0) || 0,
+    total: historyStats?.totalParticipations || 0,
+    wins: historyStats?.totalWins || 0,
+    active: history.filter((h) => h.status === "active").length,
+    totalEarned: historyStats?.totalPrizes || 0,
   };
 
   if (isLoading) {
@@ -98,7 +101,7 @@ export function CompetitionHistory() {
             {history.map((competition) => (
               <Link
                 key={competition.id}
-                to={`/dashboard/competicoes/${competition.id}`}
+                to={`/dashboard/competicoes/${competition.code}`}
                 className="block"
               >
                 <div className="flex items-center gap-4 p-4 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors">
@@ -146,9 +149,23 @@ export function CompetitionHistory() {
                   {/* Status & Prize */}
                   <div className="text-right space-y-1">
                     {getStatusBadge(competition.status)}
-                    <div className="text-xs text-muted-foreground">
-                      Prêmio: {formatCurrency(competition.prize_value)}
-                    </div>
+                    {competition.payout_status === "winner" && competition.payout_value !== undefined ? (
+                      <div className="text-xs text-primary font-medium">
+                        Você ganhou: {formatCurrency(competition.payout_value)}
+                      </div>
+                    ) : competition.payout_status === "no_winner" ? (
+                      <div className="text-xs text-muted-foreground">
+                        Sem vencedor
+                      </div>
+                    ) : competition.status === "finished" && competition.payout_status === "loser" ? (
+                      <div className="text-xs text-muted-foreground">
+                        Prêmio: {formatCurrency(competition.prize_value)}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground">
+                        Prêmio: {formatCurrency(competition.prize_value)}
+                      </div>
+                    )}
                   </div>
                 </div>
               </Link>

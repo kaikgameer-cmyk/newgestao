@@ -49,11 +49,59 @@ export type Database = {
           },
         ]
       }
+      competition_payouts: {
+        Row: {
+          competition_id: string
+          created_at: string
+          id: string
+          payout_value: number
+          status: string
+          team_id: string | null
+          user_id: string
+        }
+        Insert: {
+          competition_id: string
+          created_at?: string
+          id?: string
+          payout_value?: number
+          status: string
+          team_id?: string | null
+          user_id: string
+        }
+        Update: {
+          competition_id?: string
+          created_at?: string
+          id?: string
+          payout_value?: number
+          status?: string
+          team_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competition_payouts_competition_id_fkey"
+            columns: ["competition_id"]
+            isOneToOne: false
+            referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competition_payouts_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "competition_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competition_results: {
         Row: {
           competition_id: string
           created_at: string
           finished_at: string
+          goal_value: number | null
+          meta_reached: boolean
+          prize_value: number | null
           winner_score: number
           winner_team_id: string | null
           winner_type: string
@@ -63,6 +111,9 @@ export type Database = {
           competition_id: string
           created_at?: string
           finished_at?: string
+          goal_value?: number | null
+          meta_reached?: boolean
+          prize_value?: number | null
           winner_score?: number
           winner_team_id?: string | null
           winner_type: string
@@ -72,6 +123,9 @@ export type Database = {
           competition_id?: string
           created_at?: string
           finished_at?: string
+          goal_value?: number | null
+          meta_reached?: boolean
+          prize_value?: number | null
           winner_score?: number
           winner_team_id?: string | null
           winner_type?: string
@@ -1280,6 +1334,10 @@ export type Database = {
         Args: { p_competition_id: string }
         Returns: Json
       }
+      check_finish_result_popup: {
+        Args: { p_competition_id: string }
+        Returns: Json
+      }
       compute_closing_date: {
         Args: { p_closing_day: number; p_tx_date: string }
         Returns: string
@@ -1386,6 +1444,10 @@ export type Database = {
       join_competition: {
         Args: { p_code: string; p_password: string }
         Returns: Json
+      }
+      mark_finish_result_popup_shown: {
+        Args: { p_competition_id: string }
+        Returns: boolean
       }
       mark_winner_popup_shown: {
         Args: { p_competition_id: string }

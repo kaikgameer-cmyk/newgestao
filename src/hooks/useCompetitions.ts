@@ -132,14 +132,17 @@ export function useCompetition(code: string) {
   return useQuery({
     queryKey: ["competition", code],
     queryFn: async () => {
+      // Try to find by code first (uppercase)
       const { data, error } = await supabase
         .from("competitions")
         .select("*")
         .eq("code", code.toUpperCase())
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      return data as Competition;
+      
+      // If not found, return null (page will show "not found")
+      return data as Competition | null;
     },
     enabled: !!user && !!code,
   });
@@ -397,19 +400,22 @@ export function useFinalizeCompetition() {
       return data as {
         finalized?: boolean;
         already_finalized?: boolean;
-        winner_type: "team" | "individual";
+        winner_type: "team" | "individual" | "none";
         winner_team_id: string | null;
         winner_user_id: string | null;
-        winner_score: number;
+        winner_total: number;
+        meta_reached: boolean;
+        payout_per_winner?: number;
       };
     },
     onSuccess: (_, competitionId) => {
       queryClient.invalidateQueries({ queryKey: ["competition-leaderboard", competitionId] });
+      queryClient.invalidateQueries({ queryKey: ["finish-result-popup", competitionId] });
     },
   });
 }
 
-// Hook to check if user should see winner popup
+// Hook to check if user should see winner popup (old - kept for backwards compatibility)
 export function useCheckWinnerPopup(competitionId: string | undefined, isFinished: boolean) {
   const { user } = useAuth();
 
@@ -449,5 +455,77 @@ export function useMarkWinnerPopupShown() {
     onSuccess: (_, competitionId) => {
       queryClient.invalidateQueries({ queryKey: ["winner-popup", competitionId] });
     },
+  });
+}
+
+// Hook to check finish result popup (new - with payouts)
+export function useCheckFinishResultPopup(competitionId: string | undefined, isFinished: boolean) {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["finish-result-popup", competitionId],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("check_finish_result_popup", {
+        p_competition_id: competitionId,
+      });
+
+      if (error) throw error;
+      return data as {
+        show_popup: boolean;
+        reason?: string;
+        status?: "winner" | "loser" | "no_winner";
+        payout_value?: number;
+        winner_name?: string;
+        winner_type?: "team" | "individual" | "none";
+        meta_reached?: boolean;
+      };
+    },
+    enabled: !!user && !!competitionId && isFinished,
+  });
+}
+
+// Hook to mark finish result popup as shown
+export function useMarkFinishResultPopupShown() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (competitionId: string) => {
+      const { data, error } = await supabase.rpc("mark_finish_result_popup_shown", {
+        p_competition_id: competitionId,
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, competitionId) => {
+      queryClient.invalidateQueries({ queryKey: ["finish-result-popup", competitionId] });
+    },
+  });
+}
+
+// Hook to get user's payouts for history
+export function useUserPayouts() {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ["user-payouts", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("competition_payouts")
+        .select("*")
+        .eq("user_id", user?.id);
+
+      if (error) throw error;
+      return data as {
+        id: string;
+        competition_id: string;
+        user_id: string;
+        team_id: string | null;
+        payout_value: number;
+        status: "winner" | "loser" | "no_winner";
+        created_at: string;
+      }[];
+    },
+    enabled: !!user,
   });
 }

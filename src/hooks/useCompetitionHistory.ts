@@ -5,6 +5,7 @@ import { getCompetitionStatus, CompetitionStatus } from "@/lib/competitionUtils"
 
 interface CompetitionHistoryItem {
   id: string;
+  code: string;
   name: string;
   start_date: string;
   end_date: string;
@@ -17,6 +18,14 @@ interface CompetitionHistoryItem {
   is_winner: boolean;
   winner_type?: string;
   position?: number;
+  payout_status?: "winner" | "loser" | "no_winner";
+  payout_value?: number;
+}
+
+interface CompetitionHistoryStats {
+  totalWins: number;
+  totalPrizes: number;
+  totalParticipations: number;
 }
 
 export function useCompetitionHistory() {
@@ -24,8 +33,21 @@ export function useCompetitionHistory() {
 
   return useQuery({
     queryKey: ["competition-history", user?.id],
-    queryFn: async (): Promise<CompetitionHistoryItem[]> => {
-      if (!user) return [];
+    queryFn: async (): Promise<{ items: CompetitionHistoryItem[]; stats: CompetitionHistoryStats }> => {
+      if (!user) return { items: [], stats: { totalWins: 0, totalPrizes: 0, totalParticipations: 0 } };
+
+      // Get user's payouts first for accurate stats
+      const { data: payouts } = await supabase
+        .from("competition_payouts")
+        .select("*")
+        .eq("user_id", user.id);
+
+      // Calculate stats from payouts
+      const stats: CompetitionHistoryStats = {
+        totalWins: payouts?.filter(p => p.status === "winner").length || 0,
+        totalPrizes: payouts?.filter(p => p.status === "winner").reduce((sum, p) => sum + Number(p.payout_value), 0) || 0,
+        totalParticipations: 0,
+      };
 
       // Get all competitions where user is a member
       const { data: memberships, error: membershipError } = await supabase
@@ -36,6 +58,7 @@ export function useCompetitionHistory() {
           competition_id,
           competitions (
             id,
+            code,
             name,
             start_date,
             end_date,
@@ -47,7 +70,12 @@ export function useCompetitionHistory() {
         .eq("user_id", user.id);
 
       if (membershipError) throw membershipError;
-      if (!memberships || memberships.length === 0) return [];
+      if (!memberships || memberships.length === 0) {
+        return { items: [], stats };
+      }
+
+      // Count participations (as competitor)
+      stats.totalParticipations = memberships.filter(m => m.is_competitor).length;
 
       // Get competition results for finished competitions
       const competitionIds = memberships.map((m) => m.competition_id);
@@ -56,7 +84,7 @@ export function useCompetitionHistory() {
         .select("*")
         .in("competition_id", competitionIds);
 
-      // Get user's income totals for each competition period
+      // Build history items
       const history: CompetitionHistoryItem[] = [];
 
       for (const membership of memberships) {
@@ -65,6 +93,7 @@ export function useCompetitionHistory() {
 
         const statusInfo = getCompetitionStatus(comp.start_date, comp.end_date);
         const result = results?.find((r) => r.competition_id === comp.id);
+        const payout = payouts?.find((p) => p.competition_id === comp.id);
 
         // Calculate user's score for this competition
         let userScore = 0;
@@ -86,13 +115,12 @@ export function useCompetitionHistory() {
           }
         }
 
-        // Check if user is winner
-        let isWinner = false;
-        if (result) {
+        // Determine winner status from payout or fallback to old logic
+        let isWinner = payout?.status === "winner";
+        if (!payout && result) {
           if (result.winner_type === "individual" && result.winner_user_id === user.id) {
             isWinner = true;
           } else if (result.winner_type === "team" && result.winner_team_id) {
-            // Check if user is in winning team
             const { data: teamMembership } = await supabase
               .from("competition_team_members")
               .select("id")
@@ -105,6 +133,7 @@ export function useCompetitionHistory() {
 
         history.push({
           id: comp.id,
+          code: comp.code,
           name: comp.name,
           start_date: comp.start_date,
           end_date: comp.end_date,
@@ -116,13 +145,17 @@ export function useCompetitionHistory() {
           user_score: userScore,
           is_winner: isWinner,
           winner_type: result?.winner_type,
+          payout_status: payout?.status as "winner" | "loser" | "no_winner" | undefined,
+          payout_value: payout ? Number(payout.payout_value) : undefined,
         });
       }
 
       // Sort by end_date descending (most recent first)
-      return history.sort((a, b) => 
+      const sortedHistory = history.sort((a, b) => 
         new Date(b.end_date).getTime() - new Date(a.end_date).getTime()
       );
+
+      return { items: sortedHistory, stats };
     },
     enabled: !!user,
   });

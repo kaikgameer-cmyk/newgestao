@@ -33,8 +33,8 @@ import {
   useUnassignMemberFromTeam,
   useUpdateTeamName,
   useFinalizeCompetition,
-  useCheckWinnerPopup,
-  useMarkWinnerPopupShown,
+  useCheckFinishResultPopup,
+  useMarkFinishResultPopupShown,
   type LeaderboardTeam,
   type AllMember,
 } from "@/hooks/useCompetitions";
@@ -70,7 +70,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getCompetitionStatus, getRemainingTime, isCompetitionFinished } from "@/lib/competitionUtils";
-import { WinnerPopup } from "@/components/competitions/WinnerPopup";
+import { FinishResultPopup, FinishStatus } from "@/components/competitions/FinishResultPopup";
 import { DailyScoresPanel } from "@/components/competitions/DailyScoresPanel";
 
 const formatCurrency = (value: number) =>
@@ -87,11 +87,12 @@ export default function CompetitionDetails() {
   const [teamCount, setTeamCount] = useState(2);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = useState("");
-  const [showWinnerPopup, setShowWinnerPopup] = useState(false);
-  const [winnerInfo, setWinnerInfo] = useState<{
-    type: "team" | "individual";
-    name: string;
-    score: number;
+  const [showFinishPopup, setShowFinishPopup] = useState(false);
+  const [finishInfo, setFinishInfo] = useState<{
+    status: FinishStatus;
+    payoutValue: number;
+    winnerName?: string;
+    winnerType?: "team" | "individual" | "none";
   } | null>(null);
 
   const { data: competition, isLoading: competitionLoading } = useCompetition(code || "");
@@ -108,10 +109,10 @@ export default function CompetitionDetails() {
   const unassignMutation = useUnassignMemberFromTeam();
   const updateTeamNameMutation = useUpdateTeamName();
   const finalizeMutation = useFinalizeCompetition();
-  const markPopupShownMutation = useMarkWinnerPopupShown();
+  const markFinishPopupShownMutation = useMarkFinishResultPopupShown();
   
-  // Check for winner popup
-  const { data: popupCheck } = useCheckWinnerPopup(competition?.id, competitionFinished);
+  // Check for finish result popup
+  const { data: popupCheck } = useCheckFinishResultPopup(competition?.id, competitionFinished);
 
   // Effect to finalize competition and show winner popup
   useEffect(() => {
@@ -121,22 +122,23 @@ export default function CompetitionDetails() {
     }
   }, [competitionFinished, competition?.id]);
 
-  // Effect to show winner popup when check returns
+  // Effect to show finish result popup when check returns
   useEffect(() => {
-    if (popupCheck?.show_popup && popupCheck.winner_type && popupCheck.winner_name !== undefined) {
-      setWinnerInfo({
-        type: popupCheck.winner_type,
-        name: popupCheck.winner_name || "Vencedor",
-        score: popupCheck.winner_score || 0,
+    if (popupCheck?.show_popup && popupCheck.status) {
+      setFinishInfo({
+        status: popupCheck.status,
+        payoutValue: popupCheck.payout_value || 0,
+        winnerName: popupCheck.winner_name,
+        winnerType: popupCheck.winner_type,
       });
-      setShowWinnerPopup(true);
+      setShowFinishPopup(true);
     }
   }, [popupCheck]);
 
-  const handleCloseWinnerPopup = async () => {
-    setShowWinnerPopup(false);
+  const handleCloseFinishPopup = async () => {
+    setShowFinishPopup(false);
     if (competition?.id) {
-      await markPopupShownMutation.mutateAsync(competition.id);
+      await markFinishPopupShownMutation.mutateAsync(competition.id);
     }
   };
 
@@ -721,14 +723,15 @@ export default function CompetitionDetails() {
         </DialogContent>
       </Dialog>
 
-      {/* Winner Popup */}
-      {winnerInfo && (
-        <WinnerPopup
-          open={showWinnerPopup}
-          onClose={handleCloseWinnerPopup}
-          winnerType={winnerInfo.type}
-          winnerName={winnerInfo.name}
-          winnerScore={winnerInfo.score}
+      {/* Finish Result Popup */}
+      {finishInfo && (
+        <FinishResultPopup
+          open={showFinishPopup}
+          onClose={handleCloseFinishPopup}
+          status={finishInfo.status}
+          payoutValue={finishInfo.payoutValue}
+          winnerName={finishInfo.winnerName}
+          winnerType={finishInfo.winnerType}
         />
       )}
     </div>
