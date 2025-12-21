@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Inbox } from "lucide-react";
+import { usePlatforms } from "@/hooks/usePlatforms";
 
 interface PlatformData {
   name: string;
@@ -10,43 +11,41 @@ interface PlatformBreakdownCardProps {
   revenues: Array<{ app: string; amount: number }>;
 }
 
-// Known platforms with their colors
-const KNOWN_PLATFORMS = ["uber", "99", "indrive", "99pop", "uber eats", "ifood", "rappi"];
-
 export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) {
-  // Group by platform
+  const { platforms } = usePlatforms();
+
+  // Group by platform label coming from revenues
   const platformData = revenues.reduce((acc, r) => {
-    const platform = r.app || "Outros";
-    if (!acc[platform]) {
-      acc[platform] = { total: 0 };
+    const platformName = r.app || "Outros";
+    if (!acc[platformName]) {
+      acc[platformName] = { total: 0 };
     }
-    acc[platform].total += Number(r.amount);
+    acc[platformName].total += Number(r.amount);
     return acc;
   }, {} as Record<string, { total: number }>);
 
-  const platforms: PlatformData[] = Object.entries(platformData)
+  const platformsList: PlatformData[] = Object.entries(platformData)
     .map(([name, data]) => ({
       name,
       total: data.total,
     }))
     .sort((a, b) => b.total - a.total);
 
-  const totalRevenue = platforms.reduce((sum, p) => sum + p.total, 0);
-
-  // Color mapping for common platforms
-  const platformColors: Record<string, string> = {
-    uber: "bg-[#000000]",
-    "99": "bg-[#FFB800]",
-    indrive: "bg-[#2DCC70]",
-    "99pop": "bg-[#FFB800]",
-    "uber eats": "bg-[#06C167]",
-    ifood: "bg-[#EA1D2C]",
-    rappi: "bg-[#FF441F]",
-  };
+  const totalRevenue = platformsList.reduce((sum, p) => sum + p.total, 0);
 
   const getColorForPlatform = (name: string): string => {
     const normalized = name.toLowerCase();
-    return platformColors[normalized] || "bg-primary";
+
+    // Tenta casar primeiro com o slug (key)
+    const byKey = platforms.find((p) => p.key.toLowerCase() === normalized);
+    if (byKey?.color) return byKey.color;
+
+    // Depois tenta pelo nome amigável salvo
+    const byName = platforms.find((p) => p.name.toLowerCase() === normalized);
+    if (byName?.color) return byName.color;
+
+    // Fallback para dados antigos
+    return "#FFC700";
   };
 
   return (
@@ -71,7 +70,7 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
           <div className="space-y-3">
             {/* Platform cards in a grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {platforms.map((platform) => {
+              {platformsList.map((platform) => {
                 const percentage = totalRevenue > 0 ? (platform.total / totalRevenue) * 100 : 0;
                 return (
                   <div
@@ -79,7 +78,10 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
                     className="p-3 rounded-lg bg-secondary/30 border border-border space-y-1"
                   >
                     <div className="flex items-center gap-2">
-                      <div className={`w-2.5 h-2.5 rounded-full ${getColorForPlatform(platform.name)}`} />
+                      <div
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: getColorForPlatform(platform.name) }}
+                      />
                       <span className="font-medium capitalize text-sm truncate">{platform.name}</span>
                     </div>
                     <p className="text-lg font-bold">
