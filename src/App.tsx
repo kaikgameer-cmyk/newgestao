@@ -71,7 +71,7 @@ const App = () => {
             <Route path="competicoes" element={<Competitions />} />
             <Route path="competicoes/entrar" element={<JoinCompetition />} />
             <Route path="competicoes/ranking" element={<Ranking />} />
-            <Route path="competicoes/:code" element={<CompetitionDetails />} />
+            <Route path="competicoes/:id" element={<CompetitionDetails />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
