@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Key } from "lucide-react";
 import { useUpdateMemberPix, useMemberPix } from "@/hooks/useCompetitions";
-import { formatPixKey, unmaskPixKey } from "@/lib/pixMasks";
+import { formatPixKey, unmaskPixKey, detectPixType, PixKeyType } from "@/lib/pixMasks";
 
 interface EditPixModalProps {
   open: boolean;
@@ -90,7 +90,12 @@ export function EditPixModal({ open, onOpenChange, competitionId }: EditPixModal
                 placeholder="CPF, e-mail, telefone ou chave aleatória"
                 value={pixKey}
                 onChange={(e) => {
-                  const formatted = formatPixKey(e.target.value, pixKeyType);
+                  const currentType = (pixKeyType || "") as PixKeyType;
+                  const nextType: PixKeyType = currentType || detectPixType(e.target.value);
+                  if (!currentType && nextType) {
+                    setPixKeyType(nextType);
+                  }
+                  const formatted = formatPixKey(e.target.value, nextType);
                   setPixKey(formatted);
                 }}
               />
@@ -105,11 +110,12 @@ export function EditPixModal({ open, onOpenChange, competitionId }: EditPixModal
               <Label htmlFor="pixKeyType">Tipo da Chave *</Label>
               <Select 
                 value={pixKeyType || ""} 
-                onValueChange={(value) => {
-                  setPixKeyType(value);
+                onValueChange={(value: string) => {
+                  const typedValue = value as PixKeyType;
+                  setPixKeyType(typedValue);
                   // Re-format when type changes
                   const unmasked = unmaskPixKey(pixKey);
-                  setPixKey(formatPixKey(unmasked, value));
+                  setPixKey(formatPixKey(unmasked, typedValue));
                 }}
               >
                 <SelectTrigger id="pixKeyType" className="bg-background">
