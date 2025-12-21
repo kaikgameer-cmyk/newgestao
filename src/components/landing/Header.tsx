@@ -22,6 +22,9 @@ export function Header() {
           <a href="#recursos" className="text-sm text-muted-foreground hover:text-primary transition-colors">
             Recursos
           </a>
+          <a href="#precos" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+            Preços
+          </a>
           <a href="#faq" className="text-sm text-muted-foreground hover:text-primary transition-colors">
             Perguntas
           </a>

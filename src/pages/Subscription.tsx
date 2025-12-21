@@ -15,7 +15,8 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
-import { useSubscription, KIWIFY_CHECKOUT_MENSAL } from "@/hooks/useSubscription";
+import { useSubscription } from "@/hooks/useSubscription";
+import { PLANS } from "@/config/plans";
 import { PlansSection } from "@/components/subscription/PlansSection";
 import {
   AlertDialog,
@@ -132,7 +133,7 @@ export default function SubscriptionPage() {
 
               <div className="flex flex-wrap gap-3">
                 {!isActive && (
-                  <Button onClick={() => handleUpgrade(KIWIFY_CHECKOUT_MENSAL)}>
+                  <Button onClick={() => handleUpgrade(PLANS.monthly.checkoutUrl)}>
                     <CreditCard className="w-4 h-4 mr-2" />
                     Reativar Assinatura
                   </Button>

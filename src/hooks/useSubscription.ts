@@ -2,6 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
+// Re-export from config for backwards compatibility
+export { 
+  KIWIFY_CHECKOUT_MENSAL, 
+  KIWIFY_CHECKOUT_TRIMESTRAL, 
+  KIWIFY_CHECKOUT_ANUAL,
+  PLANS,
+  PLANS_LIST,
+  getPlanByInterval,
+  getPlanDisplayName,
+} from "@/config/plans";
+
 export interface Subscription {
   id: string;
   user_id: string;
@@ -15,11 +26,6 @@ export interface Subscription {
   created_at: string;
   updated_at: string;
 }
-
-// Kiwify checkout links
-export const KIWIFY_CHECKOUT_MENSAL = "https://pay.kiwify.com.br/p4asSoh";
-export const KIWIFY_CHECKOUT_TRIMESTRAL = "https://pay.kiwify.com.br/gEikCyX";
-export const KIWIFY_CHECKOUT_ANUAL = "https://pay.kiwify.com.br/rer6Q4K";
 
 export function useSubscription() {
   const { user } = useAuth();

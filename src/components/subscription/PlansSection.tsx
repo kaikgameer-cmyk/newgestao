@@ -1,47 +1,5 @@
 import { PlanCard } from "./PlanCard";
-import { 
-  KIWIFY_CHECKOUT_MENSAL, 
-  KIWIFY_CHECKOUT_TRIMESTRAL, 
-  KIWIFY_CHECKOUT_ANUAL 
-} from "@/hooks/useSubscription";
-
-interface Plan {
-  name: string;
-  interval: "month" | "quarter" | "year";
-  price: string;
-  period: string;
-  equivalent?: string;
-  checkoutUrl: string;
-  popular?: boolean;
-  bestValue?: boolean;
-}
-
-const plans: Plan[] = [
-  {
-    name: "Mensal",
-    interval: "month",
-    price: "R$ 14,90",
-    period: "/mês",
-    checkoutUrl: KIWIFY_CHECKOUT_MENSAL,
-  },
-  {
-    name: "3 Meses",
-    interval: "quarter",
-    price: "R$ 37,90",
-    period: "/trimestre",
-    checkoutUrl: KIWIFY_CHECKOUT_TRIMESTRAL,
-    popular: true,
-  },
-  {
-    name: "Anual",
-    interval: "year",
-    price: "R$ 97,00",
-    period: "/ano",
-    equivalent: "R$ 8,08/mês",
-    checkoutUrl: KIWIFY_CHECKOUT_ANUAL,
-    bestValue: true,
-  },
-];
+import { PLANS_LIST } from "@/config/plans";
 
 interface PlansSectionProps {
   currentInterval?: string;
@@ -66,16 +24,15 @@ export function PlansSection({ currentInterval, isActive, hasSubscription }: Pla
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 pt-4">
-        {plans.map((plan) => {
-          const isCurrentPlan = currentInterval === plan.interval && isActive;
+        {PLANS_LIST.map((plan) => {
+          const isCurrentPlan = currentInterval === plan.billingInterval && isActive;
 
           return (
             <PlanCard
-              key={plan.name}
-              name={plan.name}
-              price={plan.price}
-              period={plan.period}
-              equivalent={plan.equivalent}
+              key={plan.id}
+              name={plan.displayName}
+              price={plan.priceLabel}
+              period=""
               isCurrentPlan={isCurrentPlan}
               isPopular={plan.popular}
               isBestValue={plan.bestValue}

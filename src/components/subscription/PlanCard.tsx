@@ -76,13 +76,12 @@ export function PlanCard({
         {name}
       </h3>
 
-      {/* Price section */}
-      <div className="flex items-baseline justify-center gap-1 mt-4 mb-1">
-        <span className="text-sm text-muted-foreground">R$</span>
-        <span className="text-4xl font-bold text-foreground tracking-tight">
-          {price.replace("R$ ", "")}
+      {/* Price section - show the full priceLabel */}
+      <div className="flex items-center justify-center mt-4 mb-1">
+        <span className="text-xl font-bold text-foreground tracking-tight">
+          {price}
         </span>
-        <span className="text-sm text-muted-foreground">{period}</span>
+        {period && <span className="text-sm text-muted-foreground ml-1">{period}</span>}
       </div>
 
       {/* Equivalent pricing for annual */}

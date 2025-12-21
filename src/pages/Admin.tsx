@@ -85,13 +85,13 @@ const getMonthsForPlan = (plan: string): number => {
 const getPlanName = (plan: string): string => {
   switch (plan) {
     case "month":
-      return "Plano Mensal";
+      return "Driver Control - Mensal";
     case "quarter":
-      return "Plano Trimestral";
+      return "Driver Control - Trimestral";
     case "year":
-      return "Plano Anual";
+      return "Driver Control - Anual";
     default:
-      return "Plano Mensal";
+      return "Driver Control - Mensal";
   }
 };
 
@@ -930,9 +930,9 @@ export default function AdminPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="month">Plano Mensal (1 mês)</SelectItem>
-                  <SelectItem value="quarter">Plano Trimestral (3 meses)</SelectItem>
-                  <SelectItem value="year">Plano Anual (12 meses)</SelectItem>
+                  <SelectItem value="month">Driver Control - Mensal (1 mês)</SelectItem>
+                  <SelectItem value="quarter">Driver Control - Trimestral (3 meses)</SelectItem>
+                  <SelectItem value="year">Driver Control - Anual (12 meses)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
@@ -1027,9 +1027,9 @@ export default function AdminPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="month">Plano Mensal (1 mês)</SelectItem>
-                  <SelectItem value="quarter">Plano Trimestral (3 meses)</SelectItem>
-                  <SelectItem value="year">Plano Anual (12 meses)</SelectItem>
+                  <SelectItem value="month">Driver Control - Mensal (1 mês)</SelectItem>
+                  <SelectItem value="quarter">Driver Control - Trimestral (3 meses)</SelectItem>
+                  <SelectItem value="year">Driver Control - Anual (12 meses)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">

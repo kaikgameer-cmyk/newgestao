@@ -1,44 +1,13 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Check, Crown, Shield, Zap, Sparkles, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { 
-  KIWIFY_CHECKOUT_MENSAL, 
-  KIWIFY_CHECKOUT_TRIMESTRAL, 
-  KIWIFY_CHECKOUT_ANUAL 
-} from "@/hooks/useSubscription";
+import { PLANS_LIST } from "@/config/plans";
 
 interface SubscriptionPaywallProps {
   open: boolean;
   onOpenChange?: (open: boolean) => void;
   reason?: "expired" | "past_due" | "canceled" | "no_subscription";
 }
-
-const plans = [
-  {
-    name: "Mensal",
-    subtitle: "Para quem quer testar",
-    price: "R$ 14,90",
-    period: "/mês",
-    checkoutUrl: KIWIFY_CHECKOUT_MENSAL,
-  },
-  {
-    name: "3 Meses",
-    subtitle: "Escolha mais popular",
-    price: "R$ 37,90",
-    period: "/trimestre",
-    checkoutUrl: KIWIFY_CHECKOUT_TRIMESTRAL,
-    popular: true,
-  },
-  {
-    name: "Anual",
-    subtitle: "Melhor custo-benefício",
-    price: "R$ 97,00",
-    period: "/ano",
-    equivalent: "R$ 10,03/mês",
-    checkoutUrl: KIWIFY_CHECKOUT_ANUAL,
-    bestValue: true,
-  },
-];
 
 const getReasonMessage = (reason?: string) => {
   switch (reason) {
@@ -79,13 +48,13 @@ export function SubscriptionPaywall({
         </DialogHeader>
 
         <div className="grid md:grid-cols-3 gap-4 mt-6 pt-4">
-          {plans.map((plan) => {
+          {PLANS_LIST.map((plan) => {
             const showBestValueBadge = plan.bestValue;
             const showPopularBadge = !plan.bestValue && plan.popular;
 
             return (
               <div
-                key={plan.name}
+                key={plan.id}
                 onClick={() => handleSelectPlan(plan.checkoutUrl)}
                 className={cn(
                   "relative group flex flex-col rounded-2xl p-5 cursor-pointer transition-all duration-300",
@@ -115,27 +84,18 @@ export function SubscriptionPaywall({
 
                 {/* Plan name */}
                 <h3 className="text-lg font-semibold text-foreground text-center mt-2">
-                  {plan.name}
+                  {plan.displayName}
                 </h3>
                 <p className="text-xs text-muted-foreground text-center">{plan.subtitle}</p>
 
                 {/* Price section */}
-                <div className="flex items-baseline justify-center gap-1 mt-3 mb-1">
-                  <span className="text-sm text-muted-foreground">R$</span>
-                  <span className="text-3xl font-bold text-foreground tracking-tight">
-                    {plan.price.replace("R$ ", "")}
+                <div className="flex items-center justify-center mt-3 mb-1">
+                  <span className="text-lg font-bold text-foreground tracking-tight">
+                    {plan.priceLabel}
                   </span>
-                  <span className="text-sm text-muted-foreground">{plan.period}</span>
                 </div>
-
-                {/* Equivalent pricing for annual */}
-                {plan.equivalent && (
-                  <p className="text-center text-xs text-primary font-medium mb-3">
-                    Equivale a {plan.equivalent}
-                  </p>
-                )}
                 
-                {!plan.equivalent && <div className="h-5 mb-3" />}
+                <div className="h-5 mb-3" />
 
                 {/* Features */}
                 <ul className="space-y-2 mb-4 flex-1">
