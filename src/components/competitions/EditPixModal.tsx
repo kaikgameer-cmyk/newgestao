@@ -1,4 +1,8 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import {
   Dialog,
   DialogContent,
@@ -9,7 +13,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -19,7 +30,6 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Key } from "lucide-react";
 import { useUpdateMemberPix, useMemberPix } from "@/hooks/useCompetitions";
-import { unmaskPixKey } from "@/lib/pixMasks";
 
 interface EditPixModalProps {
   open: boolean;
@@ -33,36 +43,61 @@ const PIX_KEY_TYPES = [
   { value: "email", label: "E-mail" },
   { value: "phone", label: "Telefone" },
   { value: "random", label: "Chave Aleatória" },
-];
+] as const;
+
+const pixFormSchema = z.object({
+  pix_key: z.string().min(5, "Informe uma chave Pix válida"),
+  pix_key_type: z.enum(["cpf", "cnpj", "email", "phone", "random"], {
+    required_error: "Selecione o tipo da chave",
+  }),
+});
+
+type PixFormValues = z.infer<typeof pixFormSchema>;
 
 export function EditPixModal({ open, onOpenChange, competitionId }: EditPixModalProps) {
-  const [pixKey, setPixKey] = useState("");
-  const [pixKeyType, setPixKeyType] = useState<string>("");
-  
   const { data: currentPix, isLoading: loadingPix } = useMemberPix(competitionId);
   const updatePixMutation = useUpdateMemberPix();
 
-  // Load current values when data arrives
-  useEffect(() => {
-    if (currentPix) {
-      setPixKey(currentPix.pix_key || "");
-      setPixKeyType(currentPix.pix_key_type || "");
-    }
-  }, [currentPix]);
+  const form = useForm<PixFormValues>({
+    resolver: zodResolver(pixFormSchema),
+    defaultValues: {
+      pix_key: "",
+      pix_key_type: "random",
+    },
+  });
 
-  const handleSave = async () => {
-    if (pixKey.trim().length < 5) return;
-    
+  // Garante que o reset com dados existentes rode apenas UMA vez
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    if (!open) {
+      hydratedRef.current = false;
+      form.reset({ pix_key: "", pix_key_type: "random" });
+      return;
+    }
+
+    if (hydratedRef.current) return;
+    if (!currentPix) return;
+
+    form.reset({
+      pix_key: currentPix.pix_key ?? "",
+      pix_key_type: (currentPix.pix_key_type as PixFormValues["pix_key_type"]) ?? "random",
+    });
+
+    hydratedRef.current = true;
+  }, [open, currentPix, form]);
+
+  const handleSave = async (values: PixFormValues) => {
     await updatePixMutation.mutateAsync({
       competition_id: competitionId,
-      pix_key: pixKey.trim(),
-      pix_key_type: pixKeyType || null,
+      pix_key: values.pix_key.trim(),
+      pix_key_type: values.pix_key_type,
     });
-    
+
     onOpenChange(false);
   };
 
-  const isValid = unmaskPixKey(pixKey).trim().length >= 5 && pixKeyType.length > 0;
+  const isSubmitting = updatePixMutation.isPending || form.formState.isSubmitting;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,62 +117,80 @@ export function EditPixModal({ open, onOpenChange, competitionId }: EditPixModal
             <Loader2 className="w-6 h-6 animate-spin" />
           </div>
         ) : (
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="pixKey">Chave PIX *</Label>
-              <Input
-                id="pixKey"
-                placeholder="CPF, e-mail, telefone ou chave aleatória"
-                value={pixKey}
-                onChange={(e) => setPixKey(e.target.value)}
+          <Form {...form}>
+            <form className="space-y-4 py-4" onSubmit={form.handleSubmit(handleSave)}>
+              <FormField
+                control={form.control}
+                name="pix_key"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Chave PIX *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="CPF, e-mail, telefone ou chave aleatória"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {pixKey.length > 0 && unmaskPixKey(pixKey).trim().length < 5 && (
-                <p className="text-xs text-destructive">
-                  Mínimo de 5 caracteres
-                </p>
-              )}
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="pixKeyType">Tipo da Chave *</Label>
-              <Select 
-                value={pixKeyType || ""} 
-                onValueChange={setPixKeyType}
-              >
-                <SelectTrigger id="pixKeyType" className="bg-background">
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent className="bg-background border border-border z-50">
-                  {PIX_KEY_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!pixKeyType && (
-                <p className="text-xs text-destructive">
-                  Selecione o tipo da chave
-                </p>
-              )}
-            </div>
-          </div>
+              <FormField
+                control={form.control}
+                name="pix_key_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo da Chave *</FormLabel>
+                    <FormControl>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border border-border z-50">
+                          {PIX_KEY_TYPES.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* DEBUG TEMPORÁRIO (comentar/remover depois):
+              <pre className="text-xs text-muted-foreground break-all">
+                {JSON.stringify(form.watch("pix_key"))}
+              </pre>
+              */}
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : null}
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         )}
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!isValid || updatePixMutation.isPending || loadingPix}
-          >
-            {updatePixMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : null}
-            Salvar
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
