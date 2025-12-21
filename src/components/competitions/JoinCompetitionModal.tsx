@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { LogIn, Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Key } from "lucide-react";
 import { useJoinCompetition } from "@/hooks/useCompetitions";
+import { formatPixKey, unmaskPixKey } from "@/lib/pixMasks";
 
 const step1Schema = z.object({
   code: z
@@ -251,7 +252,12 @@ export default function JoinCompetitionModal({
                     <FormControl>
                       <Input
                         placeholder="CPF, E-mail, Celular ou Chave Aleatória"
-                        {...field}
+                        value={field.value}
+                        onChange={(e) => {
+                          const keyType = step2Form.getValues("pix_key_type") || "";
+                          const formatted = formatPixKey(e.target.value, keyType);
+                          field.onChange(formatted);
+                        }}
                       />
                     </FormControl>
                     <FormDescription>
@@ -268,7 +274,15 @@ export default function JoinCompetitionModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo da Chave (opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Re-format the pix_key when type changes
+                        const currentKey = unmaskPixKey(step2Form.getValues("pix_key"));
+                        step2Form.setValue("pix_key", formatPixKey(currentKey, value));
+                      }} 
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o tipo" />

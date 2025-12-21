@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Key } from "lucide-react";
 import { useUpdateMemberPix, useMemberPix } from "@/hooks/useCompetitions";
+import { formatPixKey, unmaskPixKey } from "@/lib/pixMasks";
 
 interface EditPixModalProps {
   open: boolean;
@@ -61,7 +62,7 @@ export function EditPixModal({ open, onOpenChange, competitionId }: EditPixModal
     onOpenChange(false);
   };
 
-  const isValid = pixKey.trim().length >= 5;
+  const isValid = unmaskPixKey(pixKey).trim().length >= 5;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -88,9 +89,12 @@ export function EditPixModal({ open, onOpenChange, competitionId }: EditPixModal
                 id="pixKey"
                 placeholder="CPF, e-mail, telefone ou chave aleatória"
                 value={pixKey}
-                onChange={(e) => setPixKey(e.target.value)}
+                onChange={(e) => {
+                  const formatted = formatPixKey(e.target.value, pixKeyType);
+                  setPixKey(formatted);
+                }}
               />
-              {pixKey.length > 0 && pixKey.trim().length < 5 && (
+              {pixKey.length > 0 && unmaskPixKey(pixKey).trim().length < 5 && (
                 <p className="text-xs text-destructive">
                   Mínimo de 5 caracteres
                 </p>
@@ -99,7 +103,15 @@ export function EditPixModal({ open, onOpenChange, competitionId }: EditPixModal
 
             <div className="space-y-2">
               <Label htmlFor="pixKeyType">Tipo da Chave (opcional)</Label>
-              <Select value={pixKeyType} onValueChange={setPixKeyType}>
+              <Select 
+                value={pixKeyType} 
+                onValueChange={(value) => {
+                  setPixKeyType(value);
+                  // Re-format when type changes
+                  const unmasked = unmaskPixKey(pixKey);
+                  setPixKey(formatPixKey(unmasked, value));
+                }}
+              >
                 <SelectTrigger id="pixKeyType">
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
