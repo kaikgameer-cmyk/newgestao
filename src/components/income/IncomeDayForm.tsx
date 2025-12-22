@@ -75,6 +75,7 @@ export function IncomeDayForm({
           name: existingData.items.find((i) => i.platform === key)?.platform_label || key,
           is_other: false,
           is_active: false,
+          is_default: false,
           user_id: null,
           color: "#2563eb",
         });

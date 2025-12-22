@@ -142,9 +142,10 @@ export function ExpenseCategorySettings() {
     );
   }
 
-  // Separate system categories from custom (user) categories
-  const systemCategories = categories.filter((c) => c.is_system);
-  const customCategories = categories.filter((c) => !c.is_system);
+  // Separate default categories (is_default=true) from custom (is_default=false) - both owned by user
+  // Also include system categories (user_id=null) as defaults
+  const defaultCategories = categories.filter((c) => c.is_default || c.is_system);
+  const customCategories = categories.filter((c) => !c.is_default && !c.is_system && c.user_id !== null);
 
   return (
     <>
@@ -185,52 +186,59 @@ export function ExpenseCategorySettings() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* System Categories */}
-          {systemCategories.map((category) => {
-            const isEnabled = isCategoryEnabled(category.key);
-            const isLastEnabled = isEnabled && enabledCategories.length === 1;
+          {/* Default Categories - only toggle, no edit/delete */}
+          {defaultCategories.length > 0 && (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Categorias padrão
+              </p>
+              {defaultCategories.map((category) => {
+                const isEnabled = isCategoryEnabled(category.key);
+                const isLastEnabled = isEnabled && enabledCategories.length === 1;
 
-            return (
-              <div
-                key={category.key}
-                className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
+                return (
                   <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: category.color || "#EF4444" }}
-                  />
-                  <Label
-                    htmlFor={`category-${category.key}`}
-                    className="font-medium cursor-pointer"
+                    key={category.key}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
                   >
-                    {category.name}
-                  </Label>
-                </div>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: category.color || "#EF4444" }}
+                      />
+                      <Label
+                        htmlFor={`category-${category.key}`}
+                        className="font-medium cursor-pointer"
+                      >
+                        {category.name}
+                      </Label>
+                    </div>
 
-                <Switch
-                  id={`category-${category.key}`}
-                  checked={isEnabled}
-                  onCheckedChange={(checked) => {
-                    if (!checked && isLastEnabled) {
-                      toast({
-                        title: "Pelo menos uma categoria é obrigatória",
-                        description:
-                          "Você precisa ter ao menos uma categoria habilitada.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    toggleCategory.mutate({
-                      categoryKey: category.key,
-                      enabled: checked,
-                    });
-                  }}
-                  disabled={toggleCategory.isPending}
-                />
-              </div>
-            );
-          })}
+                    <Switch
+                      id={`category-${category.key}`}
+                      checked={isEnabled}
+                      onCheckedChange={(checked) => {
+                        if (!checked && isLastEnabled) {
+                          toast({
+                            title: "Pelo menos uma categoria é obrigatória",
+                            description:
+                              "Você precisa ter ao menos uma categoria habilitada.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        toggleCategory.mutate({
+                          categoryKey: category.key,
+                          enabled: checked,
+                        });
+                      }}
+                      disabled={toggleCategory.isPending}
+                    />
+                  </div>
+                );
+              })}
+            </>
+          )}
 
           {/* Divider if there are custom categories */}
           {customCategories.length > 0 && (

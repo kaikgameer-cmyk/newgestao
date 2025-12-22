@@ -9,6 +9,7 @@ export interface Platform {
   name: string; // nome amigável para exibição
   is_other: boolean;
   is_active: boolean;
+  is_default: boolean;
   user_id: string | null;
   color: string; // cor em hex (#RRGGBB)
 }
@@ -164,6 +165,7 @@ export function usePlatforms() {
            key: slug,
            name: trimmedName,
            is_active: true,
+           is_default: false,
            is_other: false,
            color: safeColor,
          })

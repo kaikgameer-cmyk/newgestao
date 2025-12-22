@@ -62,6 +62,7 @@ export function useApplyDefaults() {
           name: platform.name,
           color: platform.color,
           is_active: true,
+          is_default: true,
           is_other: false,
         };
       });
@@ -141,7 +142,7 @@ export function useApplyDefaults() {
       const timestamp = Date.now();
       const insertData = categoriesToAdd.map((category, index) => {
         const baseKey = generateSlug(category.name);
-        const key = `custom_${baseKey}_${timestamp + index}`;
+        const key = `default_${baseKey}_${timestamp + index}`;
 
         return {
           user_id: user.id,
@@ -150,6 +151,7 @@ export function useApplyDefaults() {
           color: category.color,
           is_active: true,
           is_system: false,
+          is_default: true,
         };
       });
 

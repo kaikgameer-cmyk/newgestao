@@ -143,9 +143,10 @@ export function PlatformSettings() {
     );
   }
 
-  // Separate system platforms from custom (user) platforms
-  const systemPlatforms = platforms.filter((p) => p.user_id === null);
-  const customPlatforms = platforms.filter((p) => p.user_id !== null);
+  // Separate default platforms (is_default=true) from custom (is_default=false)
+  // Also include system platforms (user_id=null) as defaults
+  const defaultPlatforms = platforms.filter((p) => p.is_default || p.user_id === null);
+  const customPlatforms = platforms.filter((p) => !p.is_default && p.user_id !== null);
 
   return (
     <>
@@ -186,46 +187,52 @@ export function PlatformSettings() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* System Platforms */}
-          {systemPlatforms.map((platform) => {
-            const isEnabled = isPlatformEnabled(platform.key);
-            // Check if this is the last enabled platform
-            const isLastEnabled = isEnabled && enabledPlatforms.length === 1;
+          {/* Default Platforms - only toggle, no edit/delete */}
+          {defaultPlatforms.length > 0 && (
+            <>
+              <p className="text-xs text-muted-foreground">
+                Plataformas padrão
+              </p>
+              {defaultPlatforms.map((platform) => {
+                const isEnabled = isPlatformEnabled(platform.key);
+                const isLastEnabled = isEnabled && enabledPlatforms.length === 1;
 
-            return (
-              <div
-                key={platform.key}
-                className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
+                return (
                   <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: platform.color || "#FFC700" }}
-                  />
-                  <Label htmlFor={`platform-${platform.key}`} className="font-medium cursor-pointer">
-                    {platform.name}
-                  </Label>
-                </div>
+                    key={platform.key}
+                    className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: platform.color || "#FFC700" }}
+                      />
+                      <Label htmlFor={`platform-${platform.key}`} className="font-medium cursor-pointer">
+                        {platform.name}
+                      </Label>
+                    </div>
 
-                <Switch
-                  id={`platform-${platform.key}`}
-                  checked={isEnabled}
-                  onCheckedChange={(checked) => {
-                    if (!checked && isLastEnabled) {
-                      toast({
-                        title: "Pelo menos uma plataforma é obrigatória",
-                        description: "Você precisa ter ao menos uma plataforma habilitada.",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-                    togglePlatform.mutate({ platformKey: platform.key, enabled: checked });
-                  }}
-                  disabled={togglePlatform.isPending}
-                />
-              </div>
-            );
-          })}
+                    <Switch
+                      id={`platform-${platform.key}`}
+                      checked={isEnabled}
+                      onCheckedChange={(checked) => {
+                        if (!checked && isLastEnabled) {
+                          toast({
+                            title: "Pelo menos uma plataforma é obrigatória",
+                            description: "Você precisa ter ao menos uma plataforma habilitada.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        togglePlatform.mutate({ platformKey: platform.key, enabled: checked });
+                      }}
+                      disabled={togglePlatform.isPending}
+                    />
+                  </div>
+                );
+              })}
+            </>
+          )}
 
           {/* Divider if there are custom platforms */}
           {customPlatforms.length > 0 && (

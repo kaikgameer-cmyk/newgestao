@@ -670,6 +670,7 @@ export type Database = {
           icon: string | null
           id: string
           is_active: boolean
+          is_default: boolean
           is_system: boolean
           key: string
           name: string
@@ -681,6 +682,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_active?: boolean
+          is_default?: boolean
           is_system?: boolean
           key: string
           name: string
@@ -692,6 +694,7 @@ export type Database = {
           icon?: string | null
           id?: string
           is_active?: boolean
+          is_default?: boolean
           is_system?: boolean
           key?: string
           name?: string
@@ -1147,6 +1150,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          is_default: boolean
           is_other: boolean
           key: string
           name: string
@@ -1157,6 +1161,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_default?: boolean
           is_other?: boolean
           key: string
           name: string
@@ -1167,6 +1172,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          is_default?: boolean
           is_other?: boolean
           key?: string
           name?: string
@@ -1746,6 +1752,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      insert_default_expense_categories_for_user: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      insert_default_platforms_for_user: {
+        Args: { p_user_id: string }
+        Returns: undefined
       }
       is_competition_host: {
         Args: { _competition_id: string; _user_id: string }

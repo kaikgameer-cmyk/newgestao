@@ -11,6 +11,7 @@ export interface ExpenseCategory {
   icon: string | null;
   is_active: boolean;
   is_system: boolean;
+  is_default: boolean;
   user_id: string | null;
 }
 
@@ -158,6 +159,7 @@ export function useExpenseCategories() {
           name,
           color,
           is_system: false,
+          is_default: false,
           user_id: user.id,
         });
       if (categoryError) throw categoryError;
