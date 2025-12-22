@@ -1,11 +1,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { sendAppEmail, getEmailLayout, getEmailButton, getEmailHighlightCard, getAppBaseUrl } from "../_shared/email.ts";
+import { sendAppEmail, getEmailLayout, getEmailButton, getEmailHighlightCard, validateNoLovableUrl } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// CRITICAL: Hard-coded production URL - NEVER use lovable.app
+const PROD_APP_URL = "https://newgestao.app";
 
 // Hash token for secure storage
 async function hashToken(token: string): Promise<string> {
@@ -184,13 +187,16 @@ serve(async (req: Request) => {
       throw new Error("Erro ao gerar link de acesso");
     }
 
-    // Build password URL
-    const appBaseUrl = getAppBaseUrl();
-    const passwordUrl = `${appBaseUrl}/definir-senha?token=${rawToken}`;
+    // Build password URL - ALWAYS use production URL
+    const passwordUrl = `${PROD_APP_URL}/definir-senha?token=${rawToken}`;
 
-    console.log("[RESEND-LINK] Generated password URL");
-    console.log("  - App base URL:", appBaseUrl);
-    console.log("  - Token preview:", rawToken.substring(0, 8) + "...");
+    // CRITICAL: Validate URL before sending - block any lovable.app links
+    validateNoLovableUrl(passwordUrl, "passwordUrl");
+
+    console.log("[RESEND-LINK] Generated password URL - AUDIT LOG:");
+    console.log("  - computedRedirectTo:", passwordUrl);
+    console.log("  - linkPreview:", rawToken.substring(0, 8) + "...");
+    console.log("  - URL hostname:", new URL(passwordUrl).hostname);
 
     // Send email
     const emailHtml = getPasswordResetEmailHtml(userName, passwordUrl);

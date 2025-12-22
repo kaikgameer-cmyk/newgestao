@@ -120,8 +120,10 @@ export default function ResetPassword() {
     setIsLoading(true);
 
     try {
+      // CRITICAL: Always use production URL for password reset redirects
+      const PROD_APP_URL = "https://newgestao.app";
       const { error } = await supabase.auth.resetPasswordForEmail(result.data.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${PROD_APP_URL}/reset-password`,
       });
 
       if (error) {

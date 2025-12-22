@@ -26,17 +26,29 @@ export interface EmailConfig {
   isTestMode: boolean;
 }
 
+// CRITICAL: Hard-coded production URL - NEVER use lovable.app
+const PROD_APP_URL = "https://newgestao.app";
+
+/**
+ * Validates a URL does NOT contain lovable.app - blocks broken links
+ */
+export function validateNoLovableUrl(url: string, context: string): void {
+  if (url.includes("lovable.app") || url.includes("lovableproject.com")) {
+    const errorMsg = `[SECURITY BLOCK] ${context}: URL contains lovable.app domain which is FORBIDDEN. URL: ${url}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+}
+
 /**
  * Obtém a configuração de email a partir das variáveis de ambiente
+ * ALWAYS returns production URL - never lovable.app
  */
 export function getEmailConfig(): EmailConfig {
-  let appUrl = Deno.env.get("APP_BASE_URL") || "https://newgestao.app";
+  // ALWAYS use production URL - ignore any env that might have lovable.app
+  const appUrl = PROD_APP_URL;
   
-  // CRITICAL: Never use lovable.app domains - always force production URL
-  if (appUrl.includes("lovable.app") || appUrl.includes("lovableproject.com")) {
-    console.warn(`[EMAIL CONFIG] Overriding lovable domain: ${appUrl} -> https://newgestao.app`);
-    appUrl = "https://newgestao.app";
-  }
+  console.log("[EMAIL CONFIG] Using production URL:", appUrl);
   
   return {
     fromEmail: Deno.env.get("RESEND_FROM_EMAIL") || "no-reply@newgestao.app",
@@ -121,10 +133,11 @@ export async function sendAppEmail({ to, subject, html }: SendEmailParams) {
 }
 
 /**
- * Retorna a URL base do app
+ * Retorna a URL base do app - ALWAYS production URL
  */
 export function getAppBaseUrl(): string {
-  return getEmailConfig().appUrl;
+  // ALWAYS return production URL - NEVER lovable.app
+  return PROD_APP_URL;
 }
 
 // ============================================

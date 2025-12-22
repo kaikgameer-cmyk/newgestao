@@ -81,15 +81,24 @@ function generateRandomPassword(length: number = 16): string {
   return password;
 }
 
-// Get email config with lovable.app protection
-function getEmailConfig() {
-  let appUrl = Deno.env.get("APP_BASE_URL") || "https://newgestao.app";
-  
-  // CRITICAL: Never use lovable.app domains - always force production URL
-  if (appUrl.includes("lovable.app") || appUrl.includes("lovableproject.com")) {
-    console.warn(`[EMAIL CONFIG] Overriding lovable domain: ${appUrl} -> https://newgestao.app`);
-    appUrl = "https://newgestao.app";
+// CRITICAL: Hard-coded production URL - NEVER use lovable.app
+const PROD_APP_URL = "https://newgestao.app";
+
+// Validates a URL does NOT contain lovable.app - blocks broken links
+function validateNoLovableUrl(url: string, context: string): void {
+  if (url.includes("lovable.app") || url.includes("lovableproject.com")) {
+    const errorMsg = `[SECURITY BLOCK] ${context}: URL contains lovable.app domain which is FORBIDDEN. URL: ${url}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
   }
+}
+
+// Get email config - ALWAYS returns production URL
+function getEmailConfig() {
+  // ALWAYS use production URL - ignore any env that might have lovable.app
+  const appUrl = PROD_APP_URL;
+  
+  console.log("[EMAIL CONFIG] Using production URL:", appUrl);
   
   return {
     fromEmail: Deno.env.get("RESEND_FROM_EMAIL") || "no-reply@newgestao.app",
@@ -752,12 +761,16 @@ serve(async (req) => {
             setPasswordUrl = `${config.appUrl}/definir-senha?email=${encodeURIComponent(email)}`;
             console.log("Using fallback URL:", setPasswordUrl);
           } else {
-            // Build the definir-senha URL with our custom token (always newgestao.app)
-            setPasswordUrl = `${config.appUrl}/definir-senha?token=${encodeURIComponent(rawToken)}`;
+            // Build the definir-senha URL with our custom token (ALWAYS newgestao.app)
+            setPasswordUrl = `${PROD_APP_URL}/definir-senha?token=${encodeURIComponent(rawToken)}`;
+            
+            // CRITICAL: Validate URL before sending - block any lovable.app links
+            validateNoLovableUrl(setPasswordUrl, "setPasswordUrl");
+            
             console.log("✅ Custom password token generated successfully");
-            console.log("  - App URL:", config.appUrl);
-            console.log("  - Token preview:", rawToken.substring(0, 8) + "...");
-            console.log("  - Full URL host:", new URL(setPasswordUrl).hostname);
+            console.log("  - computedRedirectTo:", setPasswordUrl);
+            console.log("  - linkPreview:", rawToken.substring(0, 8) + "...");
+            console.log("  - URL hostname:", new URL(setPasswordUrl).hostname);
           }
 
           // Build and send purchase approved email
