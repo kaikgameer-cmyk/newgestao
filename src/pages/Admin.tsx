@@ -85,13 +85,13 @@ const getMonthsForPlan = (plan: string): number => {
 const getPlanName = (plan: string): string => {
   switch (plan) {
     case "month":
-      return "Driver Control - Mensal";
+      return "New Gestão - Mensal";
     case "quarter":
-      return "Driver Control - Trimestral";
+      return "New Gestão - Trimestral";
     case "year":
-      return "Driver Control - Anual";
+      return "New Gestão - Anual";
     default:
-      return "Driver Control - Mensal";
+      return "New Gestão - Mensal";
   }
 };
 
@@ -930,9 +930,9 @@ export default function AdminPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="month">Driver Control - Mensal (1 mês)</SelectItem>
-                  <SelectItem value="quarter">Driver Control - Trimestral (3 meses)</SelectItem>
-                  <SelectItem value="year">Driver Control - Anual (12 meses)</SelectItem>
+                  <SelectItem value="month">New Gestão - Mensal (1 mês)</SelectItem>
+                  <SelectItem value="quarter">New Gestão - Trimestral (3 meses)</SelectItem>
+                  <SelectItem value="year">New Gestão - Anual (12 meses)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
@@ -1027,9 +1027,9 @@ export default function AdminPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="month">Driver Control - Mensal (1 mês)</SelectItem>
-                  <SelectItem value="quarter">Driver Control - Trimestral (3 meses)</SelectItem>
-                  <SelectItem value="year">Driver Control - Anual (12 meses)</SelectItem>
+                  <SelectItem value="month">New Gestão - Mensal (1 mês)</SelectItem>
+                  <SelectItem value="quarter">New Gestão - Trimestral (3 meses)</SelectItem>
+                  <SelectItem value="year">New Gestão - Anual (12 meses)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">

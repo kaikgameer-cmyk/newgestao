@@ -17,7 +17,7 @@ export interface Plan {
 export const PLANS: Record<PlanId, Plan> = {
   monthly: {
     id: "monthly",
-    name: "Driver Control - Mensal",
+    name: "New Gestão - Mensal",
     displayName: "Mensal",
     priceLabel: "R$ 29,90 / mês",
     checkoutUrl: "https://pay.kiwify.com.br/V3CP89P",
@@ -29,7 +29,7 @@ export const PLANS: Record<PlanId, Plan> = {
   },
   quarterly: {
     id: "quarterly",
-    name: "Driver Control - Trimestral",
+    name: "New Gestão - Trimestral",
     displayName: "Trimestral",
     priceLabel: "R$ 79,90 / trimestre",
     checkoutUrl: "https://pay.kiwify.com.br/gxYp8mQ",
@@ -41,7 +41,7 @@ export const PLANS: Record<PlanId, Plan> = {
   },
   yearly: {
     id: "yearly",
-    name: "Driver Control - Anual",
+    name: "New Gestão - Anual",
     displayName: "Anual",
     priceLabel: "R$ 199,00 / ano",
     checkoutUrl: "https://pay.kiwify.com.br/17tlyZi",

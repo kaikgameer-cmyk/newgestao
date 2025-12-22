@@ -12,14 +12,14 @@ interface SubscriptionPaywallProps {
 const getReasonMessage = (reason?: string) => {
   switch (reason) {
     case "expired":
-      return "Sua assinatura expirou. Renove para continuar usando o Driver Control.";
+      return "Sua assinatura expirou. Renove para continuar usando o New Gestão.";
     case "past_due":
       return "Sua assinatura está com pagamento pendente. Regularize para continuar.";
     case "canceled":
       return "Sua assinatura foi cancelada. Reative para continuar usando.";
     case "no_subscription":
     default:
-      return "Assine o Driver Control para ter acesso completo ao sistema.";
+      return "Assine o New Gestão para ter acesso completo ao sistema.";
   }
 };
 

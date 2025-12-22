@@ -18,7 +18,7 @@ import {
 
 /**
  * Configuração centralizada do Guia da Plataforma
- * Manual oficial do Driver Control - atualizado e completo
+ * Manual oficial do New Gestão - atualizado e completo
  */
 
 export interface GuideFeature {
@@ -49,7 +49,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: "Comece por aqui",
     icon: Rocket,
     description:
-      "Ao fazer seu primeiro login no Driver Control, você verá um pop-up obrigatório para configurar seu perfil. Este passo é essencial para usar o sistema.",
+      "Ao fazer seu primeiro login no New Gestão, você verá um pop-up obrigatório para configurar seu perfil. Este passo é essencial para usar o sistema.",
     features: [
       {
         title: "Pop-up de Boas-vindas",
@@ -515,7 +515,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: "Assinatura e Planos",
     icon: Crown,
     description:
-      "O Driver Control é um SaaS com planos de assinatura. Gerencie seu plano na página de Assinatura.",
+      "O New Gestão é um SaaS com planos de assinatura. Gerencie seu plano na página de Assinatura.",
     features: [
       {
         title: "Plano Mensal",
@@ -560,7 +560,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     title: "Segurança e Regras",
     icon: Shield,
     description:
-      "Entenda as regras de segurança e privacidade do Driver Control.",
+      "Entenda as regras de segurança e privacidade do New Gestão.",
     features: [
       {
         title: "Seus Dados são Seus",
@@ -599,7 +599,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: "Fundo Escuro",
         description:
-          "O Driver Control usa tema escuro para conforto visual, especialmente à noite.",
+          "O New Gestão usa tema escuro para conforto visual, especialmente à noite.",
       },
       {
         title: "Verde = Positivo",
@@ -660,7 +660,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: "O app funciona offline?",
         description:
-          "Não, o Driver Control precisa de conexão com internet para funcionar.",
+          "Não, o New Gestão precisa de conexão com internet para funcionar.",
       },
     ],
     commonErrors: [

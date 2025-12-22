@@ -181,7 +181,7 @@ export default function SubscriptionPage() {
               </div>
               <h3 className="text-lg font-semibold mb-2">Você não possui uma assinatura ativa</h3>
               <p className="text-muted-foreground mb-6">
-                Assine agora para ter acesso completo ao Driver Control
+                Assine agora para ter acesso completo ao New Gestão
               </p>
             </div>
           )}

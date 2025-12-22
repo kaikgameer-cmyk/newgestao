@@ -19,7 +19,7 @@ export function PlansSection({ currentInterval, isActive, hasSubscription }: Pla
           {hasSubscription && isActive ? "Alterar Plano" : "Escolha seu Plano"}
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Todos os planos incluem acesso completo ao Driver Control
+          Todos os planos incluem acesso completo ao New Gestão
         </p>
       </div>
 

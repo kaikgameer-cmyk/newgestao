@@ -17,7 +17,7 @@ export function PricingSection() {
             Escolha o <span className="text-gradient-primary">plano ideal</span> para você
           </h2>
           <p className="text-muted-foreground text-lg">
-            Todos os planos incluem acesso completo ao Driver Control
+            Todos os planos incluem acesso completo ao New Gestão
           </p>
         </div>
 
