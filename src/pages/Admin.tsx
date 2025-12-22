@@ -34,7 +34,10 @@ import {
   Ban,
   UserPlus,
   FlaskConical,
-  Mail
+  Mail,
+  Copy,
+  Webhook,
+  ExternalLink
 } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -696,6 +699,69 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Webhook V2 Card */}
+      <Card className="bg-card/50 border-primary/20">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Webhook className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Webhook Kiwify (V2)</CardTitle>
+              <CardDescription>Configuração do webhook para integração com Kiwify</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">URL do Webhook</Label>
+            <div className="flex gap-2">
+              <Input
+                readOnly
+                value={`https://bvondnxrfqizehlrcyhm.supabase.co/functions/v1/kiwify-webhook-v2?secret=SEU_SECRET_AQUI`}
+                className="font-mono text-xs bg-muted/50"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://bvondnxrfqizehlrcyhm.supabase.co/functions/v1/kiwify-webhook-v2?secret=SEU_SECRET_AQUI`);
+                  toast({ title: "URL copiada!", description: "Cole no painel da Kiwify." });
+                }}
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          
+          <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <div className="flex gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-yellow-500">Importante</p>
+                <p className="text-muted-foreground mt-1">
+                  1. Configure o secret <code className="px-1 py-0.5 rounded bg-muted font-mono text-xs">KIWIFY_WEBHOOK_SECRET</code> nas secrets do Supabase<br/>
+                  2. Substitua <code className="px-1 py-0.5 rounded bg-muted font-mono text-xs">SEU_SECRET_AQUI</code> pelo valor do secret<br/>
+                  3. Atualize a URL no painel da Kiwify
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => window.open("https://supabase.com/dashboard/project/bvondnxrfqizehlrcyhm/functions/kiwify-webhook-v2/logs", "_blank")}
+            >
+              <ExternalLink className="w-4 h-4" />
+              Ver Logs no Supabase
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Main Content */}
       <Card>

@@ -3,6 +3,9 @@ project_id = "bvondnxrfqizehlrcyhm"
 [functions.kiwify-webhook]
 verify_jwt = false
 
+[functions.kiwify-webhook-v2]
+verify_jwt = false
+
 [functions.set-password]
 verify_jwt = false
 
