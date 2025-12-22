@@ -11,8 +11,19 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Receipt, Loader2, Plus, Trash2, Pencil } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Receipt, Loader2, Plus, Trash2, Pencil, Sparkles } from "lucide-react";
 import { useExpenseCategories, ExpenseCategory } from "@/hooks/useExpenseCategories";
+import { useApplyDefaults } from "@/hooks/useApplyDefaults";
 import { useToast } from "@/hooks/use-toast";
 
 export function ExpenseCategorySettings() {
@@ -31,6 +42,8 @@ export function ExpenseCategorySettings() {
     updateCategory,
   } = useExpenseCategories();
 
+  const { applyDefaultExpenseCategories } = useApplyDefaults();
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryColor, setNewCategoryColor] = useState("#EF4444");
@@ -39,6 +52,8 @@ export function ExpenseCategorySettings() {
   const [editingCategory, setEditingCategory] = useState<ExpenseCategory | null>(null);
   const [editCategoryName, setEditCategoryName] = useState("");
   const [editCategoryColor, setEditCategoryColor] = useState("#EF4444");
+
+  const [deleteConfirmCategory, setDeleteConfirmCategory] = useState<ExpenseCategory | null>(null);
 
   // Initialize user category preferences when component mounts
   useEffect(() => {
@@ -98,6 +113,19 @@ export function ExpenseCategorySettings() {
     );
   };
 
+  const handleConfirmDelete = () => {
+    if (!deleteConfirmCategory) return;
+
+    deleteCategory.mutate(
+      { categoryId: deleteConfirmCategory.id, categoryKey: deleteConfirmCategory.key },
+      {
+        onSuccess: () => {
+          setDeleteConfirmCategory(null);
+        },
+      }
+    );
+  };
+
   if (isLoading) {
     return (
       <Card variant="elevated">
@@ -122,19 +150,34 @@ export function ExpenseCategorySettings() {
     <>
       <Card variant="elevated">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <Receipt className="w-5 h-5 text-primary" />
               <CardTitle className="text-lg">Categorias de Despesas</CardTitle>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCreateDialogOpen(true)}
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Cadastrar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => applyDefaultExpenseCategories.mutate()}
+                disabled={applyDefaultExpenseCategories.isPending}
+              >
+                {applyDefaultExpenseCategories.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-1" />
+                )}
+                Adicionar padrão
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Cadastrar
+              </Button>
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             Selecione as categorias de despesas que você usa. Apenas as habilitadas aparecerão ao lançar despesas.
@@ -251,12 +294,7 @@ export function ExpenseCategorySettings() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() =>
-                          deleteCategory.mutate({
-                            categoryId: category.id,
-                            categoryKey: category.key,
-                          })
-                        }
+                        onClick={() => setDeleteConfirmCategory(category)}
                         disabled={deleteCategory.isPending}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -396,6 +434,30 @@ export function ExpenseCategorySettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmCategory} onOpenChange={(open) => !open && setDeleteConfirmCategory(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir "{deleteConfirmCategory?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso remove a opção das configurações. Lançamentos antigos não serão apagados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteCategory.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

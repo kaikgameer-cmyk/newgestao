@@ -10,10 +10,30 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
-import { Car, Loader2, Plus, Trash2, Pencil } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Car, Loader2, Plus, Trash2, Pencil, Sparkles } from "lucide-react";
 import { usePlatforms } from "@/hooks/usePlatforms";
+import { useApplyDefaults } from "@/hooks/useApplyDefaults";
 import { useToast } from "@/hooks/use-toast";
+
+interface Platform {
+  id: string;
+  key: string;
+  name: string;
+  color: string;
+  user_id: string | null;
+}
 
 export function PlatformSettings() {
   const { toast } = useToast();
@@ -31,13 +51,17 @@ export function PlatformSettings() {
     isPlatformEnabled,
   } = usePlatforms();
 
+  const { applyDefaultPlatforms } = useApplyDefaults();
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newPlatformName, setNewPlatformName] = useState("");
-  const [newPlatformColor, setNewPlatformColor] = useState("#2563eb");
+  const [newPlatformColor, setNewPlatformColor] = useState("#FFC700");
 
   const [editingPlatformId, setEditingPlatformId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
-  const [editingColor, setEditingColor] = useState("#2563eb");
+  const [editingColor, setEditingColor] = useState("#FFC700");
+
+  const [deleteConfirmPlatform, setDeleteConfirmPlatform] = useState<Platform | null>(null);
 
   // Initialize user platforms when component mounts
   useEffect(() => {
@@ -66,10 +90,10 @@ export function PlatformSettings() {
     );
   };
 
-  const openEditDialog = (platform: { id: string; name: string; color: string }) => {
+  const openEditDialog = (platform: Platform) => {
     setEditingPlatformId(platform.id);
     setEditingName(platform.name);
-    setEditingColor(platform.color || "#2563eb");
+    setEditingColor(platform.color || "#FFC700");
   };
 
   const handleUpdatePlatform = () => {
@@ -78,13 +102,26 @@ export function PlatformSettings() {
     const trimmedName = editingName.trim();
     if (!trimmedName) return;
 
-    const safeColor = /^#[0-9A-Fa-f]{6}$/.test(editingColor) ? editingColor : "#2563eb";
+    const safeColor = /^#[0-9A-Fa-f]{6}$/.test(editingColor) ? editingColor : "#FFC700";
 
     updatePlatform.mutate(
       { platformId: editingPlatformId, name: trimmedName, color: safeColor },
       {
         onSuccess: () => {
           setEditingPlatformId(null);
+        },
+      }
+    );
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteConfirmPlatform) return;
+    
+    deletePlatform.mutate(
+      { platformId: deleteConfirmPlatform.id, platformKey: deleteConfirmPlatform.key },
+      {
+        onSuccess: () => {
+          setDeleteConfirmPlatform(null);
         },
       }
     );
@@ -114,19 +151,34 @@ export function PlatformSettings() {
     <>
       <Card variant="elevated">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <Car className="w-5 h-5 text-primary" />
               <CardTitle className="text-lg">Plataformas e outras receitas</CardTitle>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsCreateDialogOpen(true)}
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Cadastrar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => applyDefaultPlatforms.mutate()}
+                disabled={applyDefaultPlatforms.isPending}
+              >
+                {applyDefaultPlatforms.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-1" />
+                )}
+                Adicionar padrão
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCreateDialogOpen(true)}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Cadastrar
+              </Button>
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             Selecione as plataformas e outras fontes de receita que você usa. Apenas as habilitadas aparecerão ao lançar receitas.
@@ -228,9 +280,7 @@ export function PlatformSettings() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() =>
-                          deletePlatform.mutate({ platformId: platform.id, platformKey: platform.key })
-                        }
+                        onClick={() => setDeleteConfirmPlatform(platform)}
                         disabled={deletePlatform.isPending}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -321,6 +371,12 @@ export function PlatformSettings() {
                 placeholder="Nome da plataforma"
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleUpdatePlatform();
+                  }
+                }}
               />
             </div>
 
@@ -359,6 +415,30 @@ export function PlatformSettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmPlatform} onOpenChange={(open) => !open && setDeleteConfirmPlatform(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir "{deleteConfirmPlatform?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso remove a opção das configurações. Lançamentos antigos não serão apagados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletePlatform.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
