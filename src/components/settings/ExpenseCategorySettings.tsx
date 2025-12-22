@@ -11,8 +11,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Receipt, Loader2, Plus, Trash2 } from "lucide-react";
-import { useExpenseCategories } from "@/hooks/useExpenseCategories";
+import { Receipt, Loader2, Plus, Trash2, Pencil } from "lucide-react";
+import { useExpenseCategories, ExpenseCategory } from "@/hooks/useExpenseCategories";
 import { useToast } from "@/hooks/use-toast";
 
 export function ExpenseCategorySettings() {
@@ -28,11 +28,17 @@ export function ExpenseCategorySettings() {
     toggleCategory,
     createCategory,
     deleteCategory,
+    updateCategory,
   } = useExpenseCategories();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryColor, setNewCategoryColor] = useState("#EF4444");
+
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<ExpenseCategory | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
+  const [editCategoryColor, setEditCategoryColor] = useState("#EF4444");
 
   // Initialize user category preferences when component mounts
   useEffect(() => {
@@ -58,6 +64,35 @@ export function ExpenseCategorySettings() {
           setNewCategoryName("");
           setNewCategoryColor("#EF4444");
           setIsCreateDialogOpen(false);
+        },
+      }
+    );
+  };
+
+  const handleOpenEdit = (category: ExpenseCategory) => {
+    setEditingCategory(category);
+    setEditCategoryName(category.name);
+    setEditCategoryColor(category.color || "#EF4444");
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditCategory = () => {
+    if (!editingCategory) return;
+    const trimmedName = editCategoryName.trim();
+    if (!trimmedName) return;
+
+    const safeColor = /^#[0-9A-Fa-f]{6}$/.test(editCategoryColor)
+      ? editCategoryColor
+      : "#EF4444";
+
+    updateCategory.mutate(
+      { categoryId: editingCategory.id, name: trimmedName, color: safeColor },
+      {
+        onSuccess: () => {
+          setEditingCategory(null);
+          setEditCategoryName("");
+          setEditCategoryColor("#EF4444");
+          setIsEditDialogOpen(false);
         },
       }
     );
@@ -207,6 +242,14 @@ export function ExpenseCategorySettings() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => handleOpenEdit(category)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
                         onClick={() =>
                           deleteCategory.mutate({
@@ -285,6 +328,70 @@ export function ExpenseCategorySettings() {
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : null}
               Criar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Category Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar categoria de despesa</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-1">
+              <Label htmlFor="edit-category-name">Nome</Label>
+              <Input
+                id="edit-category-name"
+                placeholder="Ex: Seguro, IPVA, Multas..."
+                value={editCategoryName}
+                onChange={(e) => setEditCategoryName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleEditCategory();
+                  }
+                }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Cor</Label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={editCategoryColor}
+                  onChange={(e) => setEditCategoryColor(e.target.value)}
+                  className="h-9 w-9 rounded-md border border-border bg-background p-1 cursor-pointer"
+                />
+                <span className="text-xs text-muted-foreground">
+                  Escolha uma cor para identificar esta categoria.
+                </span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditingCategory(null);
+                setEditCategoryName("");
+                setEditCategoryColor("#EF4444");
+                setIsEditDialogOpen(false);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="hero"
+              onClick={handleEditCategory}
+              disabled={!editCategoryName.trim() || updateCategory.isPending}
+            >
+              {updateCategory.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : null}
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
