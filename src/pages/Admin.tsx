@@ -700,7 +700,7 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      {/* Webhook V2 Card */}
+      {/* Webhook Kiwify Card */}
       <Card className="bg-card/50 border-primary/20">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3">
@@ -708,25 +708,25 @@ export default function AdminPage() {
               <Webhook className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-lg">Webhook Kiwify (V2)</CardTitle>
+              <CardTitle className="text-lg">Webhook Kiwify</CardTitle>
               <CardDescription>Configuração do webhook para integração com Kiwify</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">URL do Webhook</Label>
+            <Label className="text-sm text-muted-foreground">URL do Webhook (com secret via query string)</Label>
             <div className="flex gap-2">
               <Input
                 readOnly
-                value={`https://bvondnxrfqizehlrcyhm.supabase.co/functions/v1/kiwify-webhook-v2?secret=SEU_SECRET_AQUI`}
+                value={`https://bvondnxrfqizehlrcyhm.supabase.co/functions/v1/kiwify-webhook?secret=SEU_SECRET_AQUI`}
                 className="font-mono text-xs bg-muted/50"
               />
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => {
-                  navigator.clipboard.writeText(`https://bvondnxrfqizehlrcyhm.supabase.co/functions/v1/kiwify-webhook-v2?secret=SEU_SECRET_AQUI`);
+                  navigator.clipboard.writeText(`https://bvondnxrfqizehlrcyhm.supabase.co/functions/v1/kiwify-webhook?secret=SEU_SECRET_AQUI`);
                   toast({ title: "URL copiada!", description: "Cole no painel da Kiwify." });
                 }}
               >
@@ -741,7 +741,7 @@ export default function AdminPage() {
               <div className="text-sm">
                 <p className="font-medium text-yellow-500">Importante</p>
                 <p className="text-muted-foreground mt-1">
-                  1. Configure o secret <code className="px-1 py-0.5 rounded bg-muted font-mono text-xs">KIWIFY_WEBHOOK_SECRET</code> nas secrets do Supabase<br/>
+                  1. O secret está configurado como <code className="px-1 py-0.5 rounded bg-muted font-mono text-xs">KIWIFY_WEBHOOK_SECRET</code> nas secrets do Supabase<br/>
                   2. Substitua <code className="px-1 py-0.5 rounded bg-muted font-mono text-xs">SEU_SECRET_AQUI</code> pelo valor do secret<br/>
                   3. Atualize a URL no painel da Kiwify
                 </p>
@@ -754,7 +754,7 @@ export default function AdminPage() {
               variant="outline"
               size="sm"
               className="gap-2"
-              onClick={() => window.open("https://supabase.com/dashboard/project/bvondnxrfqizehlrcyhm/functions/kiwify-webhook-v2/logs", "_blank")}
+              onClick={() => window.open("https://supabase.com/dashboard/project/bvondnxrfqizehlrcyhm/functions/kiwify-webhook/logs", "_blank")}
             >
               <ExternalLink className="w-4 h-4" />
               Ver Logs no Supabase

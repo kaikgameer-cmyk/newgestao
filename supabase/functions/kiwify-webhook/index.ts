@@ -440,6 +440,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<{ s
 serve(async (req) => {
   console.log("=== KIWIFY WEBHOOK RECEIVED ===");
   console.log("Method:", req.method);
+  console.log("URL:", req.url);
   console.log("Timestamp:", new Date().toISOString());
   
   // Handle CORS preflight
@@ -468,19 +469,28 @@ serve(async (req) => {
       });
     }
 
-    // Validate webhook secret via header
+    // ============================================
+    // SECRET VALIDATION - Query String OR Header
+    // ============================================
+    const url = new URL(req.url);
+    const secretFromQuery = url.searchParams.get("secret");
     const secretFromHeader = req.headers.get("x-kiwify-secret");
-    console.log("Secret validation - header present:", !!secretFromHeader);
+    
+    console.log("Secret validation:");
+    console.log("  - Query param present:", !!secretFromQuery);
+    console.log("  - Header present:", !!secretFromHeader);
+    
+    const providedSecret = secretFromQuery || secretFromHeader;
 
-    if (!secretFromHeader) {
-      console.error("❌ Missing x-kiwify-secret header");
-      return new Response(JSON.stringify({ error: "Missing webhook secret header" }), {
+    if (!providedSecret) {
+      console.error("❌ Missing webhook secret (neither query param nor header)");
+      return new Response(JSON.stringify({ error: "Missing webhook secret" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (secretFromHeader !== webhookSecret) {
+    if (providedSecret !== webhookSecret) {
       console.error("❌ Invalid webhook secret");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
