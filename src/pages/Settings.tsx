@@ -10,7 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, Settings as SettingsIcon, Calendar, DollarSign, Loader2, LogOut, Phone, MapPin, Mail, Camera } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { User, Settings as SettingsIcon, Calendar, DollarSign, Loader2, LogOut, Phone, MapPin, Mail, Camera, Car, Zap, Fuel, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -47,6 +49,7 @@ export default function SettingsPage() {
   const [city, setCity] = useState("");
   const [startWeekDay, setStartWeekDay] = useState("monday");
   const [currency, setCurrency] = useState("BRL");
+  const [vehicleType, setVehicleType] = useState<"electric" | "fuel">("fuel");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Fetch profile
@@ -56,7 +59,7 @@ export default function SettingsPage() {
       if (!user) return null;
       const { data, error } = await supabase
         .from("profiles")
-        .select("first_name, last_name, whatsapp, email, city, start_week_day, currency, name, avatar_url")
+        .select("first_name, last_name, whatsapp, email, city, start_week_day, currency, name, avatar_url, vehicle_type")
         .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
@@ -98,6 +101,7 @@ export default function SettingsPage() {
       setCity(profile.city || "");
       setStartWeekDay(profile.start_week_day || "monday");
       setCurrency(profile.currency || "BRL");
+      setVehicleType((profile.vehicle_type as "electric" | "fuel") || "fuel");
     }
   }, [profile]);
 
@@ -150,6 +154,7 @@ export default function SettingsPage() {
           name: `${firstName.trim()} ${lastName.trim()}`.trim(), // Keep legacy field updated
           start_week_day: startWeekDay,
           currency,
+          vehicle_type: vehicleType,
         })
         .eq("user_id", user.id);
 
@@ -159,6 +164,7 @@ export default function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
       queryClient.invalidateQueries({ queryKey: ["onboarding-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicle-type"] });
       toast({
         title: "Configurações salvas",
         description: "Suas preferências foram atualizadas com sucesso.",
@@ -357,6 +363,59 @@ export default function SettingsPage() {
                   <SelectItem value="EUR">Euro (€)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Vehicle Type */}
+            <div className="space-y-3 pt-4 border-t border-border">
+              <Label className="flex items-center gap-2">
+                <Car className="w-4 h-4 text-muted-foreground" />
+                Tipo do Veículo
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Define quais módulos aparecem no menu
+              </p>
+
+              <RadioGroup
+                value={vehicleType}
+                onValueChange={(value) => setVehicleType(value as "electric" | "fuel")}
+                className="grid grid-cols-2 gap-3"
+              >
+                <div className="relative">
+                  <RadioGroupItem
+                    value="fuel"
+                    id="settings-vehicle-fuel"
+                    className="peer sr-only"
+                  />
+                  <Label
+                    htmlFor="settings-vehicle-fuel"
+                    className="flex flex-col items-center justify-center rounded-lg border-2 border-border bg-card p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 cursor-pointer transition-colors"
+                  >
+                    <Fuel className="w-6 h-6 mb-1 text-orange-500" />
+                    <span className="font-semibold text-sm">Combustível</span>
+                  </Label>
+                </div>
+                <div className="relative">
+                  <RadioGroupItem
+                    value="electric"
+                    id="settings-vehicle-electric"
+                    className="peer sr-only"
+                  />
+                  <Label
+                    htmlFor="settings-vehicle-electric"
+                    className="flex flex-col items-center justify-center rounded-lg border-2 border-border bg-card p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 cursor-pointer transition-colors"
+                  >
+                    <Zap className="w-6 h-6 mb-1 text-emerald-500" />
+                    <span className="font-semibold text-sm">Elétrico</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+
+              <Alert variant="default" className="bg-muted/50 border-muted-foreground/20">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Trocar o tipo do veículo altera quais módulos aparecem no menu. Seus lançamentos antigos não serão apagados.
+                </AlertDescription>
+              </Alert>
             </div>
           </CardContent>
         </Card>

@@ -64,6 +64,7 @@ export function useOnboarding() {
       whatsapp: string;
       city: string;
       enabledPlatformKeys: string[];
+      vehicleType: "electric" | "fuel";
     }) => {
       if (!user) throw new Error("Não autenticado");
 
@@ -76,6 +77,7 @@ export function useOnboarding() {
           whatsapp: data.whatsapp,
           city: data.city,
           onboarding_completed: true,
+          vehicle_type: data.vehicleType,
           // Also update legacy 'name' field for backwards compatibility
           name: `${data.first_name} ${data.last_name}`.trim(),
         })
@@ -108,6 +110,8 @@ export function useOnboarding() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["onboarding-profile"] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicle-type"] });
       queryClient.invalidateQueries({ queryKey: ["user_platforms"] });
       queryClient.invalidateQueries({ queryKey: ["platforms"] });
     },

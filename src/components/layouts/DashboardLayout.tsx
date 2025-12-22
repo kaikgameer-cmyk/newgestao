@@ -126,14 +126,21 @@ export default function DashboardLayout() {
 
   if (!user) return null;
 
-  // Build nav items - always include admin if user is admin (once fetched)
+  // Get vehicle type from profile
+  const { isElectric, isFuel } = profile ? { 
+    isElectric: profile.vehicle_type === "electric", 
+    isFuel: profile.vehicle_type !== "electric" 
+  } : { isElectric: false, isFuel: true };
+
+  // Build nav items - conditionally show Combustível or Elétrico based on vehicle type
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
     { icon: Receipt, label: "Lançamentos", path: "/dashboard/lancamentos" },
     { icon: Target, label: "Metas", path: "/dashboard/metas" },
     { icon: CreditCard, label: "Cartões", path: "/dashboard/cartoes" },
-    { icon: Fuel, label: "Combustível", path: "/dashboard/combustivel" },
-    { icon: Zap, label: "Elétrico", path: "/dashboard/eletrico" },
+    // Show only the relevant energy module based on vehicle type
+    ...(isFuel ? [{ icon: Fuel, label: "Combustível", path: "/dashboard/combustivel" }] : []),
+    ...(isElectric ? [{ icon: Zap, label: "Elétrico", path: "/dashboard/eletrico" }] : []),
     { icon: Wrench, label: "Manutenção", path: "/dashboard/manutencao" },
     { icon: Repeat, label: "Despesas Fixas", path: "/dashboard/despesas-fixas" },
     { icon: Timer, label: "Timer", path: "/dashboard/timer" },

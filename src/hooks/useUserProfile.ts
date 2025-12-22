@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
+export type VehicleType = "electric" | "fuel";
+
 export function useUserProfile() {
   const { user } = useAuth();
 
@@ -11,7 +13,7 @@ export function useUserProfile() {
       if (!user) return null;
       const { data, error } = await supabase
         .from("profiles")
-        .select("first_name, last_name, avatar_url, name, email")
+        .select("first_name, last_name, avatar_url, name, email, vehicle_type")
         .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
@@ -31,10 +33,15 @@ export function useUserProfile() {
     return `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}`;
   };
 
+  const vehicleType = (profile?.vehicle_type as VehicleType) || "fuel";
+
   return {
     profile,
     isLoading,
     displayName,
     avatarUrl: getAvatarUrl(),
+    vehicleType,
+    isElectric: vehicleType === "electric",
+    isFuel: vehicleType !== "electric",
   };
 }

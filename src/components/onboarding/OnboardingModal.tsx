@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, User, Phone, MapPin, Mail, Car } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Loader2, User, Phone, MapPin, Mail, Car, Zap, Fuel } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { usePlatforms } from "@/hooks/usePlatforms";
@@ -26,6 +27,7 @@ const onboardingSchema = z.object({
     .regex(/^[\d\s\(\)\-\+]+$/, "Formato de telefone inválido"),
   city: z.string().min(2, "Cidade deve ter pelo menos 2 caracteres"),
   enabledPlatformKeys: z.array(z.string()).min(1, "Selecione pelo menos 1 plataforma"),
+  vehicleType: z.enum(["electric", "fuel"]),
 });
 
 type OnboardingFormData = z.infer<typeof onboardingSchema>;
@@ -44,6 +46,7 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
   const [whatsapp, setWhatsapp] = useState("");
   const [city, setCity] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [vehicleType, setVehicleType] = useState<"electric" | "fuel">("fuel");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Pre-fill form with existing data
@@ -100,6 +103,7 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
       whatsapp: whatsapp.trim(),
       city: city.trim(),
       enabledPlatformKeys: selectedPlatforms,
+      vehicleType,
     };
 
     const result = onboardingSchema.safeParse(formData);
@@ -124,6 +128,7 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
         whatsapp: formData.whatsapp,
         city: formData.city,
         enabledPlatformKeys: formData.enabledPlatformKeys,
+        vehicleType: formData.vehicleType,
       });
       toast({
         title: "Perfil configurado!",
@@ -238,6 +243,57 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
             />
             {errors.city && (
               <p className="text-xs text-destructive">{errors.city}</p>
+            )}
+          </div>
+
+          {/* Vehicle Type */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <Car className="w-4 h-4 text-muted-foreground" />
+              Tipo do seu veículo *
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Isso define quais módulos aparecerão no sistema
+            </p>
+
+            <RadioGroup
+              value={vehicleType}
+              onValueChange={(value) => setVehicleType(value as "electric" | "fuel")}
+              className="grid grid-cols-2 gap-3"
+            >
+              <div className="relative">
+                <RadioGroupItem
+                  value="fuel"
+                  id="vehicle-fuel"
+                  className="peer sr-only"
+                />
+                <Label
+                  htmlFor="vehicle-fuel"
+                  className="flex flex-col items-center justify-center rounded-lg border-2 border-border bg-card p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 cursor-pointer transition-colors"
+                >
+                  <Fuel className="w-8 h-8 mb-2 text-orange-500" />
+                  <span className="font-semibold">Combustível</span>
+                  <span className="text-xs text-muted-foreground">Gasolina, Etanol, Diesel</span>
+                </Label>
+              </div>
+              <div className="relative">
+                <RadioGroupItem
+                  value="electric"
+                  id="vehicle-electric"
+                  className="peer sr-only"
+                />
+                <Label
+                  htmlFor="vehicle-electric"
+                  className="flex flex-col items-center justify-center rounded-lg border-2 border-border bg-card p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/10 cursor-pointer transition-colors"
+                >
+                  <Zap className="w-8 h-8 mb-2 text-emerald-500" />
+                  <span className="font-semibold">Elétrico</span>
+                  <span className="text-xs text-muted-foreground">Recarga em kWh</span>
+                </Label>
+              </div>
+            </RadioGroup>
+            {errors.vehicleType && (
+              <p className="text-xs text-destructive">{errors.vehicleType}</p>
             )}
           </div>
 
