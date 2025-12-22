@@ -12,7 +12,7 @@ import { ptBR } from "date-fns/locale";
 import JoinCompetitionModal from "@/components/competitions/JoinCompetitionModal";
 import CreateCompetitionModal from "@/components/competitions/CreateCompetitionModal";
 import HostPayoutNotification from "@/components/competitions/HostPayoutNotification";
-import UserRankingModal from "@/components/competitions/UserRankingModal";
+import { GlobalRankingModal } from "@/components/competitions/GlobalRankingModal";
 import { getRemainingTime, getTimeUntilStart } from "@/lib/competitionUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { CompetitionSkeletonGrid } from "@/components/competitions/CompetitionCardSkeleton";
@@ -463,7 +463,7 @@ export default function Competitions() {
         initialCode={joinCode}
       />
 
-      <UserRankingModal
+      <GlobalRankingModal
         open={showRankingModal}
         onOpenChange={setShowRankingModal}
       />

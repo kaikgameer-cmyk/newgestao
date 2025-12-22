@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 import { AchievementBadges } from "@/components/competitions/AchievementBadges";
 
 export default function RankingPage() {
-  const { data: ranking, isLoading } = useGlobalRanking();
+  const { data, isLoading } = useGlobalRanking();
+  const ranking = data?.entries || [];
   const { user } = useAuth();
 
   const formatCurrency = (value: number) => {
@@ -53,17 +54,17 @@ export default function RankingPage() {
     }
   };
 
-  // Calculate totals
-  const totals = ranking?.reduce(
-    (acc, entry) => ({
-      totalWins: acc.totalWins + entry.wins,
-      totalPrizes: acc.totalPrizes + entry.total_prizes,
-      totalParticipations: acc.totalParticipations + entry.participations,
-    }),
-    { totalWins: 0, totalPrizes: 0, totalParticipations: 0 }
-  ) || { totalWins: 0, totalPrizes: 0, totalParticipations: 0 };
+  const totals =
+    data?.totals || {
+      totalWins: 0,
+      totalPrizes: 0,
+      totalParticipations: 0,
+      totalCompetitors: 0,
+      totalCompetitionsFinished: 0,
+      uniqueWinners: 0,
+    };
 
-  const uniqueWinners = ranking?.filter((r) => r.wins > 0).length || 0;
+  const uniqueWinners = totals.uniqueWinners;
 
   return (
     <div className="p-6 space-y-6">
