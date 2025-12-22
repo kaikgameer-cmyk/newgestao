@@ -25,6 +25,7 @@ import { Receipt, Loader2, Plus, Trash2, Pencil, Sparkles } from "lucide-react";
 import { useExpenseCategories, ExpenseCategory } from "@/hooks/useExpenseCategories";
 import { useApplyDefaults } from "@/hooks/useApplyDefaults";
 import { useToast } from "@/hooks/use-toast";
+import { CategoryIcon } from "@/components/ui/category-icon";
 
 export function ExpenseCategorySettings() {
   const { toast } = useToast();
@@ -202,9 +203,10 @@ export function ExpenseCategorySettings() {
                     className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: category.color || "#EF4444" }}
+                      <CategoryIcon
+                        iconName={category.icon}
+                        color={category.color}
+                        size={18}
                       />
                       <Label
                         htmlFor={`category-${category.key}`}
@@ -257,9 +259,10 @@ export function ExpenseCategorySettings() {
                     className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: category.color || "#EF4444" }}
+                      <CategoryIcon
+                        iconName={category.icon}
+                        color={category.color}
+                        size={18}
                       />
                       <Label
                         htmlFor={`category-${category.key}`}
