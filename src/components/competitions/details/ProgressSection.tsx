@@ -7,9 +7,13 @@ interface ProgressSectionProps {
   totalCompetition: number;
   totalUser: number;
   totalUserTeam: number;
-  goalValue: number;
+  /** Meta individual definida pelo host (por participante) */
+  individualGoalValue: number;
+  /** Meta total dinâmica (meta individual × participantes ativos) */
+  totalGoalValue: number;
   progressPercent: number;
   remaining: number;
+  participantsCount: number;
   isMember: boolean;
   allowTeams: boolean;
   teamId: string | null;
@@ -24,9 +28,11 @@ export function ProgressSection({
   totalCompetition,
   totalUser,
   totalUserTeam,
-  goalValue,
+  individualGoalValue,
+  totalGoalValue,
   progressPercent,
   remaining,
+  participantsCount,
   isMember,
   allowTeams,
   teamId,
@@ -62,8 +68,13 @@ export function ProgressSection({
             <span className="text-muted-foreground">
               Arrecadado: <span className="text-foreground font-medium">{formatCurrencyBRL(totalCompetition)}</span>
             </span>
-            <span className="text-muted-foreground">
-              Meta: <span className="text-foreground font-medium">{formatCurrencyBRL(goalValue)}</span>
+            <span className="text-muted-foreground text-right">
+              <span className="block">
+                Meta total ({participantsCount} participantes):
+              </span>
+              <span className="text-foreground font-medium">
+                {formatCurrencyBRL(totalGoalValue)}
+              </span>
             </span>
           </div>
           {!metaReached && (
@@ -95,12 +106,12 @@ export function ProgressSection({
                 </span>
               </div>
               <Progress 
-                value={goalValue > 0 ? Math.min((totalUser / goalValue) * 100, 100) : 0} 
+                value={individualGoalValue > 0 ? Math.min((totalUser / individualGoalValue) * 100, 100) : 0} 
                 className="h-2" 
               />
               <p className="text-xs text-muted-foreground">
-                {goalValue > 0 
-                  ? `${((totalUser / goalValue) * 100).toFixed(1)}% da meta individual`
+                {individualGoalValue > 0 
+                  ? `${((totalUser / individualGoalValue) * 100).toFixed(1)}% da meta individual`
                   : "Sem meta definida"
                 }
               </p>
@@ -119,7 +130,7 @@ export function ProgressSection({
                   </span>
                 </div>
                 <Progress 
-                  value={goalValue > 0 ? Math.min((totalUserTeam / goalValue) * 100, 100) : 0} 
+                  value={individualGoalValue > 0 ? Math.min((totalUserTeam / individualGoalValue) * 100, 100) : 0} 
                   className="h-2" 
                 />
               </div>

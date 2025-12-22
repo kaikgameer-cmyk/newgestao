@@ -313,9 +313,11 @@ export default function CompetitionDetails() {
             totalCompetition={totals.total_competition}
             totalUser={totals.total_user}
             totalUserTeam={totals.total_user_team}
-            goalValue={totals.goal_value}
+            individualGoalValue={competition.goal_value}
+            totalGoalValue={totals.total_goal_value}
             progressPercent={totals.progress_percent}
             remaining={totals.remaining}
+            participantsCount={dashboardData.participants_count}
             isMember={isMember}
             allowTeams={competition.allow_teams}
             teamId={viewer?.team_id ?? null}

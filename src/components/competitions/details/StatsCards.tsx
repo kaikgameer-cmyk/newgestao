@@ -51,12 +51,20 @@ export function StatsCards({
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
         <CardHeader className="pb-2">
-          <CardDescription>Meta de Receita</CardDescription>
+          <CardDescription>Meta individual</CardDescription>
           <CardTitle className="text-xl flex items-center gap-2">
             <Target className="w-5 h-5 text-muted-foreground" />
             {formatCurrencyBRL(goalValue)}
           </CardTitle>
         </CardHeader>
+        <CardContent className="pt-0">
+          <p className="text-xs text-muted-foreground">
+            Meta total ({participantsCount} participantes):{" "}
+            <span className="font-medium text-foreground">
+              {formatCurrencyBRL(goalValue * participantsCount)}
+            </span>
+          </p>
+        </CardContent>
       </Card>
 
       {prizeValue > 0 && (

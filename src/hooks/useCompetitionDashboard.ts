@@ -31,7 +31,10 @@ export interface CompetitionDashboardData {
     total_competition: number;
     total_user: number;
     total_user_team: number;
+    // Meta individual definida pelo host (por participante)
     goal_value: number;
+    // Meta total dinâmica (meta individual × participantes ativos)
+    total_goal_value: number;
     progress_percent: number;
     remaining: number;
   };
@@ -174,9 +177,13 @@ export function useCompetitionDashboard(idOrCode: string | undefined) {
         ? filteredUserPlatformBreakdown.reduce((sum, item) => sum + item.total_value, 0)
         : raw.totals.total_user;
 
-      const goalValue = raw.totals.goal_value;
-      const progressPercent = goalValue > 0 ? (totalCompetition / goalValue) * 100 : 0;
-      const remaining = Math.max(goalValue - totalCompetition, 0);
+      // Meta individual é o valor definido pelo host na competição
+      const individualGoal = raw.competition.goal_value;
+      // Meta total dinâmica: meta individual × participantes ativos
+      const totalGoal = individualGoal * (raw.participants_count || 0);
+
+      const progressPercent = totalGoal > 0 ? (totalCompetition / totalGoal) * 100 : 0;
+      const remaining = Math.max(totalGoal - totalCompetition, 0);
 
       return {
         ...raw,
@@ -187,6 +194,8 @@ export function useCompetitionDashboard(idOrCode: string | undefined) {
           ...raw.totals,
           total_competition: totalCompetition,
           total_user: totalUser,
+          goal_value: individualGoal,
+          total_goal_value: totalGoal,
           progress_percent: progressPercent,
           remaining,
         },

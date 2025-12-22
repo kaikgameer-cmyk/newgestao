@@ -35,6 +35,16 @@ export function RankingSection({
   const hasRanking = ranking && ranking.length > 0;
   const defaultTab = allowTeams && hasTeams ? "teams" : "individual";
 
+  const sortedRanking = hasRanking
+    ? [...ranking].sort((a, b) => {
+        const aPercent = goalValue > 0 ? a.total_income / goalValue : 0;
+        const bPercent = goalValue > 0 ? b.total_income / goalValue : 0;
+        if (bPercent !== aPercent) return bPercent - aPercent;
+        if (b.total_income !== a.total_income) return b.total_income - a.total_income;
+        return a.display_name.localeCompare(b.display_name);
+      })
+    : null;
+
   // Empty state component
   const EmptyRanking = () => (
     <div className="text-center py-8 text-muted-foreground">
@@ -73,15 +83,16 @@ export function RankingSection({
           </TabsList>
 
           <TabsContent value="individual" className="mt-0">
-            {hasRanking ? (
+            {hasRanking && sortedRanking ? (
               <div className="space-y-3">
-                {ranking.map((member, index) => {
+                {sortedRanking.map((member, index) => {
                   const progressPercent = goalValue > 0 
                     ? (member.total_income / goalValue) * 100 
                     : 0;
-                  const maxScore = ranking[0]?.total_income || 1;
+                  const maxScore = sortedRanking[0]?.total_income || 1;
                   const barWidth = maxScore > 0 ? (member.total_income / maxScore) * 100 : 0;
                   const isCurrentUser = member.user_id === currentUserId;
+                  const completed = goalValue > 0 && member.total_income >= goalValue;
 
                   return (
                     <div
@@ -116,8 +127,13 @@ export function RankingSection({
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {progressPercent.toFixed(1)}% da meta
+                        <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
+                          <span>{progressPercent.toFixed(1)}% da meta individual</span>
+                          {completed && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              Concluiu
+                            </Badge>
+                          )}
                         </p>
                       </div>
                       
