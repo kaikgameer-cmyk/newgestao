@@ -84,14 +84,59 @@ export default function DefinirSenha() {
     const validateToken = async () => {
       const tokenParam = searchParams.get("token");
       const emailParam = searchParams.get("email");
+      const codeParam = searchParams.get("code");
+      const typeParam = searchParams.get("type");
 
       console.log("[DEFINIR-SENHA] Checking URL params...");
       console.log("  - Token:", tokenParam ? "present" : "none");
+      console.log("  - Code:", codeParam ? "present" : "none");
+      console.log("  - Type:", typeParam || "none");
       console.log("  - Email:", emailParam || "none");
       console.log("  - Hash:", window.location.hash ? "present" : "none");
       console.log("  - Full URL:", window.location.href);
 
-      // Check for Supabase auth tokens in hash (recovery links from auth emails)
+      // 1. Handle PKCE code flow (from Supabase auth with PKCE enabled)
+      if (codeParam) {
+        console.log("[DEFINIR-SENHA] Found PKCE code - exchanging for session");
+        try {
+          const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(codeParam);
+
+          if (exchangeError) {
+            console.error("[DEFINIR-SENHA] Error exchanging code:", exchangeError.message);
+            if (
+              exchangeError.message.includes("expired") ||
+              exchangeError.message.includes("invalid") ||
+              exchangeError.message.includes("used")
+            ) {
+              setErrorMessage("O link expirou ou já foi utilizado. Solicite um novo link.");
+              setPageState("invalid");
+              return;
+            }
+            throw exchangeError;
+          }
+
+          if (data?.user?.email) {
+            setEmail(data.user.email);
+            console.log("[DEFINIR-SENHA] PKCE session established for:", data.user.email);
+            setPageState("form");
+            // Clear code from URL for security
+            window.history.replaceState(null, "", window.location.pathname);
+            return;
+          }
+
+          console.error("[DEFINIR-SENHA] PKCE exchange succeeded but no user email");
+          setErrorMessage("Erro ao recuperar dados do usuário. Tente novamente.");
+          setPageState("error");
+          return;
+        } catch (err: any) {
+          console.error("[DEFINIR-SENHA] Error processing PKCE code:", err);
+          setErrorMessage("Erro ao processar o link. Solicite um novo link.");
+          setPageState("error");
+          return;
+        }
+      }
+
+      // 2. Check for Supabase auth tokens in hash (recovery links from auth emails - implicit flow)
       const hash = window.location.hash;
       if (hash && hash.includes("access_token")) {
         console.log("[DEFINIR-SENHA] Found auth tokens in hash - processing recovery flow");
@@ -105,8 +150,8 @@ export default function DefinirSenha() {
           console.log("  - Access token:", accessToken ? "present" : "none");
           console.log("  - Refresh token:", refreshToken ? "present" : "none");
 
-          // ✅ Required behavior: only allow recovery here
-          if (type !== "recovery") {
+          // Allow recovery or invite types
+          if (type !== "recovery" && type !== "invite" && type !== "signup") {
             setErrorMessage("Este link não é de recuperação de senha. Solicite um novo link.");
             setPageState("invalid");
             return;

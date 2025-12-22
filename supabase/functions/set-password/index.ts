@@ -147,13 +147,50 @@ serve(async (req) => {
       console.log("Setting password...");
 
       // Resolve and validate token via SECURITY DEFINER function (marks as used)
-      const { data: consumedUserId, error: consumeError } = await supabase.rpc(
+      // Try "set_password" type first (new tokens), fallback to "signup" for legacy tokens
+      let consumedUserId: string | null = null;
+      let consumeError: any = null;
+      
+      // Try set_password type first (current token type)
+      const { data: result1, error: error1 } = await supabase.rpc(
         "consume_password_token",
         {
           p_token: token,
-          p_type: "signup",
+          p_type: "set_password",
         },
       );
+      
+      if (!error1 && result1) {
+        consumedUserId = result1 as string;
+      } else {
+        // Fallback to signup type for legacy tokens
+        const { data: result2, error: error2 } = await supabase.rpc(
+          "consume_password_token",
+          {
+            p_token: token,
+            p_type: "signup",
+          },
+        );
+        
+        if (!error2 && result2) {
+          consumedUserId = result2 as string;
+        } else {
+          // Try reset type as well
+          const { data: result3, error: error3 } = await supabase.rpc(
+            "consume_password_token",
+            {
+              p_token: token,
+              p_type: "reset",
+            },
+          );
+          
+          if (!error3 && result3) {
+            consumedUserId = result3 as string;
+          } else {
+            consumeError = error1 || error2 || error3;
+          }
+        }
+      }
 
       if (consumeError || !consumedUserId) {
         console.log("❌ Invalid or expired token via consume_password_token:", consumeError?.message);
