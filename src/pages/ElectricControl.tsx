@@ -1,15 +1,6 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Zap, Gauge, DollarSign, TrendingUp, Loader2, Trash2, CreditCard } from "lucide-react";
+import { Plus, Zap, Gauge, DollarSign, TrendingUp, Loader2, Trash2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,27 +33,15 @@ import {
   Bar,
 } from "recharts";
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-
-// Electric charge types
-const ELECTRIC_CHARGE_TYPES = ['ac_lento', 'ac_semi', 'dc_rapido', 'residencial'];
-
-const chargeTypeLabels: Record<string, string> = {
-  ac_lento: "AC Lento (3-7 kW)",
-  ac_semi: "AC Semi-Rápido (7-22 kW)",
-  dc_rapido: "DC Rápido (50+ kW)",
-  residencial: "Residencial",
-};
+import { 
+  ElectricRechargeForm, 
+  ElectricRechargeFormData, 
+  ELECTRIC_CHARGE_TYPES, 
+  chargeTypeLabels 
+} from "@/components/electric/ElectricRechargeForm";
 
 export default function ElectricControl() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
-  const [station, setStation] = useState("");
-  const [kwh, setKwh] = useState("");
-  const [totalValue, setTotalValue] = useState("");
-  const [creditCardId, setCreditCardId] = useState("");
-  const [chargeType, setChargeType] = useState("");
-  const [odometerKm, setOdometerKm] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
 
   // Global date filter state
   const [preset, setPreset] = useState<DatePreset>("thisMonth");
@@ -118,21 +97,21 @@ export default function ElectricControl() {
   });
 
   const createElectricLog = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (formData: ElectricRechargeFormData) => {
       if (!user) throw new Error("Não autenticado");
-      const newOdometer = odometerKm ? parseFloat(odometerKm) : null;
+      const newOdometer = formData.odometerKm ? parseFloat(formData.odometerKm) : null;
       
       // Use the fuel_logs table with electric charge type
       const { error } = await supabase.from("fuel_logs").insert({
         user_id: user.id,
-        date,
-        station: station || null,
-        liters: parseFloat(kwh), // Using liters field for kWh
-        total_value: parseFloat(totalValue),
-        fuel_type: chargeType,
+        date: formData.date,
+        station: formData.station || null,
+        liters: parseFloat(formData.kwh), // Using liters field for kWh
+        total_value: parseFloat(formData.totalValue),
+        fuel_type: formData.chargeType,
         odometer_km: newOdometer,
-        payment_method: paymentMethod || null,
-        credit_card_id: paymentMethod === "credito" && creditCardId ? creditCardId : null,
+        payment_method: formData.paymentMethod || null,
+        credit_card_id: formData.paymentMethod === "credito" && formData.creditCardId ? formData.creditCardId : null,
       });
       if (error) throw error;
       return newOdometer;
@@ -143,7 +122,6 @@ export default function ElectricControl() {
       queryClient.invalidateQueries({ queryKey: ["maintenance_records"] });
       queryClient.invalidateQueries({ queryKey: ["latest_odometer"] });
       setIsDialogOpen(false);
-      resetForm();
       toast({ title: "Recarga registrada!" });
 
       // Check for maintenance alerts if odometer was provided
@@ -184,17 +162,6 @@ export default function ElectricControl() {
       toast({ title: "Recarga removida!" });
     },
   });
-
-  const resetForm = () => {
-    setDate(format(new Date(), "yyyy-MM-dd"));
-    setStation("");
-    setKwh("");
-    setTotalValue("");
-    setChargeType("");
-    setOdometerKm("");
-    setPaymentMethod("");
-    setCreditCardId("");
-  };
 
   // Calculate metrics for filtered period
   const totalPeriodValue = electricLogs.reduce((sum, log) => sum + Number(log.total_value), 0);
@@ -320,85 +287,11 @@ export default function ElectricControl() {
               <DialogHeader>
                 <DialogTitle>Registrar Recarga</DialogTitle>
               </DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); createElectricLog.mutate(); }} className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Data *</Label>
-                    <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Estação (opcional)</Label>
-                    <Input placeholder="Ex: Eletroposto Enel" value={station} onChange={(e) => setStation(e.target.value)} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>kWh *</Label>
-                    <Input type="number" step="0.01" placeholder="0.00" value={kwh} onChange={(e) => setKwh(e.target.value)} required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Valor Total *</Label>
-                    <Input type="number" step="0.01" placeholder="0.00" value={totalValue} onChange={(e) => setTotalValue(e.target.value)} required />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Tipo de carregamento *</Label>
-                  <Select value={chargeType} onValueChange={setChargeType} required>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ac_lento">AC Lento (3-7 kW)</SelectItem>
-                      <SelectItem value="ac_semi">AC Semi-Rápido (7-22 kW)</SelectItem>
-                      <SelectItem value="dc_rapido">DC Rápido (50+ kW)</SelectItem>
-                      <SelectItem value="residencial">Residencial</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Quilometragem atual</Label>
-                  <Input type="number" placeholder="0" value={odometerKm} onChange={(e) => setOdometerKm(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Método de pagamento</Label>
-                  <Select value={paymentMethod} onValueChange={(value) => {
-                    setPaymentMethod(value);
-                    if (value !== "credito") setCreditCardId("");
-                  }}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="debito">Débito</SelectItem>
-                      <SelectItem value="credito">Cartão de Crédito</SelectItem>
-                      <SelectItem value="pix">PIX</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {paymentMethod === "credito" && creditCards.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <CreditCard className="w-4 h-4" />
-                      Selecione o cartão
-                    </Label>
-                    <Select value={creditCardId} onValueChange={setCreditCardId}>
-                      <SelectTrigger><SelectValue placeholder="Escolha um cartão cadastrado" /></SelectTrigger>
-                      <SelectContent>
-                        {creditCards.map((card) => (
-                          <SelectItem key={card.id} value={card.id}>
-                            {card.name} {card.last_digits ? `(•••• ${card.last_digits})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                {paymentMethod === "credito" && creditCards.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Nenhum cartão cadastrado. Cadastre um cartão na seção de Cartões de Crédito.
-                  </p>
-                )}
-                <Button type="submit" variant="hero" className="w-full" disabled={createElectricLog.isPending}>
-                  {createElectricLog.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Recarga"}
-                </Button>
-              </form>
+              <ElectricRechargeForm
+                onSubmit={(data) => createElectricLog.mutate(data)}
+                isPending={createElectricLog.isPending}
+                creditCards={creditCards}
+              />
             </DialogContent>
           </Dialog>
         </div>
