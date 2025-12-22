@@ -1294,6 +1294,42 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_logs: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          order_id: string
+          payload: Json
+          processed_at: string | null
+          response: Json | null
+          source: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          order_id: string
+          payload?: Json
+          processed_at?: string | null
+          response?: Json | null
+          source?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          order_id?: string
+          payload?: Json
+          processed_at?: string | null
+          response?: Json | null
+          source?: string
+          status?: string
+        }
+        Relationships: []
+      }
       work_session_pauses: {
         Row: {
           created_at: string
