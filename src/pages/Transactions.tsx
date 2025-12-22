@@ -34,10 +34,12 @@ import { IncomeDayForm } from "@/components/income/IncomeDayForm";
 import { useIncomeDay, IncomeDay } from "@/hooks/useIncomeDay";
 import { useExpenseCategories } from "@/hooks/useExpenseCategories";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { useVehicleType } from "@/hooks/useVehicleType";
 import {
   isElectricTransaction,
   isEnergyCategory,
   isElectricCategory,
+  isFuelCategory,
   getEnergyUnitLabel,
   getEnergyUnitFullLabel,
   getEnergyCategoryName,
@@ -105,6 +107,16 @@ export default function Transactions() {
   const { checkMaintenanceAlerts, maintenanceRecords } = useMaintenance();
   const { deleteIncomeDay } = useIncomeDay();
   const { enabledCategories, loadingCategories } = useExpenseCategories();
+  const { isElectric, isFuel } = useVehicleType();
+
+  // Filter categories based on vehicle type
+  // - Electric users: hide "combustivel" category
+  // - Fuel users: hide "eletrico" category
+  const filteredCategories = enabledCategories.filter((cat) => {
+    if (isElectric && cat.key === "combustivel") return false;
+    if (isFuel && cat.key === "eletrico") return false;
+    return true;
+  });
 
   // Fetch income_days (source of truth for revenues)
   const { data: allIncomeDays = [], isLoading: loadingIncomeDays } = useQuery({
@@ -668,10 +680,10 @@ export default function Transactions() {
                           <SelectContent>
                             {loadingCategories ? (
                               <SelectItem value="" disabled>Carregando...</SelectItem>
-                            ) : enabledCategories.length === 0 ? (
+                            ) : filteredCategories.length === 0 ? (
                               <SelectItem value="" disabled>Nenhuma categoria habilitada</SelectItem>
                             ) : (
-                              enabledCategories.map((cat) => (
+                              filteredCategories.map((cat) => (
                                 <SelectItem key={cat.key} value={cat.key}>
                                   <div className="flex items-center gap-2">
                                     <CategoryIcon iconName={cat.icon} color={cat.color} size={16} />
@@ -1219,7 +1231,7 @@ export default function Transactions() {
                     >
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>
-                        {enabledCategories.map((cat) => (
+                        {filteredCategories.map((cat) => (
                           <SelectItem key={cat.key} value={cat.key}>
                             <div className="flex items-center gap-2">
                               <CategoryIcon iconName={cat.icon} color={cat.color} size={16} />
