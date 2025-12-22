@@ -375,6 +375,11 @@ export default function RecurringExpenses() {
                 {allExpensesDailyCost.breakdown.map((item, index) => (
                   <div key={index} className="flex justify-between text-sm">
                     <div className="flex items-center gap-2">
+                      {item.type === "monthly" ? (
+                        <Repeat className="w-3.5 h-3.5 text-muted-foreground" />
+                      ) : (
+                        <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
+                      )}
                       <span>{item.name}</span>
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                         {item.type === "monthly" ? "Mensal" : "Rateada"}
@@ -427,7 +432,16 @@ export default function RecurringExpenses() {
                     const distributedDailyValue = getDistributedDailyValue(expense);
                     return (
                       <TableRow key={expense.id}>
-                        <TableCell className="font-medium">{expense.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {expense.recurrence_type === "distributed" ? (
+                              <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                            ) : (
+                              <Repeat className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            {expense.name}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge variant={expense.recurrence_type === "distributed" ? "secondary" : "default"}>
                             {expense.recurrence_type === "distributed" ? (

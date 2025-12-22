@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Inbox } from "lucide-react";
 import { PlatformRevenue } from "@/hooks/useRevenueByPlatform";
 import { usePlatforms } from "@/hooks/usePlatforms";
+import { CategoryIcon } from "@/components/ui/category-icon";
 
 interface PeriodPlatformBreakdownCardProps {
   platformRevenues: PlatformRevenue[];
@@ -16,9 +17,13 @@ export function PeriodPlatformBreakdownCard({
 }: PeriodPlatformBreakdownCardProps) {
   const { platforms } = usePlatforms();
 
-  const getColorForPlatform = (key: string): string => {
+  const getPlatformInfo = (key: string) => {
     const platform = platforms.find((p) => p.key === key);
-    return platform?.color || "#2563eb";
+    return {
+      color: platform?.color || "#2563eb",
+      icon: platform?.icon || null,
+      key: platform?.key || key,
+    };
   };
 
   const getDisplayName = (revenue: PlatformRevenue): string => {
@@ -68,13 +73,19 @@ export function PeriodPlatformBreakdownCard({
             <div className="space-y-2">
               {platformRevenues.map((revenue, index) => {
                 const percentage = totalRevenue > 0 ? (revenue.total_amount / totalRevenue) * 100 : 0;
+                const platformInfo = getPlatformInfo(revenue.platform_key);
                 return (
                   <div
                     key={`${revenue.platform_key}-${revenue.platform_label || index}`}
                     className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30 border border-border"
                   >
                     <div className="flex items-center gap-2">
-                      <div className={`w-2.5 h-2.5 rounded-full ${getColorForPlatform(revenue.platform_key)}`} />
+                      <CategoryIcon 
+                        iconName={platformInfo.icon} 
+                        categoryKey={platformInfo.key}
+                        color={platformInfo.color}
+                        size={16} 
+                      />
                       <span className="font-medium text-sm">{getDisplayName(revenue)}</span>
                     </div>
                     <div className="text-right">

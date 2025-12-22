@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Inbox } from "lucide-react";
 import { usePlatforms } from "@/hooks/usePlatforms";
+import { CategoryIcon } from "@/components/ui/category-icon";
 
 interface PlatformData {
   name: string;
@@ -33,19 +34,19 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
 
   const totalRevenue = platformsList.reduce((sum, p) => sum + p.total, 0);
 
-  const getColorForPlatform = (name: string): string => {
+  const getPlatformInfo = (name: string) => {
     const normalized = name.toLowerCase();
 
     // Tenta casar primeiro com o slug (key)
     const byKey = platforms.find((p) => p.key.toLowerCase() === normalized);
-    if (byKey?.color) return byKey.color;
+    if (byKey) return { color: byKey.color, icon: byKey.icon, key: byKey.key };
 
     // Depois tenta pelo nome amigável salvo
     const byName = platforms.find((p) => p.name.toLowerCase() === normalized);
-    if (byName?.color) return byName.color;
+    if (byName) return { color: byName.color, icon: byName.icon, key: byName.key };
 
     // Fallback para dados antigos
-    return "#2563eb";
+    return { color: "#2563eb", icon: null, key: name };
   };
 
   return (
@@ -72,15 +73,18 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {platformsList.map((platform) => {
                 const percentage = totalRevenue > 0 ? (platform.total / totalRevenue) * 100 : 0;
+                const platformInfo = getPlatformInfo(platform.name);
                 return (
                   <div
                     key={platform.name}
                     className="p-3 rounded-lg bg-secondary/30 border border-border space-y-1"
                   >
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ backgroundColor: getColorForPlatform(platform.name) }}
+                      <CategoryIcon 
+                        iconName={platformInfo.icon} 
+                        categoryKey={platformInfo.key}
+                        color={platformInfo.color}
+                        size={16} 
                       />
                       <span className="font-medium capitalize text-sm truncate">{platform.name}</span>
                     </div>
