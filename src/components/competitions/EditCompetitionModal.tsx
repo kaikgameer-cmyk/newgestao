@@ -27,27 +27,33 @@ import { Textarea } from "@/components/ui/textarea";
 import { useUpdateCompetition } from "@/hooks/useCompetitions";
 import { format, parseISO } from "date-fns";
 
-const editCompetitionSchema = z.object({
-  name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
-  description: z.string().max(3000, "A descrição deve ter no máximo 3000 caracteres.").optional(),
-  goal_value: z.coerce.number().positive("Meta deve ser maior que zero"),
-  has_prize: z.boolean().default(true),
-  prize_value: z.coerce.number().min(0, "Prêmio não pode ser negativo").optional(),
-  start_date: z.string().min(1, "Data inicial é obrigatória"),
-  end_date: z.string().min(1, "Data final é obrigatória"),
-  max_members: z.coerce.number().int().min(2).optional().nullable(),
-}).refine((data) => {
-  if (data.start_date && data.end_date) {
-    return new Date(data.end_date) >= new Date(data.start_date);
-  }
-  return true;
-}, {
-  message: "Data final não pode ser anterior à data inicial",
-  path: ["end_date"],
-}).refine((data) => !data.has_prize || (data.prize_value && data.prize_value > 0), {
-  message: "Prêmio deve ser maior que zero",
-  path: ["prize_value"],
-});
+const editCompetitionSchema = z
+  .object({
+    name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
+    description: z
+      .string()
+      .max(3000, "A descrição deve ter no máximo 3000 caracteres.")
+      .optional(),
+    goal_value: z.coerce.number().positive("Meta deve ser maior que zero"),
+    has_prize: z.boolean().default(false),
+    prize_value: z.coerce.number().min(0, "Prêmio não pode ser negativo").nullable().optional(),
+    start_date: z.string().min(1, "Data inicial é obrigatória"),
+    end_date: z.string().min(1, "Data final é obrigatória"),
+    max_members: z.coerce.number().int().min(2).optional().nullable(),
+  })
+  .refine((data) => {
+    if (data.start_date && data.end_date) {
+      return new Date(data.end_date) >= new Date(data.start_date);
+    }
+    return true;
+  }, {
+    message: "Data final não pode ser anterior à data inicial",
+    path: ["end_date"],
+  })
+  .refine((data) => !data.has_prize || (data.prize_value ?? 0) > 0, {
+    message: "Prêmio deve ser maior que zero",
+    path: ["prize_value"],
+  });
 
 type EditCompetitionFormValues = z.infer<typeof editCompetitionSchema>;
 
@@ -80,7 +86,7 @@ export function EditCompetitionModal({
       description: competition.description || "",
       goal_value: competition.goal_value,
       has_prize: competition.prize_value > 0,
-      prize_value: competition.prize_value,
+      prize_value: competition.prize_value > 0 ? competition.prize_value : null,
       start_date: competition.start_date,
       end_date: competition.end_date,
       max_members: competition.max_members || null,
@@ -97,7 +103,7 @@ export function EditCompetitionModal({
         description: competition.description || "",
         goal_value: competition.goal_value,
         has_prize: competition.prize_value > 0,
-        prize_value: competition.prize_value,
+        prize_value: competition.prize_value > 0 ? competition.prize_value : null,
         start_date: competition.start_date,
         end_date: competition.end_date,
         max_members: competition.max_members || null,

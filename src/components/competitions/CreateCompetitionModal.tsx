@@ -29,10 +29,13 @@ import { format, addDays } from "date-fns";
 const createSchema = z
   .object({
     name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
-    description: z.string().max(3000, "A descrição deve ter no máximo 3000 caracteres.").optional(),
+    description: z
+      .string()
+      .max(3000, "A descrição deve ter no máximo 3000 caracteres.")
+      .optional(),
     goal_value: z.coerce.number().positive("Meta deve ser maior que zero"),
-    has_prize: z.boolean().default(true),
-    prize_value: z.coerce.number().min(0).optional(),
+    has_prize: z.boolean().default(false),
+    prize_value: z.coerce.number().min(0).nullable().optional(),
     start_date: z.string().min(1, "Data de início é obrigatória"),
     end_date: z.string().min(1, "Data de fim é obrigatória"),
     password: z.string().min(4, "Senha deve ter pelo menos 4 caracteres"),
@@ -54,7 +57,7 @@ const createSchema = z
     message: "Tamanho do time deve ser no mínimo 2",
     path: ["team_size"],
   })
-  .refine((data) => !data.has_prize || (data.prize_value && data.prize_value > 0), {
+  .refine((data) => !data.has_prize || (data.prize_value ?? 0) > 0, {
     message: "Prêmio deve ser maior que zero",
     path: ["prize_value"],
   });
@@ -85,8 +88,8 @@ export default function CreateCompetitionModal({
       name: "",
       description: "",
       goal_value: 0,
-      has_prize: true,
-      prize_value: 0,
+      has_prize: false,
+      prize_value: null,
       start_date: today,
       end_date: defaultEnd,
       password: "",
@@ -97,7 +100,7 @@ export default function CreateCompetitionModal({
       host_participates: true,
     },
   });
-
+ 
   const watchAllowTeams = form.watch("allow_teams");
   const watchHasPrize = form.watch("has_prize");
 
