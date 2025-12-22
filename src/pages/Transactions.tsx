@@ -34,6 +34,18 @@ import { IncomeDayForm } from "@/components/income/IncomeDayForm";
 import { useIncomeDay, IncomeDay } from "@/hooks/useIncomeDay";
 import { useExpenseCategories } from "@/hooks/useExpenseCategories";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import {
+  isElectricTransaction,
+  isEnergyCategory,
+  isElectricCategory,
+  getEnergyUnitLabel,
+  getEnergyUnitFullLabel,
+  getEnergyCategoryName,
+  getEnergyQuantityLabel,
+  getEnergyStationLabel,
+  getEnergyStationPlaceholder,
+  getEnergySaveButtonLabel,
+} from "@/lib/transactionHelpers";
 
 export default function Transactions() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -68,11 +80,6 @@ export default function Transactions() {
   const [fuelOdometerKm, setFuelOdometerKm] = useState("");
   const [fuelType, setFuelType] = useState("");
 
-  // Helper to check if category is fuel or electric (energy categories)
-  const isEnergyCategory = (category: string) => 
-    category === "combustivel" || category === "eletrico";
-  
-  const isElectricCategory = (category: string) => category === "eletrico";
 
   // Edit state for expenses
   const [editingTransaction, setEditingTransaction] = useState<{
@@ -1105,53 +1112,71 @@ export default function Transactions() {
               
               {editingTransaction.fuel_log_id ? (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Litros *</Label>
-                      <Input 
-                        type="number" 
-                        step="0.01" 
-                        placeholder="0.00" 
-                        value={editingTransaction.fuelLiters || ""} 
-                        onChange={(e) => setEditingTransaction({ ...editingTransaction, fuelLiters: e.target.value })} 
-                        required 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tipo *</Label>
-                      <Select 
-                        value={editingTransaction.fuelType || ""} 
-                        onValueChange={(value) => setEditingTransaction({ ...editingTransaction, fuelType: value })}
-                      >
-                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="gasolina">Gasolina</SelectItem>
-                          <SelectItem value="etanol">Etanol</SelectItem>
-                          <SelectItem value="diesel">Diesel</SelectItem>
-                          <SelectItem value="gnv">GNV</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Quilometragem</Label>
-                      <Input 
-                        type="number" 
-                        placeholder="Ex: 45000" 
-                        value={editingTransaction.fuelOdometerKm || ""} 
-                        onChange={(e) => setEditingTransaction({ ...editingTransaction, fuelOdometerKm: e.target.value })} 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Posto</Label>
-                      <Input 
-                        placeholder="Nome do posto" 
-                        value={editingTransaction.fuelStation || ""} 
-                        onChange={(e) => setEditingTransaction({ ...editingTransaction, fuelStation: e.target.value })} 
-                      />
-                    </div>
-                  </div>
+                  {(() => {
+                    const isElectric = isElectricTransaction({ fuel_type: editingTransaction.fuelType });
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>{getEnergyUnitFullLabel(isElectric)} *</Label>
+                            <Input 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="0.00" 
+                              value={editingTransaction.fuelLiters || ""} 
+                              onChange={(e) => setEditingTransaction({ ...editingTransaction, fuelLiters: e.target.value })} 
+                              required 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Tipo *</Label>
+                            <Select 
+                              value={editingTransaction.fuelType || ""} 
+                              onValueChange={(value) => setEditingTransaction({ ...editingTransaction, fuelType: value })}
+                            >
+                              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                              <SelectContent>
+                                {isElectric || editingTransaction.category === 'eletrico' ? (
+                                  <>
+                                    <SelectItem value="ac_lento">AC Lento</SelectItem>
+                                    <SelectItem value="ac_semi">AC Semi-Rápido</SelectItem>
+                                    <SelectItem value="dc_rapido">DC Rápido</SelectItem>
+                                    <SelectItem value="residencial">Residencial</SelectItem>
+                                  </>
+                                ) : (
+                                  <>
+                                    <SelectItem value="gasolina">Gasolina</SelectItem>
+                                    <SelectItem value="etanol">Etanol</SelectItem>
+                                    <SelectItem value="diesel">Diesel</SelectItem>
+                                    <SelectItem value="gnv">GNV</SelectItem>
+                                  </>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Quilometragem</Label>
+                            <Input 
+                              type="number" 
+                              placeholder="Ex: 45000" 
+                              value={editingTransaction.fuelOdometerKm || ""} 
+                              onChange={(e) => setEditingTransaction({ ...editingTransaction, fuelOdometerKm: e.target.value })} 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>{getEnergyStationLabel(isElectric)}</Label>
+                            <Input 
+                              placeholder={getEnergyStationPlaceholder(isElectric)}
+                              value={editingTransaction.fuelStation || ""} 
+                              onChange={(e) => setEditingTransaction({ ...editingTransaction, fuelStation: e.target.value })} 
+                            />
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
                   <div className="space-y-2">
                     <Label>Método de pagamento</Label>
                     <Select 
@@ -1242,8 +1267,12 @@ export default function Transactions() {
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : editingTransaction.fuel_log_id ? (
                   <>
-                    <Fuel className="w-4 h-4 mr-2" />
-                    Salvar Abastecimento
+                    {isElectricTransaction({ fuel_type: editingTransaction.fuelType }) ? (
+                      <Zap className="w-4 h-4 mr-2" />
+                    ) : (
+                      <Fuel className="w-4 h-4 mr-2" />
+                    )}
+                    {getEnergySaveButtonLabel(isElectricTransaction({ fuel_type: editingTransaction.fuelType }))}
                   </>
                 ) : (
                   "Salvar Alterações"
@@ -1388,8 +1417,13 @@ export default function Transactions() {
                               )}
                               {transaction.transactionType === "despesa" && (transaction as any).fuel_logs && (
                                 <span className="text-xs text-primary flex items-center gap-1 mt-0.5">
-                                  <Fuel className="w-3 h-3" />
-                                  {Number((transaction as any).fuel_logs.liters).toFixed(1)}L
+                                  {isElectricTransaction(transaction as any) ? (
+                                    <Zap className="w-3 h-3" />
+                                  ) : (
+                                    <Fuel className="w-3 h-3" />
+                                  )}
+                                  {Number((transaction as any).fuel_logs.liters).toFixed(1)}
+                                  {getEnergyUnitLabel(isElectricTransaction(transaction as any))}
                                   {(transaction as any).fuel_logs.odometer_km && (
                                     <> • {new Intl.NumberFormat("pt-BR").format(Number((transaction as any).fuel_logs.odometer_km))} km</>
                                   )}
