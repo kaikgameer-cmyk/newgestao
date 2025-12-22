@@ -127,7 +127,7 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
       });
       toast({
         title: "Perfil configurado!",
-        description: "Bem-vindo ao Driver Control. Boas corridas!",
+        description: "Bem-vindo ao New Gestão. Boas corridas!",
       });
     } catch (error) {
       toast({
@@ -149,7 +149,7 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
         <DialogHeader className="text-center pb-2">
           <DialogTitle className="text-2xl">Configure seu Perfil</DialogTitle>
           <DialogDescription>
-            Preencha seus dados para começar a usar o Driver Control
+            Preencha seus dados para começar a usar o New Gestão
           </DialogDescription>
         </DialogHeader>
 

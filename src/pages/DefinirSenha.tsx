@@ -3,7 +3,7 @@
  * Rota: /definir-senha
  * 
  * Esta página é usada por novos clientes que compraram uma assinatura via Kiwify
- * e precisam definir sua senha de acesso ao Driver Control.
+ * e precisam definir sua senha de acesso ao New Gestão.
  * 
  * Recebe parâmetros via URL:
  * - token: token de criação de senha (obrigatório para definir senha)
@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Loader2, Lock, CheckCircle2, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo-ng.png";
 import { z } from "zod";
 
 // Zod schemas for validation
@@ -195,8 +195,8 @@ export default function DefinirSenha() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-2 mb-4">
-            <img src={logo} alt="Driver Control" className="w-12 h-12 logo-invert" />
-            <span className="text-xl font-semibold">Driver Control</span>
+            <img src={logo} alt="New Gestão" className="w-12 h-12" />
+            <span className="text-xl font-semibold">New Gestão</span>
           </Link>
 
           {pageState === "loading" && (
@@ -212,7 +212,7 @@ export default function DefinirSenha() {
             <>
               <CardTitle className="text-2xl">Criar sua senha</CardTitle>
               <CardDescription>
-                Defina sua senha para acessar o Driver Control.
+                Defina sua senha para acessar o New Gestão.
               </CardDescription>
             </>
           )}
@@ -221,7 +221,7 @@ export default function DefinirSenha() {
             <>
               <CardTitle className="text-2xl text-primary">Senha criada com sucesso!</CardTitle>
               <CardDescription>
-                Agora você já pode acessar o Driver Control.
+                Agora você já pode acessar o New Gestão.
               </CardDescription>
             </>
           )}

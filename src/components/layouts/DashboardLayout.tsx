@@ -20,7 +20,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo-ng.png";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
@@ -160,8 +160,8 @@ export default function DashboardLayout() {
           {/* Logo */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
             <Link to="/dashboard" className="flex items-center gap-2">
-              <img src={logo} alt="Driver Control" className="w-8 h-8 logo-invert" />
-              <span className="font-semibold text-sidebar-foreground">Driver Control</span>
+              <img src={logo} alt="New Gestão" className="w-8 h-8" />
+              <span className="font-semibold text-sidebar-foreground">New Gestão</span>
             </Link>
             <Button
               variant="ghost"
@@ -231,7 +231,7 @@ export default function DashboardLayout() {
             <Menu className="w-5 h-5" />
           </Button>
           <Link to="/dashboard" className="flex items-center gap-2">
-            <img src={logo} alt="Driver Control" className="w-8 h-8 logo-invert" />
+            <img src={logo} alt="New Gestão" className="w-8 h-8" />
           </Link>
           <UserAvatar
             avatarUrl={avatarUrl}

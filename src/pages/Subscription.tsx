@@ -206,8 +206,8 @@ export default function SubscriptionPage() {
               <h3 className="font-semibold mb-1">Precisa de ajuda?</h3>
               <p className="text-sm text-muted-foreground">
                 Se você tiver problemas com sua assinatura ou pagamentos, entre em contato conosco pelo email{" "}
-                <a href="mailto:drivercontrolcontato@outlook.com" className="text-primary hover:underline">
-                  drivercontrolcontato@outlook.com
+                <a href="mailto:newgestao.contato@outlook.com" className="text-primary hover:underline">
+                  newgestao.contato@outlook.com
                 </a>
               </p>
             </div>

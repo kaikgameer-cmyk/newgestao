@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo-ng.png";
 
 export function Header() {
   return (
@@ -8,9 +8,9 @@ export function Header() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <img src={logo} alt="Driver Control" className="w-8 h-8 logo-invert" />
+          <img src={logo} alt="New Gestão" className="w-8 h-8" />
           <span className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
-            Driver Control
+            New Gestão
           </span>
         </Link>
 

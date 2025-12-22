@@ -678,7 +678,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       },
     ],
     tips: [
-      { text: "Para suporte, envie email para drivercontrolcontato@outlook.com" },
+      { text: "Para suporte, envie email para newgestao.contato@outlook.com" },
     ],
   },
 ];
@@ -687,8 +687,8 @@ export const GUIDE_SECTIONS: GuideSection[] = [
  * Texto de introdução do guia
  */
 export const GUIDE_INTRO = {
-  title: "Bem-vindo ao Driver Control",
+  title: "Bem-vindo ao New Gestão",
   subtitle: "Guia Completo da Plataforma",
   description:
-    "Este é o manual oficial do Driver Control. Aqui você encontra explicações detalhadas sobre cada funcionalidade, regras importantes e soluções para problemas comuns. Use o menu lateral para navegar entre as seções.",
+    "Este é o manual oficial do New Gestão. Aqui você encontra explicações detalhadas sobre cada funcionalidade, regras importantes e soluções para problemas comuns. Use o menu lateral para navegar entre as seções.",
 };

@@ -261,7 +261,7 @@ serve(async (req) => {
           type: 'recovery',
           email: email,
           options: {
-            redirectTo: 'https://drivercontrol1.lovable.app/login',
+            redirectTo: 'https://newgestao.app/login',
           },
         });
 
@@ -273,16 +273,16 @@ serve(async (req) => {
         const resetLink = resetData?.properties?.action_link || '';
         console.log("Generated password reset link for user");
 
-        const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "Driver Control <kaikgivaldodias@gmail.com>";
+        const resendFromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "New Gestão <newgestao.contato@outlook.com>";
         const isTestMode = Deno.env.get("RESEND_TEST_MODE") === "true";
-        const testEmail = "kaikgivaldodias@gmail.com";
+        const testEmail = "newgestao.contato@outlook.com";
         const recipientEmail = isTestMode ? testEmail : email;
 
         const resend = new Resend(resendApiKey);
         const emailResponse = await resend.emails.send({
           from: resendFromEmail,
           to: [recipientEmail],
-          subject: "Bem-vindo ao Driver Control! 🚗",
+          subject: "Bem-vindo ao New Gestão! 🚗",
           html: `
             <!DOCTYPE html>
             <html>
@@ -293,7 +293,7 @@ serve(async (req) => {
             <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a; color: #ffffff; margin: 0; padding: 40px 20px;">
               <div style="max-width: 600px; margin: 0 auto; background-color: #1a1a1a; border-radius: 16px; padding: 40px; border: 1px solid #333;">
                 <div style="text-align: center; margin-bottom: 32px;">
-                  <h1 style="color: #facc15; margin: 0; font-size: 28px;">🚗 Driver Control</h1>
+                  <h1 style="color: #facc15; margin: 0; font-size: 28px;">New Gestão</h1>
                 </div>
                 
                 <h2 style="color: #ffffff; margin-bottom: 24px;">Olá${name ? `, ${name}` : ''}!</h2>
@@ -320,8 +320,9 @@ serve(async (req) => {
                 <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
                 
                 <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
-                  © ${new Date().getFullYear()} Driver Control. Todos os direitos reservados.<br>
-                  <a href="https://drivercontrol1.lovable.app" style="color: #facc15; text-decoration: none;">drivercontrol1.lovable.app</a>
+                  © ${new Date().getFullYear()} New Gestão. Todos os direitos reservados.<br>
+                  <a href="https://newgestao.app" style="color: #facc15; text-decoration: none;">newgestao.app</a><br>
+                  <span style="color: #888;">Suporte: newgestao.contato@outlook.com</span>
                 </p>
               </div>
             </body>

@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import heroCarImage from "@/assets/hero-car.png";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo-ng.png";
 import { z } from "zod";
 
 // Zod schema for input validation
@@ -148,8 +148,8 @@ export default function Login() {
         
         <div className="relative z-10 flex flex-col justify-center p-12">
           <Link to="/" className="flex items-center gap-2 mb-12">
-            <img src={logo} alt="Driver Control" className="w-10 h-10 logo-invert" />
-            <span className="text-xl font-semibold">Driver Control</span>
+            <img src={logo} alt="New Gestão" className="w-10 h-10" />
+            <span className="text-xl font-semibold">New Gestão</span>
           </Link>
           
           <h1 className="text-4xl font-bold mb-4">
@@ -193,8 +193,8 @@ export default function Login() {
         <div className="w-full max-w-md space-y-8">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
-            <img src={logo} alt="Driver Control" className="w-10 h-10 logo-invert" />
-            <span className="text-xl font-semibold">Driver Control</span>
+            <img src={logo} alt="New Gestão" className="w-10 h-10" />
+            <span className="text-xl font-semibold">New Gestão</span>
           </div>
           
           <div className="text-center lg:text-left">

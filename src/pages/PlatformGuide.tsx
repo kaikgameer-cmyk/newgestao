@@ -85,10 +85,10 @@ export default function PlatformGuide() {
               <p>
                 Dúvidas? Entre em contato pelo email{" "}
                 <a
-                  href="mailto:drivercontrolcontato@outlook.com"
+                  href="mailto:newgestao.contato@outlook.com"
                   className="text-primary hover:underline"
                 >
-                  drivercontrolcontato@outlook.com
+                  newgestao.contato@outlook.com
                 </a>
               </p>
               <p className="text-xs">

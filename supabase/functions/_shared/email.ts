@@ -28,7 +28,7 @@ export async function sendAppEmail({ to, subject, html }: SendEmailParams) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(fromEmail)) {
     console.error("[EMAIL] RESEND_FROM_EMAIL formato inválido:", fromEmail);
-    console.error("[EMAIL] Deve conter apenas o email (ex: suporte@drivercontrol.com.br), não 'Nome <email>'");
+    console.error("[EMAIL] Deve conter apenas o email (ex: suporte@newgestao.app), não 'Nome <email>'");
     throw new Error(`RESEND_FROM_EMAIL must be a valid email address, got: ${fromEmail}`);
   }
 
@@ -42,7 +42,7 @@ export async function sendAppEmail({ to, subject, html }: SendEmailParams) {
   const finalTo = isTestMode && replyTo ? replyTo : to;
 
   // Build the from field properly
-  const fromField = `Driver Control Suporte <${fromEmail}>`;
+  const fromField = `New Gestão Suporte <${fromEmail}>`;
 
   console.log("[EMAIL] Sending email:");
   console.log("  - From (constructed):", fromField);
@@ -85,5 +85,5 @@ export async function sendAppEmail({ to, subject, html }: SendEmailParams) {
 }
 
 export function getAppBaseUrl(): string {
-  return Deno.env.get("APP_BASE_URL") || "https://drivercontrol.com.br";
+  return Deno.env.get("APP_BASE_URL") || "https://newgestao.app";
 }

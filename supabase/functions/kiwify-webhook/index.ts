@@ -346,10 +346,10 @@ serve(async (req) => {
           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a; color: #ffffff; margin: 0; padding: 40px 20px;">
             <div style="max-width: 600px; margin: 0 auto; background-color: #1a1a1a; border-radius: 16px; padding: 40px; border: 1px solid #333;">
               <div style="text-align: center; margin-bottom: 32px;">
-                <h1 style="color: #facc15; margin: 0; font-size: 28px;">🚗 Driver Control</h1>
+                <h1 style="color: #facc15; margin: 0; font-size: 28px;">New Gestão</h1>
               </div>
               
-              <h2 style="color: #ffffff; margin-bottom: 24px;">Sua assinatura do Driver Control está ativa! 🚗</h2>
+              <h2 style="color: #ffffff; margin-bottom: 24px;">Sua assinatura do New Gestão está ativa! 🚗</h2>
               
               <p style="color: #a1a1a1; line-height: 1.6; margin-bottom: 24px;">
                 Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}! Sua assinatura foi confirmada com sucesso.
@@ -363,7 +363,7 @@ serve(async (req) => {
               </div>
               
               <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                <h3 style="color: #facc15; margin: 0 0 12px 0; font-size: 16px;">🔐 Acesso ao Driver Control</h3>
+                <h3 style="color: #facc15; margin: 0 0 12px 0; font-size: 16px;">🔐 Acesso ao New Gestão</h3>
                 <p style="margin: 4px 0; color: #e5e5e5;">
                   <strong>E-mail de acesso:</strong> ${email}
                 </p>
@@ -398,8 +398,9 @@ serve(async (req) => {
               <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
               
               <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
-                © ${new Date().getFullYear()} Driver Control. Todos os direitos reservados.<br>
-                <a href="${appBaseUrl}" style="color: #facc15; text-decoration: none;">${appBaseUrl}</a>
+                © ${new Date().getFullYear()} New Gestão. Todos os direitos reservados.<br>
+                <a href="${appBaseUrl}" style="color: #facc15; text-decoration: none;">${appBaseUrl}</a><br>
+                <span style="color: #888;">Suporte: newgestao.contato@outlook.com</span>
               </p>
             </div>
           </body>
@@ -414,13 +415,13 @@ serve(async (req) => {
           <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #0a0a0a; color: #ffffff; margin: 0; padding: 40px 20px;">
             <div style="max-width: 600px; margin: 0 auto; background-color: #1a1a1a; border-radius: 16px; padding: 40px; border: 1px solid #333;">
               <div style="text-align: center; margin-bottom: 32px;">
-                <h1 style="color: #facc15; margin: 0; font-size: 28px;">🚗 Driver Control</h1>
+                <h1 style="color: #facc15; margin: 0; font-size: 28px;">New Gestão</h1>
               </div>
               
               <h2 style="color: #ffffff; margin-bottom: 24px;">Sua assinatura está ativa! 🚗</h2>
               
               <p style="color: #a1a1a1; line-height: 1.6; margin-bottom: 24px;">
-                Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}! Sua assinatura do Driver Control foi renovada/reativada com sucesso.
+                Olá${name !== email?.split("@")[0] ? `, ${name}` : ''}! Sua assinatura do New Gestão foi renovada/reativada com sucesso.
               </p>
               
               <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
@@ -431,7 +432,7 @@ serve(async (req) => {
               </div>
               
               <div style="background-color: #262626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                <h3 style="color: #facc15; margin: 0 0 12px 0; font-size: 16px;">🔐 Acesso ao Driver Control</h3>
+                <h3 style="color: #facc15; margin: 0 0 12px 0; font-size: 16px;">🔐 Acesso ao New Gestão</h3>
                 <p style="margin: 4px 0; color: #e5e5e5;">
                   <strong>E-mail de acesso:</strong> ${email}
                 </p>
@@ -450,8 +451,9 @@ serve(async (req) => {
               <hr style="border: none; border-top: 1px solid #333; margin: 32px 0;">
               
               <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
-                © ${new Date().getFullYear()} Driver Control. Todos os direitos reservados.<br>
-                <a href="${appBaseUrl}" style="color: #facc15; text-decoration: none;">${appBaseUrl}</a>
+                © ${new Date().getFullYear()} New Gestão. Todos os direitos reservados.<br>
+                <a href="${appBaseUrl}" style="color: #facc15; text-decoration: none;">${appBaseUrl}</a><br>
+                <span style="color: #888;">Suporte: newgestao.contato@outlook.com</span>
               </p>
             </div>
           </body>
