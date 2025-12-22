@@ -710,28 +710,46 @@ serve(async (req) => {
       
       try {
         if (isNewUser) {
-          // Generate recovery link using Supabase Admin API
-          console.log("Generating recovery link for new user...");
+          // Generate custom password token for newgestao.app/definir-senha
+          console.log("Generating custom password token for new user...");
           
-          const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-            type: "recovery",
-            email,
-            options: {
-              redirectTo: `${config.appUrl}/definir-senha`,
-            },
-          });
-
-          if (linkError || !linkData?.properties?.action_link) {
-            console.error("❌ Error generating recovery link:", linkError?.message || "No action_link returned");
+          // Generate a secure random token
+          const rawToken = crypto.randomUUID() + crypto.randomUUID();
+          
+          // Hash the token for storage
+          const encoder = new TextEncoder();
+          const data = encoder.encode(rawToken);
+          const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          const tokenHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+          
+          // Token expires in 24 hours
+          const expiresAt = new Date();
+          expiresAt.setHours(expiresAt.getHours() + 24);
+          
+          // Store token in database
+          const { error: tokenError } = await supabase
+            .from("password_tokens")
+            .insert({
+              user_id: userId,
+              token_hash: tokenHash,
+              token_preview: rawToken.substring(0, 8) + "...",
+              type: "signup",
+              expires_at: expiresAt.toISOString(),
+            });
+          
+          if (tokenError) {
+            console.error("❌ Error storing password token:", tokenError.message);
             // Fallback: use direct link with email param
             setPasswordUrl = `${config.appUrl}/definir-senha?email=${encodeURIComponent(email)}`;
             console.log("Using fallback URL:", setPasswordUrl);
           } else {
-            // The action_link is the full Supabase URL, we need to use it directly
-            // or extract the token and build our own URL
-            setPasswordUrl = linkData.properties.action_link;
-            console.log("✅ Recovery link generated successfully");
-            console.log("  - Link preview:", setPasswordUrl.substring(0, 80) + "...");
+            // Build the definir-senha URL with our custom token (always newgestao.app)
+            setPasswordUrl = `${config.appUrl}/definir-senha?token=${encodeURIComponent(rawToken)}`;
+            console.log("✅ Custom password token generated successfully");
+            console.log("  - App URL:", config.appUrl);
+            console.log("  - Token preview:", rawToken.substring(0, 8) + "...");
+            console.log("  - Full URL host:", new URL(setPasswordUrl).hostname);
           }
 
           // Build and send purchase approved email
