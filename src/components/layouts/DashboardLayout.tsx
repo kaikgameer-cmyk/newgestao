@@ -18,6 +18,8 @@ import {
   Target,
   Timer,
   Trophy,
+  Fuel,
+  Zap,
 } from "lucide-react";
 import {
   Tooltip,
@@ -130,6 +132,8 @@ export default function DashboardLayout() {
     { icon: Receipt, label: "Lançamentos", path: "/dashboard/lancamentos" },
     { icon: Target, label: "Metas", path: "/dashboard/metas" },
     { icon: CreditCard, label: "Cartões", path: "/dashboard/cartoes" },
+    { icon: Fuel, label: "Combustível", path: "/dashboard/combustivel" },
+    { icon: Zap, label: "Elétrico", path: "/dashboard/eletrico" },
     { icon: Wrench, label: "Manutenção", path: "/dashboard/manutencao" },
     { icon: Repeat, label: "Despesas Fixas", path: "/dashboard/despesas-fixas" },
     { icon: Timer, label: "Timer", path: "/dashboard/timer" },

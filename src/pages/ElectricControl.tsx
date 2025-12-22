@@ -1,0 +1,473 @@
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Plus, Zap, Gauge, DollarSign, TrendingUp, Loader2, Trash2, CreditCard } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { useInvalidateFinancialData } from "@/hooks/useInvalidateFinancialData";
+import { GlobalDateFilter } from "@/components/GlobalDateFilter";
+import { DatePreset, useDateFilterPresets } from "@/hooks/useDateFilterPresets";
+import { DateRange } from "react-day-picker";
+import { format, isWithinInterval } from "date-fns";
+import { parseLocalDate } from "@/lib/dateUtils";
+import { useMaintenance, WARNING_KM } from "@/hooks/useMaintenance";
+import { MaintenanceAlertBanner } from "@/components/maintenance/MaintenanceAlertBanner";
+
+// Electric charge types
+const ELECTRIC_CHARGE_TYPES = ['ac_lento', 'ac_semi', 'dc_rapido', 'residencial'];
+
+const chargeTypeLabels: Record<string, string> = {
+  ac_lento: "AC Lento (3-7 kW)",
+  ac_semi: "AC Semi-Rápido (7-22 kW)",
+  dc_rapido: "DC Rápido (50+ kW)",
+  residencial: "Residencial",
+};
+
+export default function ElectricControl() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [station, setStation] = useState("");
+  const [kwh, setKwh] = useState("");
+  const [totalValue, setTotalValue] = useState("");
+  const [creditCardId, setCreditCardId] = useState("");
+  const [chargeType, setChargeType] = useState("");
+  const [odometerKm, setOdometerKm] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
+
+  // Global date filter state
+  const [preset, setPreset] = useState<DatePreset>("thisMonth");
+  const [customRange, setCustomRange] = useState<DateRange>();
+  const { dateRange, formattedRange } = useDateFilterPresets(preset, customRange);
+
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { invalidateAll } = useInvalidateFinancialData();
+  const queryClient = useQueryClient();
+  const { checkMaintenanceAlerts, maintenanceRecords } = useMaintenance();
+
+  // Fetch all fuel logs that are electric charges
+  const { data: allElectricLogs = [], isLoading } = useQuery({
+    queryKey: ["electric_logs", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("fuel_logs")
+        .select("*, credit_cards(name)")
+        .eq("user_id", user.id)
+        .in("fuel_type", ELECTRIC_CHARGE_TYPES)
+        .order("date", { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: creditCards = [] } = useQuery({
+    queryKey: ["credit_cards", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("credit_cards")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Filter electric logs by selected period
+  const electricLogs = allElectricLogs.filter((log) => {
+    const logDate = parseLocalDate(log.date);
+    return isWithinInterval(logDate, {
+      start: dateRange.from!,
+      end: dateRange.to || dateRange.from!,
+    });
+  });
+
+  const createElectricLog = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Não autenticado");
+      const newOdometer = odometerKm ? parseFloat(odometerKm) : null;
+      
+      // Use the fuel_logs table with electric charge type
+      const { error } = await supabase.from("fuel_logs").insert({
+        user_id: user.id,
+        date,
+        station: station || null,
+        liters: parseFloat(kwh), // Using liters field for kWh
+        total_value: parseFloat(totalValue),
+        fuel_type: chargeType,
+        odometer_km: newOdometer,
+        payment_method: paymentMethod || null,
+        credit_card_id: paymentMethod === "credito" && creditCardId ? creditCardId : null,
+      });
+      if (error) throw error;
+      return newOdometer;
+    },
+    onSuccess: (newOdometer) => {
+      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["electric_logs"] });
+      queryClient.invalidateQueries({ queryKey: ["maintenance_records"] });
+      queryClient.invalidateQueries({ queryKey: ["latest_odometer"] });
+      setIsDialogOpen(false);
+      resetForm();
+      toast({ title: "Recarga registrada!" });
+
+      // Check for maintenance alerts if odometer was provided
+      if (newOdometer && maintenanceRecords.length > 0) {
+        const alerts = checkMaintenanceAlerts(newOdometer);
+        if (alerts.length > 0) {
+          const mostUrgent = alerts[0];
+          const formatKm = (km: number) => new Intl.NumberFormat("pt-BR").format(Math.abs(km));
+          
+          if (mostUrgent.status === "overdue") {
+            toast({
+              title: "⚠️ Manutenção vencida",
+              description: `Você já passou da quilometragem da manutenção: ${mostUrgent.title}. Faça a revisão o quanto antes.`,
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "⚡ Manutenção próxima",
+              description: `Você está a ${formatKm(mostUrgent.kmRemaining)} km da próxima manutenção: ${mostUrgent.title}.`,
+            });
+          }
+        }
+      }
+    },
+    onError: () => {
+      toast({ title: "Erro ao registrar recarga", variant: "destructive" });
+    },
+  });
+
+  const deleteElectricLog = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("fuel_logs").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["electric_logs"] });
+      toast({ title: "Recarga removida!" });
+    },
+  });
+
+  const resetForm = () => {
+    setDate(format(new Date(), "yyyy-MM-dd"));
+    setStation("");
+    setKwh("");
+    setTotalValue("");
+    setChargeType("");
+    setOdometerKm("");
+    setPaymentMethod("");
+    setCreditCardId("");
+  };
+
+  // Calculate metrics for filtered period
+  const totalPeriodValue = electricLogs.reduce((sum, log) => sum + Number(log.total_value), 0);
+  const totalKwh = electricLogs.reduce((sum, log) => sum + Number(log.liters), 0);
+  const avgPricePerKwh = totalKwh > 0 ? totalPeriodValue / totalKwh : 0;
+
+  // Calculate average consumption (km/kWh) from odometer readings
+  const sortedAllLogs = [...allElectricLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  let avgConsumption = 0;
+  if (sortedAllLogs.length >= 2) {
+    let totalKm = 0;
+    let totalKwhForConsumption = 0;
+    for (let i = 1; i < sortedAllLogs.length; i++) {
+      if (sortedAllLogs[i].odometer_km && sortedAllLogs[i - 1].odometer_km) {
+        const kmDiff = Number(sortedAllLogs[i].odometer_km) - Number(sortedAllLogs[i - 1].odometer_km);
+        if (kmDiff > 0) {
+          totalKm += kmDiff;
+          totalKwhForConsumption += Number(sortedAllLogs[i].liters);
+        }
+      }
+    }
+    avgConsumption = totalKwhForConsumption > 0 ? totalKm / totalKwhForConsumption : 0;
+  }
+
+  const costPerKm = avgConsumption > 0 ? avgPricePerKwh / avgConsumption : 0;
+
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Get maintenance alerts for current odometer
+  const latestOdometerValue = allElectricLogs[0]?.odometer_km ? Number(allElectricLogs[0].odometer_km) : null;
+  const maintenanceAlerts = latestOdometerValue ? checkMaintenanceAlerts(latestOdometerValue) : [];
+
+  return (
+    <div className="p-4 sm:p-6 space-y-6">
+      {/* Maintenance Alert Banner */}
+      {maintenanceAlerts.length > 0 && (
+        <MaintenanceAlertBanner alerts={maintenanceAlerts} />
+      )}
+
+      {/* Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Recarga Elétrica</h1>
+            <p className="text-muted-foreground">
+              Controle suas recargas e consumo elétrico
+            </p>
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="hero" size="lg">
+                <Plus className="w-5 h-5" />
+                Nova Recarga
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Registrar Recarga</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); createElectricLog.mutate(); }} className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Data *</Label>
+                    <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Estação (opcional)</Label>
+                    <Input placeholder="Ex: Eletroposto Enel" value={station} onChange={(e) => setStation(e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>kWh *</Label>
+                    <Input type="number" step="0.01" placeholder="0.00" value={kwh} onChange={(e) => setKwh(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Valor Total *</Label>
+                    <Input type="number" step="0.01" placeholder="0.00" value={totalValue} onChange={(e) => setTotalValue(e.target.value)} required />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipo de carregamento *</Label>
+                  <Select value={chargeType} onValueChange={setChargeType} required>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ac_lento">AC Lento (3-7 kW)</SelectItem>
+                      <SelectItem value="ac_semi">AC Semi-Rápido (7-22 kW)</SelectItem>
+                      <SelectItem value="dc_rapido">DC Rápido (50+ kW)</SelectItem>
+                      <SelectItem value="residencial">Residencial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Quilometragem atual</Label>
+                  <Input type="number" placeholder="0" value={odometerKm} onChange={(e) => setOdometerKm(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Método de pagamento</Label>
+                  <Select value={paymentMethod} onValueChange={(value) => {
+                    setPaymentMethod(value);
+                    if (value !== "credito") setCreditCardId("");
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                      <SelectItem value="debito">Débito</SelectItem>
+                      <SelectItem value="credito">Cartão de Crédito</SelectItem>
+                      <SelectItem value="pix">PIX</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {paymentMethod === "credito" && creditCards.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      Selecione o cartão
+                    </Label>
+                    <Select value={creditCardId} onValueChange={setCreditCardId}>
+                      <SelectTrigger><SelectValue placeholder="Escolha um cartão cadastrado" /></SelectTrigger>
+                      <SelectContent>
+                        {creditCards.map((card) => (
+                          <SelectItem key={card.id} value={card.id}>
+                            {card.name} {card.last_digits ? `(•••• ${card.last_digits})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {paymentMethod === "credito" && creditCards.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum cartão cadastrado. Cadastre um cartão na seção de Cartões de Crédito.
+                  </p>
+                )}
+                <Button type="submit" variant="hero" className="w-full" disabled={createElectricLog.isPending}>
+                  {createElectricLog.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Recarga"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Date Filter */}
+        <GlobalDateFilter
+          preset={preset}
+          onPresetChange={setPreset}
+          customRange={customRange}
+          onCustomRangeChange={setCustomRange}
+          className="flex-wrap"
+        />
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <Card variant="elevated">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                <Gauge className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
+              </div>
+              <span className="text-xs sm:text-sm text-muted-foreground">Média km/kWh</span>
+            </div>
+            <p className="text-lg sm:text-2xl font-bold">{avgConsumption > 0 ? `${avgConsumption.toFixed(1)} km/kWh` : "—"}</p>
+          </CardContent>
+        </Card>
+        <Card variant="elevated">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              </div>
+              <span className="text-xs sm:text-sm text-muted-foreground">Preço Médio/kWh</span>
+            </div>
+            <p className="text-lg sm:text-2xl font-bold">{avgPricePerKwh > 0 ? `R$ ${avgPricePerKwh.toFixed(2)}` : "—"}</p>
+          </CardContent>
+        </Card>
+        <Card variant="elevated">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
+              </div>
+              <span className="text-xs sm:text-sm text-muted-foreground">Custo por Km</span>
+            </div>
+            <p className="text-lg sm:text-2xl font-bold">{costPerKm > 0 ? `R$ ${costPerKm.toFixed(2)}` : "—"}</p>
+          </CardContent>
+        </Card>
+        <Card variant="elevated">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
+              </div>
+              <span className="text-xs sm:text-sm text-muted-foreground">Total do Período</span>
+            </div>
+            <p className="text-lg sm:text-2xl font-bold">R$ {totalPeriodValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Electric Logs Table */}
+      {electricLogs.length === 0 ? (
+        <Card variant="elevated" className="p-8 sm:p-12">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
+              <Zap className="w-8 h-8 text-success" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold">Nenhuma recarga no período</h3>
+              <p className="text-muted-foreground max-w-md">
+                Registre suas recargas para acompanhar seu consumo e custos com energia elétrica.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <Card variant="elevated">
+          <CardHeader>
+            <CardTitle className="text-lg">Histórico de Recargas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Data</th>
+                    <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell">Estação</th>
+                    <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Tipo</th>
+                    <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell">kWh</th>
+                    <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden md:table-cell">R$/kWh</th>
+                    <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Total</th>
+                    <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden lg:table-cell">Km</th>
+                    <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {electricLogs.map((log) => (
+                    <tr
+                      key={log.id}
+                      className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
+                    >
+                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm">
+                        {(() => {
+                          const [year, month, day] = log.date.split('-').map(Number);
+                          return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`;
+                        })()}
+                      </td>
+                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm hidden sm:table-cell">{log.station || "—"}</td>
+                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm">
+                        {chargeTypeLabels[log.fuel_type] || log.fuel_type}
+                      </td>
+                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right hidden sm:table-cell">{Number(log.liters).toFixed(1)}</td>
+                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right hidden md:table-cell">
+                        R$ {(Number(log.total_value) / Number(log.liters)).toFixed(2)}
+                      </td>
+                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right font-medium text-success">
+                        R$ {Number(log.total_value).toFixed(2)}
+                      </td>
+                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right text-muted-foreground hidden lg:table-cell">
+                        {log.odometer_km ? Number(log.odometer_km).toLocaleString("pt-BR") : "—"}
+                      </td>
+                      <td className="py-3 px-2 sm:px-4 text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteElectricLog.mutate(log.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

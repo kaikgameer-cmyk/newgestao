@@ -16,6 +16,7 @@ import Transactions from "./pages/Transactions";
 import CreditCards from "./pages/CreditCards";
 import CardInvoices from "./pages/CardInvoices";
 import FuelControl from "./pages/FuelControl";
+import ElectricControl from "./pages/ElectricControl";
 import Maintenance from "./pages/Maintenance";
 import RecurringExpenses from "./pages/RecurringExpenses";
 import SettingsPage from "./pages/Settings";
@@ -60,6 +61,7 @@ const App = () => {
             <Route path="cartoes" element={<CreditCards />} />
             <Route path="cartoes/:cardId/faturas" element={<CardInvoices />} />
             <Route path="combustivel" element={<FuelControl />} />
+            <Route path="eletrico" element={<ElectricControl />} />
             <Route path="manutencao" element={<Maintenance />} />
             <Route path="despesas-fixas" element={<RecurringExpenses />} />
             <Route path="timer" element={<TimerPage />} />
