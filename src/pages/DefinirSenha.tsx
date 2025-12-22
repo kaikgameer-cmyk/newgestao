@@ -66,6 +66,57 @@ export default function DefinirSenha() {
       console.log("[DEFINIR-SENHA] Checking URL params...");
       console.log("  - Token:", tokenParam ? "present" : "none");
       console.log("  - Email:", emailParam || "none");
+      console.log("  - Hash:", window.location.hash ? "present" : "none");
+
+      // Check for Supabase auth tokens in hash (fallback for recovery links)
+      const hash = window.location.hash;
+      if (hash && hash.includes("access_token")) {
+        console.log("[DEFINIR-SENHA] Found Supabase auth tokens in hash");
+        try {
+          // Parse hash params
+          const hashParams = new URLSearchParams(hash.substring(1));
+          const accessToken = hashParams.get("access_token");
+          const refreshToken = hashParams.get("refresh_token");
+          const type = hashParams.get("type");
+
+          console.log("  - Type:", type);
+          console.log("  - Access token:", accessToken ? "present" : "none");
+
+          if (accessToken && refreshToken && (type === "recovery" || type === "invite")) {
+            // Set session with these tokens
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (error) {
+              console.error("[DEFINIR-SENHA] Error setting session:", error.message);
+              if (error.message.includes("expired") || error.message.includes("invalid")) {
+                setErrorMessage("O link expirou ou é inválido. Solicite um novo link pelo login.");
+                setPageState("invalid");
+                return;
+              }
+              throw error;
+            }
+
+            // Get user email from session
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user?.email) {
+              setEmail(user.email);
+              console.log("[DEFINIR-SENHA] Session established for:", user.email);
+              setPageState("form");
+              // Clear hash from URL
+              window.history.replaceState(null, "", window.location.pathname);
+              return;
+            }
+          }
+        } catch (err: any) {
+          console.error("[DEFINIR-SENHA] Error processing hash tokens:", err);
+          setErrorMessage("Erro ao processar o link. Tente solicitar um novo.");
+          setPageState("error");
+          return;
+        }
+      }
 
       // If no token, show error state
       if (!tokenParam) {
@@ -83,16 +134,7 @@ export default function DefinirSenha() {
       try {
         // Validate token via edge function
         console.log("[DEFINIR-SENHA] Validating token...");
-        
-        const { data, error } = await supabase.functions.invoke<TokenValidation>("set-password", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: null,
-        });
 
-        // The invoke method doesn't support GET with query params directly, so we need to use fetch
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const response = await fetch(
           `${supabaseUrl}/functions/v1/set-password?token=${encodeURIComponent(tokenParam)}`,
