@@ -142,10 +142,10 @@ export function ExpenseCategorySettings() {
     );
   }
 
-  // Separate default categories (is_default=true) from custom (is_default=false) - both owned by user
-  // Also include system categories (user_id=null) as defaults
-  const defaultCategories = categories.filter((c) => c.is_default || c.is_system);
-  const customCategories = categories.filter((c) => !c.is_default && !c.is_system && c.user_id !== null);
+  // Separate system categories (user_id=null) from user categories (user_id !== null)
+  // User categories (including defaults added by the user) should be editable/deletable
+  const systemCategories = categories.filter((c) => c.is_system || c.user_id === null);
+  const userCategories_list = categories.filter((c) => !c.is_system && c.user_id !== null);
 
   return (
     <>
@@ -186,13 +186,13 @@ export function ExpenseCategorySettings() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Default Categories - only toggle, no edit/delete */}
-          {defaultCategories.length > 0 && (
+          {/* System Categories - only toggle, no edit/delete */}
+          {systemCategories.length > 0 && (
             <>
               <p className="text-xs text-muted-foreground">
-                Categorias padrão
+                Categorias do sistema
               </p>
-              {defaultCategories.map((category) => {
+              {systemCategories.map((category) => {
                 const isEnabled = isCategoryEnabled(category.key);
                 const isLastEnabled = isEnabled && enabledCategories.length === 1;
 
@@ -240,14 +240,14 @@ export function ExpenseCategorySettings() {
             </>
           )}
 
-          {/* Divider if there are custom categories */}
-          {customCategories.length > 0 && (
-            <div className="border-t border-border pt-4 mt-4">
+          {/* User Categories - with edit/delete */}
+          {userCategories_list.length > 0 && (
+            <div className={systemCategories.length > 0 ? "border-t border-border pt-4 mt-4" : ""}>
               <p className="text-xs text-muted-foreground mb-3">
-                Suas categorias personalizadas
+                Suas categorias
               </p>
 
-              {customCategories.map((category) => {
+              {userCategories_list.map((category) => {
                 const isEnabled = isCategoryEnabled(category.key);
                 const isLastEnabled = isEnabled && enabledCategories.length === 1;
 

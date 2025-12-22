@@ -143,10 +143,10 @@ export function PlatformSettings() {
     );
   }
 
-  // Separate default platforms (is_default=true) from custom (is_default=false)
-  // Also include system platforms (user_id=null) as defaults
-  const defaultPlatforms = platforms.filter((p) => p.is_default || p.user_id === null);
-  const customPlatforms = platforms.filter((p) => !p.is_default && p.user_id !== null);
+  // Separate system platforms (user_id=null) from user platforms (user_id !== null)
+  // User platforms (including defaults added by the user) should be editable/deletable
+  const systemPlatforms = platforms.filter((p) => p.user_id === null);
+  const userPlatforms_list = platforms.filter((p) => p.user_id !== null);
 
   return (
     <>
@@ -187,13 +187,13 @@ export function PlatformSettings() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Default Platforms - only toggle, no edit/delete */}
-          {defaultPlatforms.length > 0 && (
+          {/* System Platforms - only toggle, no edit/delete */}
+          {systemPlatforms.length > 0 && (
             <>
               <p className="text-xs text-muted-foreground">
-                Plataformas padrão
+                Plataformas do sistema
               </p>
-              {defaultPlatforms.map((platform) => {
+              {systemPlatforms.map((platform) => {
                 const isEnabled = isPlatformEnabled(platform.key);
                 const isLastEnabled = isEnabled && enabledPlatforms.length === 1;
 
@@ -234,12 +234,12 @@ export function PlatformSettings() {
             </>
           )}
 
-          {/* Divider if there are custom platforms */}
-          {customPlatforms.length > 0 && (
-            <div className="border-t border-border pt-4 mt-4">
-              <p className="text-xs text-muted-foreground mb-3">Suas plataformas e receitas personalizadas</p>
+          {/* User Platforms - with edit/delete */}
+          {userPlatforms_list.length > 0 && (
+            <div className={systemPlatforms.length > 0 ? "border-t border-border pt-4 mt-4" : ""}>
+              <p className="text-xs text-muted-foreground mb-3">Suas plataformas e receitas</p>
 
-              {customPlatforms.map((platform) => {
+              {userPlatforms_list.map((platform) => {
                 const isEnabled = isPlatformEnabled(platform.key);
                 const isLastEnabled = isEnabled && enabledPlatforms.length === 1;
 
