@@ -21,9 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Receipt, Loader2, Plus, Trash2, Pencil, Sparkles } from "lucide-react";
+import { Receipt, Loader2, Plus, Trash2, Pencil } from "lucide-react";
 import { useExpenseCategories, ExpenseCategory } from "@/hooks/useExpenseCategories";
-import { useApplyDefaults } from "@/hooks/useApplyDefaults";
 import { useToast } from "@/hooks/use-toast";
 import { CategoryIcon } from "@/components/ui/category-icon";
 
@@ -42,8 +41,6 @@ export function ExpenseCategorySettings() {
     deleteCategory,
     updateCategory,
   } = useExpenseCategories();
-
-  const { applyDefaultExpenseCategories } = useApplyDefaults();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -157,29 +154,14 @@ export function ExpenseCategorySettings() {
               <Receipt className="w-5 h-5 text-primary" />
               <CardTitle className="text-lg">Categorias de Despesas</CardTitle>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => applyDefaultExpenseCategories.mutate()}
-                disabled={applyDefaultExpenseCategories.isPending}
-              >
-                {applyDefaultExpenseCategories.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4 mr-1" />
-                )}
-                Adicionar padrão
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsCreateDialogOpen(true)}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Cadastrar
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreateDialogOpen(true)}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Cadastrar
+            </Button>
           </div>
           <p className="text-sm text-muted-foreground">
             Selecione as categorias de despesas que você usa. Apenas as habilitadas aparecerão ao lançar despesas.

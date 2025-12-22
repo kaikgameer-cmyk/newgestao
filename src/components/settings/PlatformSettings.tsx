@@ -22,9 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Car, Loader2, Plus, Trash2, Pencil, Sparkles } from "lucide-react";
+import { Car, Loader2, Plus, Trash2, Pencil } from "lucide-react";
 import { usePlatforms, Platform } from "@/hooks/usePlatforms";
-import { useApplyDefaults } from "@/hooks/useApplyDefaults";
 import { useToast } from "@/hooks/use-toast";
 import { CategoryIcon } from "@/components/ui/category-icon";
 
@@ -43,8 +42,6 @@ export function PlatformSettings() {
     updatePlatform,
     isPlatformEnabled,
   } = usePlatforms();
-
-  const { applyDefaultPlatforms } = useApplyDefaults();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newPlatformName, setNewPlatformName] = useState("");
@@ -150,29 +147,14 @@ export function PlatformSettings() {
               <Car className="w-5 h-5 text-primary" />
               <CardTitle className="text-lg">Plataformas e outras receitas</CardTitle>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => applyDefaultPlatforms.mutate()}
-                disabled={applyDefaultPlatforms.isPending}
-              >
-                {applyDefaultPlatforms.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4 mr-1" />
-                )}
-                Adicionar padrão
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsCreateDialogOpen(true)}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Cadastrar
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreateDialogOpen(true)}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Cadastrar
+            </Button>
           </div>
           <p className="text-sm text-muted-foreground">
             Selecione as plataformas e outras fontes de receita que você usa. Apenas as habilitadas aparecerão ao lançar receitas.
