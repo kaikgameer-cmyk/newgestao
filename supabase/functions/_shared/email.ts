@@ -177,9 +177,8 @@ const EMAIL_STYLES = {
 /**
  * Gera o layout base do email com header e footer
  */
-export function getEmailLayout(content: string, options?: { showLogo?: boolean }): string {
+export function getEmailLayout(content: string): string {
   const config = getEmailConfig();
-  const showLogo = options?.showLogo ?? true;
 
   return `
 <!DOCTYPE html>
@@ -195,32 +194,12 @@ export function getEmailLayout(content: string, options?: { showLogo?: boolean }
       <td align="center" style="padding: 40px 20px;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px;">
           
-          <!-- Header with Logo -->
-          ${showLogo ? `
+          <!-- Header with Brand Name -->
           <tr>
             <td align="center" style="padding-bottom: 32px;">
-              <!--[if mso]>
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="56">
-                <tr>
-                  <td align="center" style="background-color: ${EMAIL_STYLES.accent}; border-radius: 8px; padding: 10px 14px;">
-                    <span style="font-size: 20px; font-weight: bold; color: ${EMAIL_STYLES.accentDark}; letter-spacing: 1px; font-family: Arial, sans-serif;">NG</span>
-                  </td>
-                </tr>
-              </table>
-              <![endif]-->
-              <!--[if !mso]><!-->
-              <img 
-                src="${EMAIL_LOGO_URL}" 
-                alt="New Gestão" 
-                width="56" 
-                height="56" 
-                border="0"
-                style="display: block; border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; max-width: 56px; height: auto;" 
-              />
-              <!--<![endif]-->
+              <span style="font-size: 24px; font-weight: bold; color: ${EMAIL_STYLES.accent}; letter-spacing: 1px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">NEW GESTÃO</span>
             </td>
           </tr>
-          ` : ''}
           
           <!-- Content Card -->
           <tr>
