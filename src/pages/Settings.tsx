@@ -372,12 +372,44 @@ export default function SettingsPage() {
                 Tipo do Veículo
               </Label>
               <p className="text-xs text-muted-foreground">
-                Define quais módulos aparecem no menu
+                Define quais módulos e categorias aparecem no sistema
               </p>
 
               <RadioGroup
                 value={vehicleType}
-                onValueChange={(value) => setVehicleType(value as "electric" | "fuel")}
+                onValueChange={async (value) => {
+                  const newType = value as "electric" | "fuel";
+                  const previousType = vehicleType;
+                  setVehicleType(newType);
+                  
+                  try {
+                    if (!user) throw new Error("Não autenticado");
+                    const { error } = await supabase
+                      .from("profiles")
+                      .update({ vehicle_type: newType })
+                      .eq("user_id", user.id);
+                    
+                    if (error) throw error;
+                    
+                    queryClient.invalidateQueries({ queryKey: ["profile"] });
+                    queryClient.invalidateQueries({ queryKey: ["vehicle-type"] });
+                    queryClient.invalidateQueries({ queryKey: ["user-profile"] });
+                    
+                    toast({
+                      title: "Preferência atualizada",
+                      description: newType === "electric" 
+                        ? "Modo Elétrico ativado. A categoria Combustível será ocultada." 
+                        : "Modo Combustível ativado. A categoria Elétrico será ocultada.",
+                    });
+                  } catch (error) {
+                    setVehicleType(previousType);
+                    toast({
+                      title: "Erro ao atualizar",
+                      description: "Não foi possível salvar a preferência.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
                 className="grid grid-cols-2 gap-3"
               >
                 <div className="relative">
@@ -413,7 +445,7 @@ export default function SettingsPage() {
               <Alert variant="default" className="bg-muted/50 border-muted-foreground/20">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="text-xs">
-                  Trocar o tipo do veículo altera quais módulos aparecem no menu. Seus lançamentos antigos não serão apagados.
+                  Ao mudar o tipo do veículo, a categoria oposta (Combustível/Elétrico) será ocultada nos novos lançamentos. Seus lançamentos antigos não serão apagados.
                 </AlertDescription>
               </Alert>
             </div>
