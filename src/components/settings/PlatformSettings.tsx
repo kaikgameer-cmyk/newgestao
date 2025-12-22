@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Car, Loader2, Plus, Trash2 } from "lucide-react";
+import { Car, Loader2, Plus, Trash2, Pencil } from "lucide-react";
 import { usePlatforms } from "@/hooks/usePlatforms";
 import { useToast } from "@/hooks/use-toast";
 
@@ -216,6 +216,14 @@ export function PlatformSettings() {
                         }}
                         disabled={togglePlatform.isPending}
                       />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => openEditDialog(platform)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
