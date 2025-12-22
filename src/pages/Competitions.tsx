@@ -205,6 +205,12 @@ export default function Competitions() {
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Users className="w-4 h-4" />
                             {memberCount} participante{memberCount !== 1 ? 's' : ''}
+                            {comp.user_rank && comp.computed_label === "Em andamento" && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Medal className="w-3 h-3 mr-1" />
+                                {comp.user_rank}º lugar
+                              </Badge>
+                            )}
                             {isHost && (
                               <Badge variant="outline" className="text-xs">
                                 <Crown className="w-3 h-3 mr-1" />
