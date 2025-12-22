@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,18 @@ import { format, isWithinInterval } from "date-fns";
 import { parseLocalDate } from "@/lib/dateUtils";
 import { useMaintenance, WARNING_KM } from "@/hooks/useMaintenance";
 import { MaintenanceAlertBanner } from "@/components/maintenance/MaintenanceAlertBanner";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 // Electric charge types
 const ELECTRIC_CHARGE_TYPES = ['ac_lento', 'ac_semi', 'dc_rapido', 'residencial'];
@@ -208,6 +220,66 @@ export default function ElectricControl() {
   }
 
   const costPerKm = avgConsumption > 0 ? avgPricePerKwh / avgConsumption : 0;
+
+  // Chart data - consumption over time (km/kWh per charge)
+  const consumptionChartData = useMemo(() => {
+    const sortedLogs = [...electricLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const data: { date: string; consumption: number; pricePerKwh: number }[] = [];
+    
+    for (let i = 1; i < sortedLogs.length; i++) {
+      if (sortedLogs[i].odometer_km && sortedLogs[i - 1].odometer_km) {
+        const kmDiff = Number(sortedLogs[i].odometer_km) - Number(sortedLogs[i - 1].odometer_km);
+        const kwhUsed = Number(sortedLogs[i].liters);
+        if (kmDiff > 0 && kwhUsed > 0) {
+          data.push({
+            date: format(parseLocalDate(sortedLogs[i].date), "dd/MM"),
+            consumption: Number((kmDiff / kwhUsed).toFixed(1)),
+            pricePerKwh: Number((Number(sortedLogs[i].total_value) / kwhUsed).toFixed(2)),
+          });
+        }
+      }
+    }
+    return data;
+  }, [electricLogs]);
+
+  // Chart data - monthly spending
+  const monthlySpendingData = useMemo(() => {
+    const monthlyMap = new Map<string, { total: number; kwh: number }>();
+    
+    electricLogs.forEach((log) => {
+      const monthKey = format(parseLocalDate(log.date), "MMM/yy");
+      const existing = monthlyMap.get(monthKey) || { total: 0, kwh: 0 };
+      monthlyMap.set(monthKey, {
+        total: existing.total + Number(log.total_value),
+        kwh: existing.kwh + Number(log.liters),
+      });
+    });
+    
+    return Array.from(monthlyMap.entries()).map(([month, data]) => ({
+      month,
+      total: Number(data.total.toFixed(2)),
+      kwh: Number(data.kwh.toFixed(1)),
+    }));
+  }, [electricLogs]);
+
+  const chartConfig = {
+    consumption: {
+      label: "km/kWh",
+      color: "hsl(var(--success))",
+    },
+    pricePerKwh: {
+      label: "R$/kWh",
+      color: "hsl(var(--primary))",
+    },
+    total: {
+      label: "Gasto Total",
+      color: "hsl(var(--primary))",
+    },
+    kwh: {
+      label: "kWh",
+      color: "hsl(var(--success))",
+    },
+  } satisfies ChartConfig;
 
   if (isLoading) {
     return (
@@ -388,6 +460,150 @@ export default function ElectricControl() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Charts Section */}
+      {electricLogs.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Consumption Chart */}
+          {consumptionChartData.length > 0 && (
+            <Card variant="elevated">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Gauge className="w-5 h-5 text-success" />
+                  Consumo ao Longo do Tempo (km/kWh)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                  <LineChart data={consumptionChartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }} 
+                      tickLine={false}
+                      axisLine={false}
+                      className="fill-muted-foreground"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="fill-muted-foreground"
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line
+                      type="monotone"
+                      dataKey="consumption"
+                      stroke="var(--color-consumption)"
+                      strokeWidth={2}
+                      dot={{ fill: "var(--color-consumption)", strokeWidth: 0, r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Price per kWh Chart */}
+          {consumptionChartData.length > 0 && (
+            <Card variant="elevated">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-primary" />
+                  Preço por kWh ao Longo do Tempo
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                  <LineChart data={consumptionChartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }} 
+                      tickLine={false}
+                      axisLine={false}
+                      className="fill-muted-foreground"
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="fill-muted-foreground"
+                      tickFormatter={(value) => `R$${value}`}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line
+                      type="monotone"
+                      dataKey="pricePerKwh"
+                      stroke="var(--color-pricePerKwh)"
+                      strokeWidth={2}
+                      dot={{ fill: "var(--color-pricePerKwh)", strokeWidth: 0, r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Monthly Spending Chart */}
+          {monthlySpendingData.length > 0 && (
+            <Card variant="elevated" className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  Gastos Mensais com Recarga
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[250px] w-full">
+                  <BarChart data={monthlySpendingData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 12 }} 
+                      tickLine={false}
+                      axisLine={false}
+                      className="fill-muted-foreground"
+                    />
+                    <YAxis 
+                      yAxisId="left"
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="fill-muted-foreground"
+                      tickFormatter={(value) => `R$${value}`}
+                    />
+                    <YAxis 
+                      yAxisId="right"
+                      orientation="right"
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="fill-muted-foreground"
+                      tickFormatter={(value) => `${value} kWh`}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="total"
+                      fill="var(--color-total)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      yAxisId="right"
+                      dataKey="kwh"
+                      fill="var(--color-kwh)"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Electric Logs Table */}
       {electricLogs.length === 0 ? (
