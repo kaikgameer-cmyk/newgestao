@@ -322,8 +322,8 @@ export default function CompetitionDetails() {
           />
         )}
 
-        {/* Ranking Section - only for members/host */}
-        {(isMember || isHost) && dashboardData.ranking && (
+        {/* Ranking Section - always visible for members/host */}
+        {(isMember || isHost) && (
           <RankingSection
             ranking={dashboardData.ranking}
             teamRanking={dashboardData.team_ranking}
