@@ -16,10 +16,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Loader2, Lock, CheckCircle2, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Loader2, Lock, CheckCircle2, Eye, EyeOff, AlertCircle, Mail, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/logo-ng.png";
 import { z } from "zod";
+
+// Email validation schema
+const emailSchema = z.string()
+  .trim()
+  .min(1, "Email é obrigatório")
+  .max(255, "Email deve ter no máximo 255 caracteres")
+  .email("Formato de email inválido");
 
 const PROD_APP_URL = "https://newgestao.app";
 
@@ -58,6 +66,14 @@ export default function DefinirSenha() {
   const [errors, setErrors] = useState<{ password?: string; confirmPassword?: string }>({});
   const [errorMessage, setErrorMessage] = useState("");
   const [token, setToken] = useState<string | null>(null);
+  
+  // Resend link form state
+  const [resendEmail, setResendEmail] = useState("");
+  const [resendEmailError, setResendEmailError] = useState("");
+  const [isResending, setIsResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState(false);
+  
+  const { toast } = useToast();
 
   // Validate token on page load
   useEffect(() => {
@@ -287,6 +303,63 @@ export default function DefinirSenha() {
   // Check if form is valid for submit button
   const isFormValid = password.length >= 8 && confirmPassword.length > 0;
 
+  // Handle resend link request
+  const handleResendLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResendEmailError("");
+    setResendSuccess(false);
+
+    // Validate email
+    const emailResult = emailSchema.safeParse(resendEmail);
+    if (!emailResult.success) {
+      setResendEmailError(emailResult.error.errors[0].message);
+      return;
+    }
+
+    setIsResending(true);
+
+    try {
+      console.log("[DEFINIR-SENHA] Requesting new password link for:", resendEmail);
+      
+      const { data, error } = await supabase.functions.invoke("resend-password-link", {
+        body: { email: resendEmail.toLowerCase().trim() },
+      });
+
+      if (error) {
+        console.error("[DEFINIR-SENHA] Error requesting new link:", error);
+        throw new Error(error.message || "Erro ao processar solicitação");
+      }
+
+      if (data?.error) {
+        // Handle specific errors
+        if (data.error.includes("assinatura ativa")) {
+          setResendEmailError("Você não possui assinatura ativa. Entre em contato com o suporte.");
+        } else {
+          setResendEmailError(data.error);
+        }
+        return;
+      }
+
+      console.log("[DEFINIR-SENHA] New link sent successfully");
+      setResendSuccess(true);
+      toast({
+        title: "Link enviado!",
+        description: "Verifique sua caixa de entrada e spam.",
+      });
+    } catch (err: any) {
+      console.error("[DEFINIR-SENHA] Error in handleResendLink:", err);
+      
+      // Handle rate limit errors
+      if (err.message?.includes("rate") || err.message?.includes("limite")) {
+        setResendEmailError("Muitas tentativas. Aguarde alguns minutos e tente novamente.");
+      } else {
+        setResendEmailError(err.message || "Erro ao enviar link. Tente novamente.");
+      }
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -460,35 +533,98 @@ export default function DefinirSenha() {
           )}
 
           {(pageState === "error" || pageState === "invalid") && (
-            <div className="text-center space-y-6">
-              <div className="flex justify-center">
-                <AlertCircle className="w-16 h-16 text-destructive" />
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="flex justify-center mb-4">
+                  <AlertCircle className="w-16 h-16 text-destructive" />
+                </div>
+                
+                <p className="text-muted-foreground mb-2">
+                  {errorMessage}
+                </p>
               </div>
-              
-              <p className="text-muted-foreground">
-                {errorMessage}
-              </p>
 
-              <div className="space-y-3">
-                {pageState === "error" && (
-                  <Button
-                    variant="hero"
-                    className="w-full"
-                    onClick={() => {
-                      setPageState("form");
-                      setErrorMessage("");
-                    }}
-                  >
-                    Tentar novamente
-                  </Button>
+              {/* Resend link form */}
+              <div className="border-t border-border pt-6">
+                {resendSuccess ? (
+                  <div className="text-center space-y-4">
+                    <div className="flex justify-center">
+                      <CheckCircle2 className="w-12 h-12 text-primary" />
+                    </div>
+                    <p className="text-muted-foreground">
+                      Link enviado! Verifique seu email (inclusive a pasta de spam).
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setResendSuccess(false);
+                        setResendEmail("");
+                      }}
+                    >
+                      Enviar para outro email
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleResendLink} className="space-y-4">
+                    <div className="text-center mb-4">
+                      <h3 className="font-semibold text-foreground flex items-center justify-center gap-2">
+                        <Mail className="w-4 h-4" />
+                        Solicitar novo link
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Digite seu email para receber um novo link de acesso.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="resend-email">Email</Label>
+                      <Input
+                        id="resend-email"
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={resendEmail}
+                        onChange={(e) => {
+                          setResendEmail(e.target.value);
+                          setResendEmailError("");
+                        }}
+                        className={resendEmailError ? "border-destructive" : ""}
+                        disabled={isResending}
+                      />
+                      {resendEmailError && (
+                        <p className="text-sm text-destructive">{resendEmailError}</p>
+                      )}
+                    </div>
+
+                    <Button
+                      type="submit"
+                      variant="hero"
+                      className="w-full"
+                      disabled={isResending || !resendEmail}
+                    >
+                      {isResending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Reenviar link
+                        </>
+                      )}
+                    </Button>
+                  </form>
                 )}
+              </div>
 
+              <div className="pt-2">
                 <Button
                   variant="outline"
                   className="w-full"
                   onClick={() => navigate("/login")}
                 >
-                  Ir para Login
+                  Voltar para o Login
                 </Button>
               </div>
             </div>
