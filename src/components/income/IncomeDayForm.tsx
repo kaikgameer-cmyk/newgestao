@@ -22,6 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { CategoryIcon } from "@/components/ui/category-icon";
 
 interface IncomeDayFormProps {
   open: boolean;
@@ -203,12 +204,7 @@ export function IncomeDayForm({
     parseInt(trips) > 0 &&
     hasAtLeastOnePlatformWithValue;
 
-  const getPlatformColor = (key: string): string => {
-    if (key === "uber") return "bg-black";
-    if (key === "99") return "bg-[#FFB800]";
-    if (key === "indrive") return "bg-[#2DCC70]";
-    return "bg-primary";
-  };
+  // Removed getPlatformColor - now using CategoryIcon with platform.icon and platform.color
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -343,7 +339,11 @@ export function IncomeDayForm({
                 <div className="space-y-3">
                   {platformsToShow.map((platform) => (
                     <div key={platform.key} className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full shrink-0 ${getPlatformColor(platform.key)}`} />
+                      <CategoryIcon
+                        iconName={platform.icon}
+                        color={platform.color}
+                        size={18}
+                      />
                       <Label className="w-24 shrink-0 font-medium">
                         {platform.name}
                       </Label>

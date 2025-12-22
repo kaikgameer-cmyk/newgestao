@@ -33,6 +33,7 @@ import { useMaintenance } from "@/hooks/useMaintenance";
 import { IncomeDayForm } from "@/components/income/IncomeDayForm";
 import { useIncomeDay, IncomeDay } from "@/hooks/useIncomeDay";
 import { useExpenseCategories } from "@/hooks/useExpenseCategories";
+import { CategoryIcon } from "@/components/ui/category-icon";
 
 export default function Transactions() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -665,7 +666,10 @@ export default function Transactions() {
                             ) : (
                               enabledCategories.map((cat) => (
                                 <SelectItem key={cat.key} value={cat.key}>
-                                  {cat.name}
+                                  <div className="flex items-center gap-2">
+                                    <CategoryIcon iconName={cat.icon} color={cat.color} size={16} />
+                                    <span>{cat.name}</span>
+                                  </div>
                                 </SelectItem>
                               ))
                             )}
@@ -1190,14 +1194,14 @@ export default function Transactions() {
                     >
                       <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="combustivel">Combustível</SelectItem>
-                        <SelectItem value="manutencao">Manutenção</SelectItem>
-                        <SelectItem value="lavagem">Lavagem</SelectItem>
-                        <SelectItem value="pedagio">Pedágio</SelectItem>
-                        <SelectItem value="estacionamento">Estacionamento</SelectItem>
-                        <SelectItem value="alimentacao">Alimentação</SelectItem>
-                        <SelectItem value="cartao">Cartão de Crédito</SelectItem>
-                        <SelectItem value="outro">Outro</SelectItem>
+                        {enabledCategories.map((cat) => (
+                          <SelectItem key={cat.key} value={cat.key}>
+                            <div className="flex items-center gap-2">
+                              <CategoryIcon iconName={cat.icon} color={cat.color} size={16} />
+                              <span>{cat.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
