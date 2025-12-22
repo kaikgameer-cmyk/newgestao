@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { LogIn, Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Key } from "lucide-react";
 import { useJoinCompetition, useAcceptCompetitionTransparency, useLeaveCompetition } from "@/hooks/useCompetitions";
+import { supabase } from "@/integrations/supabase/client";
 
 const step1Schema = z.object({
   code: z
@@ -67,6 +68,7 @@ export default function JoinCompetitionModal({
   const [step1Data, setStep1Data] = useState<Step1Values | null>(null);
   const [joinedCompetitionId, setJoinedCompetitionId] = useState<string | null>(null);
   const [transparencyChecked, setTransparencyChecked] = useState(false);
+  const [hasPrize, setHasPrize] = useState<boolean | null>(null);
 
   const joinMutation = useJoinCompetition();
   const acceptTransparencyMutation = useAcceptCompetitionTransparency();
@@ -105,10 +107,51 @@ export default function JoinCompetitionModal({
     }
   }, [open, step1Form, step2Form]);
 
-  const onStep1Submit = (values: Step1Values) => {
+  const handleJoinWithoutPix = async (values: Step1Values) => {
+    const result = await joinMutation.mutateAsync({
+      code: values.code,
+      password: values.password,
+      pix_key: "",
+      pix_key_type: undefined,
+    });
+
+    if (result.competition_id) {
+      setJoinedCompetitionId(result.competition_id);
+      setTransparencyChecked(false);
+      setStep(3);
+    }
+  };
+
+  const onStep1Submit = async (values: Step1Values) => {
     setStep1Data(values);
-    step2Form.reset({ pix_key: "", pix_key_type: "" as unknown as Step2Values["pix_key_type"] });
-    setStep(2);
+
+    try {
+      const { data } = await supabase
+        .from("competitions")
+        .select("prize_value")
+        .eq("code", values.code.toUpperCase())
+        .maybeSingle();
+
+      const hasPrizeFlag = (data?.prize_value || 0) > 0;
+      setHasPrize(hasPrizeFlag);
+
+      if (hasPrizeFlag) {
+        step2Form.reset({
+          pix_key: "",
+          pix_key_type: "" as unknown as Step2Values["pix_key_type"],
+        });
+        setStep(2);
+      } else {
+        await handleJoinWithoutPix(values);
+      }
+    } catch {
+      step2Form.reset({
+        pix_key: "",
+        pix_key_type: "" as unknown as Step2Values["pix_key_type"],
+      });
+      setHasPrize(true);
+      setStep(2);
+    }
   };
 
   const onStep2Submit = async (values: Step2Values) => {
@@ -188,10 +231,11 @@ export default function JoinCompetitionModal({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Step indicator */}
         <div className="flex items-center gap-2 mb-2">
           <div className={`h-2 flex-1 rounded-full ${step >= 1 ? "bg-primary" : "bg-muted"}`} />
-          <div className={`h-2 flex-1 rounded-full ${step >= 2 ? "bg-primary" : "bg-muted"}`} />
+          {hasPrize && (
+            <div className={`h-2 flex-1 rounded-full ${step >= 2 ? "bg-primary" : "bg-muted"}`} />
+          )}
           <div className={`h-2 flex-1 rounded-full ${step >= 3 ? "bg-primary" : "bg-muted"}`} />
         </div>
 
@@ -308,10 +352,7 @@ export default function JoinCompetitionModal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo da Chave *</FormLabel>
-                    <Select
-                      value={field.value ?? ""}
-                      onValueChange={field.onChange}
-                    >
+                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger className="bg-background">
                           <SelectValue placeholder="Selecione o tipo" />
@@ -340,11 +381,7 @@ export default function JoinCompetitionModal({
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Voltar
                 </Button>
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={joinMutation.isPending}
-                >
+                <Button type="submit" className="flex-1" disabled={joinMutation.isPending}>
                   {joinMutation.isPending ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -373,7 +410,8 @@ export default function JoinCompetitionModal({
                 Para manter tudo justo, lance apenas valores reais e seja 100% transparente.
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Não tente manipular resultados — o objetivo aqui é evolução, disciplina e competição saudável.
+                Não tente manipular resultados — o objetivo aqui é evolução, disciplina e competição
+                saudável.
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Ao participar, você concorda em respeitar as regras e os outros participantes.
@@ -392,7 +430,8 @@ export default function JoinCompetitionModal({
                 htmlFor="transparency-accept"
                 className="text-sm leading-tight text-foreground cursor-pointer select-none"
               >
-                Eu concordo e me comprometo a lançar meus resultados com total honestidade e transparência.
+                Eu concordo e me comprometo a lançar meus resultados com total honestidade e
+                transparência.
               </label>
             </div>
 

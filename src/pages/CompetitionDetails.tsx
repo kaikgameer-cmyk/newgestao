@@ -612,6 +612,7 @@ export default function CompetitionDetails() {
             onOpenChange={setShowJoinModal}
             competitionId={competition.id}
             competitionName={competition.name}
+            hasPrize={competition.prize_value > 0}
           />
         )}
       </div>

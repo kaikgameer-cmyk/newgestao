@@ -63,6 +63,7 @@ interface JoinCompetitionInlineProps {
   onOpenChange: (open: boolean) => void;
   competitionId: string;
   competitionName: string;
+  hasPrize: boolean;
 }
 
 export function JoinCompetitionInline({
@@ -70,6 +71,7 @@ export function JoinCompetitionInline({
   onOpenChange,
   competitionId,
   competitionName,
+  hasPrize,
 }: JoinCompetitionInlineProps) {
   const queryClient = useQueryClient();
   const [showPassword, setShowPassword] = useState(false);
@@ -115,7 +117,15 @@ export function JoinCompetitionInline({
   };
 
   const onStep2Submit = () => {
-    setStep(3);
+    if (!hasPrize) {
+      // Competição sem prêmio: pula etapa de PIX e entra direto com chave fictícia
+      onStep3Submit({
+        pix_key: "sem-premio",
+        pix_key_type: "random",
+      } as Step3Values);
+    } else {
+      setStep(3);
+    }
   };
 
   const onStep3Submit = async (values: Step3Values) => {
@@ -133,17 +143,16 @@ export function JoinCompetitionInline({
       if (error) throw error;
 
       const result = data as { competition_id: string; membership_id: string; message: string };
-      
+
       if (result.message === "already_member") {
         toast.info("Você já participa desta competição (PIX atualizado)");
       } else {
         toast.success(`Você entrou na competição "${competitionName}"!`);
       }
 
-      // Invalidate queries to refresh data
       await queryClient.invalidateQueries({ queryKey: ["competition-dashboard", competitionId] });
       await queryClient.invalidateQueries({ queryKey: ["competitions-for-tabs"] });
-      
+
       handleClose();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro ao entrar na competição";
@@ -156,11 +165,14 @@ export function JoinCompetitionInline({
   const watchedPixType = step3Form.watch("pix_key_type") as PixKeyType;
 
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => {
-      if (!nextOpen && !isSubmitting) {
-        handleClose();
-      }
-    }}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && !isSubmitting) {
+          handleClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -176,7 +188,7 @@ export function JoinCompetitionInline({
                 Compromisso de Transparência
               </>
             )}
-            {step === 3 && (
+            {step === 3 && hasPrize && (
               <>
                 <Key className="w-5 h-5" />
                 Sua Chave PIX
@@ -186,7 +198,7 @@ export function JoinCompetitionInline({
           <DialogDescription>
             {step === 1 && "Digite a senha fornecida pelo organizador"}
             {step === 2 && "Confirme seu compromisso com resultados reais"}
-            {step === 3 && "Informe sua chave PIX para receber o prêmio"}
+            {step === 3 && hasPrize && "Informe sua chave PIX para receber o prêmio"}
           </DialogDescription>
         </DialogHeader>
 
@@ -194,7 +206,9 @@ export function JoinCompetitionInline({
         <div className="flex items-center gap-2 mb-2">
           <div className={`h-2 flex-1 rounded-full ${step >= 1 ? "bg-primary" : "bg-muted"}`} />
           <div className={`h-2 flex-1 rounded-full ${step >= 2 ? "bg-primary" : "bg-muted"}`} />
-          <div className={`h-2 flex-1 rounded-full ${step >= 3 ? "bg-primary" : "bg-muted"}`} />
+          {hasPrize && (
+            <div className={`h-2 flex-1 rounded-full ${step >= 3 ? "bg-primary" : "bg-muted"}`} />
+          )}
         </div>
 
         {step === 1 && (
@@ -258,11 +272,10 @@ export function JoinCompetitionInline({
           <Form {...step2Form}>
             <form onSubmit={step2Form.handleSubmit(onStep2Submit)} className="space-y-4">
               <div className="space-y-3 text-sm text-muted-foreground">
+                <p>Esta competição é baseada nos seus lançamentos reais de receita.</p>
                 <p>
-                  Esta competição é baseada nos seus lançamentos reais de receita.
-                </p>
-                <p>
-                  <strong className="text-foreground">Não tente manipular resultados.</strong> O objetivo é evolução, disciplina e competição saudável.
+                  <strong className="text-foreground">Não tente manipular resultados.</strong> O
+                  objetivo é evolução, disciplina e competição saudável.
                 </p>
                 <p>
                   Ao confirmar, você se compromete com honestidade total nos seus lançamentos.
@@ -275,10 +288,7 @@ export function JoinCompetitionInline({
                 render={({ field }) => (
                   <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 bg-muted/40">
                     <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel className="cursor-pointer">
@@ -300,8 +310,8 @@ export function JoinCompetitionInline({
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Voltar
                 </Button>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="flex-1"
                   disabled={!step2Form.watch("transparencyAccepted")}
                 >
@@ -313,7 +323,7 @@ export function JoinCompetitionInline({
           </Form>
         )}
 
-        {step === 3 && (
+        {step === 3 && hasPrize && (
           <Form {...step3Form}>
             <form onSubmit={step3Form.handleSubmit(onStep3Submit)} className="space-y-4">
               <FormField
@@ -326,10 +336,12 @@ export function JoinCompetitionInline({
                       value={field.value ?? ""}
                       onValueChange={(val) => {
                         field.onChange(val);
-                        // Auto-format if changing type
                         const currentKey = step3Form.getValues("pix_key");
                         if (currentKey) {
-                          step3Form.setValue("pix_key", formatPixKey(currentKey, val as PixKeyType));
+                          step3Form.setValue(
+                            "pix_key",
+                            formatPixKey(currentKey, val as PixKeyType),
+                          );
                         }
                       }}
                     >
@@ -360,10 +372,13 @@ export function JoinCompetitionInline({
                     <FormControl>
                       <Input
                         placeholder={
-                          watchedPixType === "cpf" ? "000.000.000-00" :
-                          watchedPixType === "email" ? "seu@email.com" :
-                          watchedPixType === "phone" ? "(00) 00000-0000" :
-                          "Sua chave PIX"
+                          watchedPixType === "cpf"
+                            ? "000.000.000-00"
+                            : watchedPixType === "email"
+                              ? "seu@email.com"
+                              : watchedPixType === "phone"
+                                ? "(00) 00000-0000"
+                                : "Sua chave PIX"
                         }
                         {...field}
                         value={field.value ?? ""}
@@ -393,11 +408,7 @@ export function JoinCompetitionInline({
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Voltar
                 </Button>
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={isSubmitting}
-                >
+                <Button type="submit" className="flex-1" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
