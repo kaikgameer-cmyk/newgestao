@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle, Bell } from "lucide-react";
+import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle, Bell, Medal } from "lucide-react";
 import { useCompetitionsForTabs } from "@/hooks/useCompetitions";
 import { useUnreadHostNotifications, useMarkNotificationRead, useDismissNotification, HostNotification } from "@/hooks/useNotifications";
 import { format, parseISO } from "date-fns";
@@ -12,6 +12,7 @@ import { ptBR } from "date-fns/locale";
 import JoinCompetitionModal from "@/components/competitions/JoinCompetitionModal";
 import CreateCompetitionModal from "@/components/competitions/CreateCompetitionModal";
 import HostPayoutNotification from "@/components/competitions/HostPayoutNotification";
+import UserRankingModal from "@/components/competitions/UserRankingModal";
 import { getRemainingTime, getTimeUntilStart } from "@/lib/competitionUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { CompetitionSkeletonGrid } from "@/components/competitions/CompetitionCardSkeleton";
@@ -27,6 +28,7 @@ export default function Competitions() {
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showRankingModal, setShowRankingModal] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [activeTab, setActiveTab] = useState("disponiveis");
   const [currentNotification, setCurrentNotification] = useState<HostNotification | null>(null);
@@ -135,6 +137,10 @@ export default function Competitions() {
           </p>
         </div>
         <div className="flex flex-wrap justify-end gap-2 sm:gap-3">
+          <Button onClick={() => setShowRankingModal(true)} variant="outline" className="gap-2 min-h-[44px]">
+            <Medal className="w-4 h-4" />
+            <span className="hidden sm:inline">Ranking</span>
+          </Button>
           <Button onClick={() => setShowCreateModal(true)} className="gap-2 min-h-[44px]">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Criar Competição</span>
@@ -425,6 +431,11 @@ export default function Competitions() {
         open={showJoinModal}
         onOpenChange={setShowJoinModal}
         initialCode={joinCode}
+      />
+
+      <UserRankingModal
+        open={showRankingModal}
+        onOpenChange={setShowRankingModal}
       />
 
       {currentNotification && (
