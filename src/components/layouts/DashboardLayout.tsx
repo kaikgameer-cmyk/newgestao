@@ -19,6 +19,11 @@ import {
   Timer,
   Trophy,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo-ng.png";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -159,9 +164,16 @@ export default function DashboardLayout() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="h-16 flex items-center justify-center border-b border-sidebar-border relative">
-            <Link to="/dashboard" className="flex items-center justify-center">
-              <img src={logo} alt="New Gestão" className="w-9 h-9" />
-            </Link>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link to="/dashboard" className="flex items-center justify-center">
+                  <img src={logo} alt="New Gestão" className="w-9 h-9" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>Ir para Dashboard</p>
+              </TooltipContent>
+            </Tooltip>
             <Button
               variant="ghost"
               size="icon"
