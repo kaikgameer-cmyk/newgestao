@@ -257,57 +257,54 @@ serve(async (req) => {
       }
     }
 
-    // Send welcome email with password reset link using centralized email module
+    // Send welcome email with SET PASSWORD link (custom token) using centralized email module
+    // IMPORTANT: This avoids auth verify redirects being ignored/rewritten by backend allowlists.
     if (sendWelcomeEmail && newUser.user && hasResendKey) {
       try {
-        // ALWAYS use production URL for redirects - MUST be /definir-senha, NOT /login
-        const redirectUrl = `${PROD_APP_URL}/definir-senha`;
-        
-        console.log("[CREATE-USER] Generating password reset link");
-        console.log("  - redirectTo:", redirectUrl);
-        
-        const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'recovery',
-          email: email,
-          options: {
-            redirectTo: redirectUrl,
-          },
-        });
+        const redirectTo = `${PROD_APP_URL}/definir-senha`;
 
-        if (resetError) {
-          console.error("Error generating password reset link:", resetError);
-          throw resetError;
+        // Generate a secure random token
+        const rawToken = crypto.randomUUID() + "-" + crypto.randomUUID();
+
+        // Hash for storage
+        const encoder = new TextEncoder();
+        const data = encoder.encode(rawToken);
+        const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const tokenHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+        const { error: tokenError } = await supabaseAdmin
+          .from("password_tokens")
+          .insert({
+            user_id: newUser.user.id,
+            token_hash: tokenHash,
+            token_preview: rawToken.substring(0, 8),
+            type: "set_password",
+            expires_at: expiresAt.toISOString(),
+          });
+
+        if (tokenError) {
+          console.error("[CREATE-USER] Error storing password token:", tokenError);
+          throw new Error("Erro ao gerar link de acesso");
         }
 
-        let resetLink = resetData?.properties?.action_link || '';
-        
-        // CRITICAL: Validate the generated link does NOT contain lovable.app
-        // If it does, we need to replace it with production URL
-        if (resetLink.includes("lovable.app") || resetLink.includes("lovableproject.com")) {
-          console.warn("[CREATE-USER] Generated link contains lovable.app - replacing with production URL");
-          // Replace any lovable.app redirect_to with production URL
-          const url = new URL(resetLink);
-          const redirectTo = url.searchParams.get("redirect_to");
-          if (redirectTo) {
-            url.searchParams.set("redirect_to", `${PROD_APP_URL}/definir-senha`);
-            resetLink = url.toString();
-          }
-        }
-        
-        // Final validation - block if still contains lovable.app
-        validateNoLovableUrl(resetLink, "resetLink");
-        
-        console.log("[CREATE-USER] Password reset link generated - AUDIT LOG:");
-        console.log("  - computedRedirectTo:", redirectUrl);
-        console.log("  - finalVerifyUrl:", resetLink.substring(0, 100) + "...");
+        const finalVerifyUrl = `${PROD_APP_URL}/definir-senha?token=${encodeURIComponent(rawToken)}`;
 
-        // Use centralized email template
+        // CRITICAL: block any lovable.app URLs before sending
+        validateNoLovableUrl(finalVerifyUrl, "finalVerifyUrl");
+
+        console.log("[CREATE-USER] Welcome email link - AUDIT LOG:");
+        console.log("  - redirectTo:", redirectTo);
+        console.log("  - finalVerifyUrl:", finalVerifyUrl);
+
         await sendAppEmail({
           to: email,
           subject: "Bem-vindo ao New Gestão! 🚗",
-          html: getWelcomeEmailHtml(name || "Motorista", resetLink),
+          html: getWelcomeEmailHtml(name || "Motorista", finalVerifyUrl),
         });
-        
+
         console.log("Welcome email sent successfully");
       } catch (emailError) {
         console.error("Error sending welcome email:", emailError);

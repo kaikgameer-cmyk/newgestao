@@ -768,7 +768,8 @@ serve(async (req) => {
             validateNoLovableUrl(setPasswordUrl, "setPasswordUrl");
             
             console.log("✅ Custom password token generated successfully");
-            console.log("  - computedRedirectTo:", setPasswordUrl);
+            console.log("  - redirectTo:", setPasswordUrl);
+            console.log("  - finalVerifyUrl:", setPasswordUrl);
             console.log("  - linkPreview:", rawToken.substring(0, 8) + "...");
             console.log("  - URL hostname:", new URL(setPasswordUrl).hostname);
           }

@@ -21,6 +21,8 @@ import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo-ng.png";
 import { z } from "zod";
 
+const PROD_APP_URL = "https://newgestao.app";
+
 // Zod schemas for validation
 const passwordSchema = z.object({
   password: z.string()
@@ -59,6 +61,10 @@ export default function DefinirSenha() {
 
   // Validate token on page load
   useEffect(() => {
+    document.title = "Definir senha | New Gestão";
+  }, []);
+
+  useEffect(() => {
     const validateToken = async () => {
       const tokenParam = searchParams.get("token");
       const emailParam = searchParams.get("email");
@@ -69,12 +75,11 @@ export default function DefinirSenha() {
       console.log("  - Hash:", window.location.hash ? "present" : "none");
       console.log("  - Full URL:", window.location.href);
 
-      // Check for Supabase auth tokens in hash (recovery links from Supabase Auth)
+      // Check for Supabase auth tokens in hash (recovery links from auth emails)
       const hash = window.location.hash;
       if (hash && hash.includes("access_token")) {
-        console.log("[DEFINIR-SENHA] Found Supabase auth tokens in hash - processing recovery flow");
+        console.log("[DEFINIR-SENHA] Found auth tokens in hash - processing recovery flow");
         try {
-          // Parse hash params
           const hashParams = new URLSearchParams(hash.substring(1));
           const accessToken = hashParams.get("access_token");
           const refreshToken = hashParams.get("refresh_token");
@@ -84,84 +89,64 @@ export default function DefinirSenha() {
           console.log("  - Access token:", accessToken ? "present" : "none");
           console.log("  - Refresh token:", refreshToken ? "present" : "none");
 
-          // Handle recovery type specifically
-          if (accessToken && refreshToken && type === "recovery") {
-            console.log("[DEFINIR-SENHA] Setting session with recovery tokens...");
-            
-            // Set session with these tokens
-            const { error: sessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-
-            if (sessionError) {
-              console.error("[DEFINIR-SENHA] Error setting session:", sessionError.message);
-              if (sessionError.message.includes("expired") || sessionError.message.includes("invalid") || sessionError.message.includes("Token")) {
-                setErrorMessage("O link expirou ou é inválido. Solicite um novo link através do login.");
-                setPageState("invalid");
-                return;
-              }
-              throw sessionError;
-            }
-
-            // Get user email from session
-            const { data: { user }, error: userError } = await supabase.auth.getUser();
-            
-            if (userError) {
-              console.error("[DEFINIR-SENHA] Error getting user:", userError.message);
-              setErrorMessage("Erro ao validar sessão. Tente solicitar um novo link.");
-              setPageState("error");
-              return;
-            }
-
-            if (user?.email) {
-              setEmail(user.email);
-              console.log("[DEFINIR-SENHA] Session established successfully for:", user.email);
-              setPageState("form");
-              // Clear hash from URL for security
-              window.history.replaceState(null, "", window.location.pathname);
-              return;
-            } else {
-              console.error("[DEFINIR-SENHA] Session set but no user email found");
-              setErrorMessage("Erro ao recuperar dados do usuário. Tente novamente.");
-              setPageState("error");
-              return;
-            }
+          // ✅ Required behavior: only allow recovery here
+          if (type !== "recovery") {
+            setErrorMessage("Este link não é de recuperação de senha. Solicite um novo link.");
+            setPageState("invalid");
+            return;
           }
-          
-          // Handle invite type similarly
-          if (accessToken && refreshToken && type === "invite") {
-            console.log("[DEFINIR-SENHA] Processing invite type token...");
-            const { error: sessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
 
-            if (sessionError) {
-              console.error("[DEFINIR-SENHA] Error setting invite session:", sessionError.message);
-              setErrorMessage("O link expirou ou é inválido.");
+          if (!accessToken || !refreshToken) {
+            setErrorMessage("Link incompleto. Solicite um novo link.");
+            setPageState("invalid");
+            return;
+          }
+
+          console.log("[DEFINIR-SENHA] Setting session with recovery tokens...");
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (sessionError) {
+            console.error("[DEFINIR-SENHA] Error setting session:", sessionError.message);
+            if (
+              sessionError.message.includes("expired") ||
+              sessionError.message.includes("invalid") ||
+              sessionError.message.includes("Token")
+            ) {
+              setErrorMessage("O link expirou ou é inválido. Reenvie um novo link para definir sua senha.");
               setPageState("invalid");
               return;
             }
-
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user?.email) {
-              setEmail(user.email);
-              setPageState("form");
-              window.history.replaceState(null, "", window.location.pathname);
-              return;
-            }
+            throw sessionError;
           }
 
-          // If we have tokens but couldn't process them
-          console.error("[DEFINIR-SENHA] Hash had tokens but couldn't process:", { type, hasAccess: !!accessToken, hasRefresh: !!refreshToken });
-          setErrorMessage("Link inválido ou incompleto. Solicite um novo link.");
-          setPageState("invalid");
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+          if (userError) {
+            console.error("[DEFINIR-SENHA] Error getting user:", userError.message);
+            setErrorMessage("Erro ao validar sessão. Reenvie um novo link.");
+            setPageState("error");
+            return;
+          }
+
+          if (user?.email) {
+            setEmail(user.email);
+            console.log("[DEFINIR-SENHA] Session established successfully for:", user.email);
+            setPageState("form");
+            // Clear hash from URL for security
+            window.history.replaceState(null, "", window.location.pathname);
+            return;
+          }
+
+          console.error("[DEFINIR-SENHA] Session set but no user email found");
+          setErrorMessage("Erro ao recuperar dados do usuário. Tente novamente.");
+          setPageState("error");
           return;
-          
         } catch (err: any) {
           console.error("[DEFINIR-SENHA] Error processing hash tokens:", err);
-          setErrorMessage("Erro ao processar o link. Tente solicitar um novo.");
+          setErrorMessage("Erro ao processar o link. Reenvie um novo link.");
           setPageState("error");
           return;
         }

@@ -35,7 +35,11 @@ export default function ResetPassword() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Detect mode based on URL hash/params (Supabase sends recovery tokens via hash fragment)
+  useEffect(() => {
+    document.title = "Recuperar senha | New Gestão";
+  }, []);
+
+  // Detect mode based on URL hash/params (auth sends recovery tokens via hash fragment)
   const [mode, setMode] = useState<Mode>("request");
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -44,10 +48,15 @@ export default function ResetPassword() {
   const [errors, setErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({});
   const [tokenProcessed, setTokenProcessed] = useState(false);
 
-  // Check for recovery token in URL (Supabase uses hash fragment for recovery)
+  // Prefill email from query string (used by /definir-senha → "Reenviar link")
+  useEffect(() => {
+    const qpEmail = searchParams.get("email");
+    if (qpEmail) setEmail(qpEmail);
+  }, [searchParams]);
+
+  // Check for recovery token in URL (auth uses hash fragment for recovery)
   useEffect(() => {
     const checkForToken = async () => {
-      // Supabase recovery links have the format: /reset-password#access_token=...&type=recovery
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get("access_token");
       const tokenType = hashParams.get("type");
@@ -61,12 +70,11 @@ export default function ResetPassword() {
       console.log("[RESET] Query params - token:", queryToken ? "present" : "none", "type:", queryType);
 
       if ((accessToken && tokenType === "recovery") || (queryToken && queryType === "recovery")) {
-        // We have a recovery token, let Supabase handle the session
+        // We have a recovery token, let auth handle the session
         console.log("[RESET] Recovery token detected, switching to reset mode");
-        
-        // The Supabase client should automatically pick up the session from the URL
+
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           console.error("[RESET] Error getting session:", error);
           toast({
@@ -80,7 +88,6 @@ export default function ResetPassword() {
           setMode("reset");
           setTokenProcessed(true);
         } else {
-          // Try to set session from URL
           const { data, error: authError } = await supabase.auth.setSession({
             access_token: accessToken || queryToken || "",
             refresh_token: hashParams.get("refresh_token") || "",
@@ -120,32 +127,29 @@ export default function ResetPassword() {
     setIsLoading(true);
 
     try {
-      // CRITICAL: Always use production URL for password reset redirects
-      // ALWAYS redirect to /definir-senha for password reset
-      const PROD_APP_URL = "https://newgestao.app";
-      const { error } = await supabase.auth.resetPasswordForEmail(result.data.email, {
-        redirectTo: `${PROD_APP_URL}/definir-senha`,
+      // Use backend email (Resend) so we NEVER depend on auth verify redirects/allowlists.
+      const { data, error } = await supabase.functions.invoke("resend-password-link", {
+        body: { email: result.data.email.toLowerCase().trim() },
       });
 
       if (error) {
-        console.error("[RESET] Error requesting password reset:", error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível enviar o email. Tente novamente.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Email enviado!",
-          description: "Verifique sua caixa de entrada para redefinir sua senha.",
-        });
-        setMode("success");
+        throw new Error(error.message || "Não foi possível enviar o email. Tente novamente.");
       }
-    } catch (error) {
-      console.error("[RESET] Unexpected error:", error);
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Email enviado!",
+        description: "Verifique sua caixa de entrada para definir sua senha.",
+      });
+      setMode("success");
+    } catch (error: any) {
+      console.error("[RESET] Error requesting password link:", error);
       toast({
         title: "Erro",
-        description: "Ocorreu um erro inesperado",
+        description: error?.message || "Não foi possível enviar o email. Tente novamente.",
         variant: "destructive",
       });
     } finally {

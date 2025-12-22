@@ -194,7 +194,8 @@ serve(async (req: Request) => {
     validateNoLovableUrl(passwordUrl, "passwordUrl");
 
     console.log("[RESEND-LINK] Generated password URL - AUDIT LOG:");
-    console.log("  - computedRedirectTo:", passwordUrl);
+    console.log("  - redirectTo:", passwordUrl);
+    console.log("  - finalVerifyUrl:", passwordUrl);
     console.log("  - linkPreview:", rawToken.substring(0, 8) + "...");
     console.log("  - URL hostname:", new URL(passwordUrl).hostname);
 
