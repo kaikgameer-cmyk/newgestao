@@ -10,6 +10,7 @@ import {
   UserPlus,
   ChevronDown,
   ChevronUp,
+  Info,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getCompetitionStatus } from "@/lib/competitionUtils";
@@ -131,6 +132,13 @@ export function CompetitionHeader({
             </div>
           </section>
         )}
+
+        <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+          <Info className="w-3 h-3 text-primary" />
+          <span>
+            Nesta competição contam apenas receitas das plataformas 99, Uber e InDrive.
+          </span>
+        </div>
       </div>
       
       {/* Host Actions */}
