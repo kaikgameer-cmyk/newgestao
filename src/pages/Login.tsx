@@ -64,6 +64,17 @@ export default function Login() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotError, setForgotError] = useState("");
 
+  // Check for recovery tokens in URL hash and redirect to /definir-senha
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && (hash.includes("access_token") || hash.includes("type=recovery"))) {
+      console.log("[LOGIN] Detected recovery tokens in hash, redirecting to /definir-senha");
+      // Redirect to definir-senha with the hash intact
+      navigate(`/definir-senha${hash}`, { replace: true });
+      return;
+    }
+  }, [navigate]);
+
   // Redirect if already logged in
   useEffect(() => {
     if (user && !loading) {

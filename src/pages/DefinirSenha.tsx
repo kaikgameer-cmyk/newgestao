@@ -67,11 +67,12 @@ export default function DefinirSenha() {
       console.log("  - Token:", tokenParam ? "present" : "none");
       console.log("  - Email:", emailParam || "none");
       console.log("  - Hash:", window.location.hash ? "present" : "none");
+      console.log("  - Full URL:", window.location.href);
 
-      // Check for Supabase auth tokens in hash (fallback for recovery links)
+      // Check for Supabase auth tokens in hash (recovery links from Supabase Auth)
       const hash = window.location.hash;
       if (hash && hash.includes("access_token")) {
-        console.log("[DEFINIR-SENHA] Found Supabase auth tokens in hash");
+        console.log("[DEFINIR-SENHA] Found Supabase auth tokens in hash - processing recovery flow");
         try {
           // Parse hash params
           const hashParams = new URLSearchParams(hash.substring(1));
@@ -81,35 +82,83 @@ export default function DefinirSenha() {
 
           console.log("  - Type:", type);
           console.log("  - Access token:", accessToken ? "present" : "none");
+          console.log("  - Refresh token:", refreshToken ? "present" : "none");
 
-          if (accessToken && refreshToken && (type === "recovery" || type === "invite")) {
+          // Handle recovery type specifically
+          if (accessToken && refreshToken && type === "recovery") {
+            console.log("[DEFINIR-SENHA] Setting session with recovery tokens...");
+            
             // Set session with these tokens
-            const { error } = await supabase.auth.setSession({
+            const { error: sessionError } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
 
-            if (error) {
-              console.error("[DEFINIR-SENHA] Error setting session:", error.message);
-              if (error.message.includes("expired") || error.message.includes("invalid")) {
-                setErrorMessage("O link expirou ou é inválido. Solicite um novo link pelo login.");
+            if (sessionError) {
+              console.error("[DEFINIR-SENHA] Error setting session:", sessionError.message);
+              if (sessionError.message.includes("expired") || sessionError.message.includes("invalid") || sessionError.message.includes("Token")) {
+                setErrorMessage("O link expirou ou é inválido. Solicite um novo link através do login.");
                 setPageState("invalid");
                 return;
               }
-              throw error;
+              throw sessionError;
             }
 
             // Get user email from session
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            
+            if (userError) {
+              console.error("[DEFINIR-SENHA] Error getting user:", userError.message);
+              setErrorMessage("Erro ao validar sessão. Tente solicitar um novo link.");
+              setPageState("error");
+              return;
+            }
+
+            if (user?.email) {
+              setEmail(user.email);
+              console.log("[DEFINIR-SENHA] Session established successfully for:", user.email);
+              setPageState("form");
+              // Clear hash from URL for security
+              window.history.replaceState(null, "", window.location.pathname);
+              return;
+            } else {
+              console.error("[DEFINIR-SENHA] Session set but no user email found");
+              setErrorMessage("Erro ao recuperar dados do usuário. Tente novamente.");
+              setPageState("error");
+              return;
+            }
+          }
+          
+          // Handle invite type similarly
+          if (accessToken && refreshToken && type === "invite") {
+            console.log("[DEFINIR-SENHA] Processing invite type token...");
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (sessionError) {
+              console.error("[DEFINIR-SENHA] Error setting invite session:", sessionError.message);
+              setErrorMessage("O link expirou ou é inválido.");
+              setPageState("invalid");
+              return;
+            }
+
             const { data: { user } } = await supabase.auth.getUser();
             if (user?.email) {
               setEmail(user.email);
-              console.log("[DEFINIR-SENHA] Session established for:", user.email);
               setPageState("form");
-              // Clear hash from URL
               window.history.replaceState(null, "", window.location.pathname);
               return;
             }
           }
+
+          // If we have tokens but couldn't process them
+          console.error("[DEFINIR-SENHA] Hash had tokens but couldn't process:", { type, hasAccess: !!accessToken, hasRefresh: !!refreshToken });
+          setErrorMessage("Link inválido ou incompleto. Solicite um novo link.");
+          setPageState("invalid");
+          return;
+          
         } catch (err: any) {
           console.error("[DEFINIR-SENHA] Error processing hash tokens:", err);
           setErrorMessage("Erro ao processar o link. Tente solicitar um novo.");
@@ -118,51 +167,52 @@ export default function DefinirSenha() {
         }
       }
 
-      // If no token, show error state
-      if (!tokenParam) {
-        console.log("[DEFINIR-SENHA] No token provided");
-        if (emailParam) {
-          setEmail(decodeURIComponent(emailParam));
-        }
-        setErrorMessage("Link inválido. Use o link enviado por e-mail para definir sua senha.");
-        setPageState("invalid");
-        return;
-      }
+      // Handle custom token from password_tokens table
+      if (tokenParam) {
+        setToken(tokenParam);
 
-      setToken(tokenParam);
+        try {
+          console.log("[DEFINIR-SENHA] Validating custom token via edge function...");
 
-      try {
-        // Validate token via edge function
-        console.log("[DEFINIR-SENHA] Validating token...");
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const response = await fetch(
+            `${supabaseUrl}/functions/v1/set-password?token=${encodeURIComponent(tokenParam)}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
 
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const response = await fetch(
-          `${supabaseUrl}/functions/v1/set-password?token=${encodeURIComponent(tokenParam)}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
+          const result = await response.json();
+
+          if (!response.ok) {
+            console.log("[DEFINIR-SENHA] Token validation failed:", result.error);
+            setErrorMessage(result.error || "Link inválido ou expirado.");
+            setPageState("invalid");
+            return;
           }
-        );
 
-        const result = await response.json();
-
-        if (!response.ok) {
-          console.log("[DEFINIR-SENHA] Token validation failed:", result.error);
-          setErrorMessage(result.error || "Link inválido ou expirado.");
-          setPageState("invalid");
+          console.log("[DEFINIR-SENHA] Token valid for user:", result.email);
+          setEmail(result.email || "");
+          setPageState("form");
+          return;
+        } catch (err: any) {
+          console.error("[DEFINIR-SENHA] Error validating token:", err);
+          setErrorMessage("Erro ao validar o link. Tente novamente.");
+          setPageState("error");
           return;
         }
-
-        console.log("[DEFINIR-SENHA] Token valid for user:", result.email);
-        setEmail(result.email || "");
-        setPageState("form");
-      } catch (err: any) {
-        console.error("[DEFINIR-SENHA] Error validating token:", err);
-        setErrorMessage("Erro ao validar o link. Tente novamente.");
-        setPageState("error");
       }
+
+      // No token provided - check if there's an email param
+      console.log("[DEFINIR-SENHA] No token provided");
+      if (emailParam) {
+        setEmail(decodeURIComponent(emailParam));
+      }
+      setErrorMessage("Link inválido. Use o link enviado por e-mail para definir sua senha.");
+      setPageState("invalid");
     };
 
     validateToken();
@@ -186,40 +236,60 @@ export default function DefinirSenha() {
       return;
     }
 
-    if (!token) {
-      setErrorMessage("Token não encontrado. Use o link enviado por e-mail.");
-      setPageState("error");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
       console.log("[DEFINIR-SENHA] Setting password...");
 
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const response = await fetch(`${supabaseUrl}/functions/v1/set-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          token: token,
-          newPassword: password,
-        }),
-      });
+      // Check if we're using a custom token (from password_tokens table)
+      if (token) {
+        console.log("[DEFINIR-SENHA] Using custom token flow via edge function");
+        
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const response = await fetch(`${supabaseUrl}/functions/v1/set-password`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: token,
+            newPassword: password,
+          }),
+        });
 
-      const result = await response.json();
+        const result = await response.json();
 
-      if (!response.ok) {
-        console.error("[DEFINIR-SENHA] Error setting password:", result.error);
-        setErrorMessage(result.error || "Não foi possível definir sua senha. Tente novamente.");
-        setPageState("error");
-        return;
+        if (!response.ok) {
+          console.error("[DEFINIR-SENHA] Error setting password via token:", result.error);
+          setErrorMessage(result.error || "Não foi possível definir sua senha. Tente novamente.");
+          setPageState("error");
+          return;
+        }
+
+        console.log("[DEFINIR-SENHA] Password set successfully via token!");
+        setPageState("success");
+      } else {
+        // We're using Supabase Auth session (from recovery link)
+        console.log("[DEFINIR-SENHA] Using Supabase Auth session to update password");
+        
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: password,
+        });
+
+        if (updateError) {
+          console.error("[DEFINIR-SENHA] Error updating password via Auth:", updateError.message);
+          setErrorMessage(updateError.message || "Não foi possível definir sua senha. Tente novamente.");
+          setPageState("error");
+          return;
+        }
+
+        console.log("[DEFINIR-SENHA] Password updated successfully via Auth!");
+        
+        // Sign out so user can login fresh with new password
+        await supabase.auth.signOut();
+        
+        setPageState("success");
       }
-
-      console.log("[DEFINIR-SENHA] Password set successfully!");
-      setPageState("success");
     } catch (error: any) {
       console.error("[DEFINIR-SENHA] Unexpected error:", error);
       setErrorMessage("Ocorreu um erro inesperado. Tente novamente.");

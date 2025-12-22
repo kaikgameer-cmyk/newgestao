@@ -260,8 +260,8 @@ serve(async (req) => {
     // Send welcome email with password reset link using centralized email module
     if (sendWelcomeEmail && newUser.user && hasResendKey) {
       try {
-        // ALWAYS use production URL for redirects
-        const redirectUrl = `${PROD_APP_URL}/login`;
+        // ALWAYS use production URL for redirects - MUST be /definir-senha, NOT /login
+        const redirectUrl = `${PROD_APP_URL}/definir-senha`;
         
         console.log("[CREATE-USER] Generating password reset link");
         console.log("  - redirectTo:", redirectUrl);
@@ -282,14 +282,14 @@ serve(async (req) => {
         let resetLink = resetData?.properties?.action_link || '';
         
         // CRITICAL: Validate the generated link does NOT contain lovable.app
-        // If it does, we need to replace it
+        // If it does, we need to replace it with production URL
         if (resetLink.includes("lovable.app") || resetLink.includes("lovableproject.com")) {
           console.warn("[CREATE-USER] Generated link contains lovable.app - replacing with production URL");
           // Replace any lovable.app redirect_to with production URL
           const url = new URL(resetLink);
           const redirectTo = url.searchParams.get("redirect_to");
-          if (redirectTo && (redirectTo.includes("lovable.app") || redirectTo.includes("lovableproject.com"))) {
-            url.searchParams.set("redirect_to", `${PROD_APP_URL}/login`);
+          if (redirectTo) {
+            url.searchParams.set("redirect_to", `${PROD_APP_URL}/definir-senha`);
             resetLink = url.toString();
           }
         }
@@ -298,8 +298,8 @@ serve(async (req) => {
         validateNoLovableUrl(resetLink, "resetLink");
         
         console.log("[CREATE-USER] Password reset link generated - AUDIT LOG:");
-        console.log("  - computedRedirectTo:", resetLink);
-        console.log("  - linkPreview:", resetLink.substring(0, 80) + "...");
+        console.log("  - computedRedirectTo:", redirectUrl);
+        console.log("  - finalVerifyUrl:", resetLink.substring(0, 100) + "...");
 
         // Use centralized email template
         await sendAppEmail({
