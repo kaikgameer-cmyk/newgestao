@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { z } from "zod";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ interface OnboardingModalProps {
 
 export function OnboardingModal({ open }: OnboardingModalProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { profile, userEmail, completeOnboarding } = useOnboarding();
   const { platforms, loadingPlatforms } = usePlatforms();
 
@@ -134,6 +136,7 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
         title: "Perfil configurado!",
         description: "Bem-vindo ao New Gestão. Boas corridas!",
       });
+      navigate("/dashboard");
     } catch (error) {
       toast({
         title: "Erro ao salvar",

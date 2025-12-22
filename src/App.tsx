@@ -11,7 +11,7 @@ import ResetPassword from "./pages/ResetPassword";
 import DefinirSenha from "./pages/DefinirSenha";
 import DashboardLayout from "./components/layouts/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
-
+import OnboardingPage from "./pages/Onboarding";
 import Transactions from "./pages/Transactions";
 import CreditCards from "./pages/CreditCards";
 import CardInvoices from "./pages/CardInvoices";
@@ -73,9 +73,17 @@ const App = () => {
             <Route path="competicoes" element={<Competitions />} />
             <Route path="competicoes/entrar" element={<JoinCompetition />} />
             <Route path="competicoes/ranking" element={<Ranking />} />
-            <Route path="competicoes/:id" element={<CompetitionDetails />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
+             <Route path="competicoes/:id" element={<CompetitionDetails />} />
+           </Route>
+           <Route
+             path="/onboarding"
+             element={
+               <ProtectedRoute>
+                 <OnboardingPage />
+               </ProtectedRoute>
+             }
+           />
+           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

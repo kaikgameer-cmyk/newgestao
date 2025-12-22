@@ -9,6 +9,7 @@ export interface OnboardingProfile {
   whatsapp: string | null;
   email: string | null;
   city: string | null;
+  vehicle_type: "electric" | "fuel" | null;
   onboarding_completed: boolean;
 }
 
@@ -24,7 +25,7 @@ export function useOnboarding() {
       if (!user) return null;
       const { data, error } = await supabase
         .from("profiles")
-        .select("first_name, last_name, whatsapp, email, city, onboarding_completed")
+        .select("first_name, last_name, whatsapp, email, city, vehicle_type, onboarding_completed")
         .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
@@ -45,6 +46,7 @@ export function useOnboarding() {
     if (!profile.last_name || profile.last_name.trim() === "") return true;
     if (!profile.whatsapp || profile.whatsapp.trim() === "") return true;
     if (!profile.city || profile.city.trim() === "") return true;
+    if (!profile.vehicle_type) return true;
     
     // Check if at least one platform is enabled
     const hasEnabledPlatform = enabledPlatforms.length > 0;
