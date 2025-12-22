@@ -60,12 +60,13 @@ function getDefaultRange(mode: DashboardFilterMode): { start: string; end: strin
       return { start: todayStr, end: todayStr };
     
     case "week":
-      // Week starts on Monday
-      const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-      const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+      // Week starts on Monday - default to PREVIOUS week (not current)
+      const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+      const prevWeekStart = subDays(currentWeekStart, 7);
+      const prevWeekEnd = subDays(currentWeekStart, 1); // Day before current week starts
       return { 
-        start: formatLocalDate(weekStart), 
-        end: formatLocalDate(weekEnd) 
+        start: formatLocalDate(prevWeekStart), 
+        end: formatLocalDate(prevWeekEnd) 
       };
     
     case "month":
