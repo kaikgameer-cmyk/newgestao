@@ -210,8 +210,8 @@ export default function Transactions() {
   const totalExpense = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
   const netBalance = totalRevenue - totalExpense;
 
-  // Fuel KPIs
-  const fuelExpenses = expenses.filter((e) => !!e.fuel_log_id && e.fuel_logs);
+  // Fuel KPIs (only for combustivel category, not eletrico)
+  const fuelExpenses = expenses.filter((e) => !!e.fuel_log_id && e.fuel_logs && e.fuel_logs.fuel_type !== 'ac_lento' && e.fuel_logs.fuel_type !== 'ac_semi' && e.fuel_logs.fuel_type !== 'dc_rapido' && e.fuel_logs.fuel_type !== 'residencial');
   const fuelKpis = useMemo(() => {
     if (fuelExpenses.length === 0) return null;
     
@@ -245,6 +245,47 @@ export default function Transactions() {
       fuelingsCount: fuelExpenses.length,
     };
   }, [fuelExpenses]);
+
+  // Electric KPIs (for eletrico category - uses fuel_logs with electric charge types)
+  const electricExpenses = expenses.filter((e) => !!e.fuel_log_id && e.fuel_logs && 
+    (e.fuel_logs.fuel_type === 'ac_lento' || e.fuel_logs.fuel_type === 'ac_semi' || 
+     e.fuel_logs.fuel_type === 'dc_rapido' || e.fuel_logs.fuel_type === 'residencial'));
+  
+  const electricKpis = useMemo(() => {
+    if (electricExpenses.length === 0) return null;
+    
+    // liters field is used for kWh in electric charges
+    const totalKwh = electricExpenses.reduce((sum, e) => sum + Number(e.fuel_logs?.liters || 0), 0);
+    const totalCost = electricExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const avgPricePerKwh = totalKwh > 0 ? totalCost / totalKwh : 0;
+    
+    const electricWithOdometer = electricExpenses
+      .filter((e) => e.fuel_logs?.odometer_km)
+      .sort((a, b) => Number(a.fuel_logs?.odometer_km) - Number(b.fuel_logs?.odometer_km));
+    
+    let totalKm = 0;
+    let totalKwhForConsumption = 0;
+    for (let i = 1; i < electricWithOdometer.length; i++) {
+      const kmDiff = Number(electricWithOdometer[i].fuel_logs?.odometer_km) - Number(electricWithOdometer[i - 1].fuel_logs?.odometer_km);
+      if (kmDiff > 0) {
+        totalKm += kmDiff;
+        totalKwhForConsumption += Number(electricWithOdometer[i].fuel_logs?.liters || 0);
+      }
+    }
+    
+    // For electric: km per kWh (efficiency)
+    const avgConsumption = totalKwhForConsumption > 0 ? totalKm / totalKwhForConsumption : 0;
+    const costPerKm = totalKm > 0 ? totalCost / totalKm : 0;
+    
+    return {
+      totalKwh,
+      totalCost,
+      avgPricePerKwh,
+      avgConsumption, // km/kWh
+      costPerKm,
+      chargesCount: electricExpenses.length,
+    };
+  }, [electricExpenses]);
 
   const createExpense = useMutation({
     mutationFn: async () => {
@@ -525,7 +566,20 @@ export default function Transactions() {
     return [...revenueTransactions, ...expenseTransactions]
       .filter((t) => {
         if (typeFilter === "combustivel") {
-          return t.transactionType === "despesa" && !!(t as any).fuel_log_id;
+          // Filter for fuel expenses (not electric)
+          const fuelLog = (t as any).fuel_logs;
+          const isFuelLog = !!(t as any).fuel_log_id && fuelLog;
+          const isElectric = fuelLog?.fuel_type === 'ac_lento' || fuelLog?.fuel_type === 'ac_semi' || 
+                            fuelLog?.fuel_type === 'dc_rapido' || fuelLog?.fuel_type === 'residencial';
+          return t.transactionType === "despesa" && isFuelLog && !isElectric;
+        }
+        if (typeFilter === "eletrico") {
+          // Filter for electric charges only
+          const fuelLog = (t as any).fuel_logs;
+          const isFuelLog = !!(t as any).fuel_log_id && fuelLog;
+          const isElectric = fuelLog?.fuel_type === 'ac_lento' || fuelLog?.fuel_type === 'ac_semi' || 
+                            fuelLog?.fuel_type === 'dc_rapido' || fuelLog?.fuel_type === 'residencial';
+          return t.transactionType === "despesa" && isFuelLog && isElectric;
         }
         if (typeFilter !== "all" && t.transactionType !== typeFilter) return false;
         
@@ -915,6 +969,61 @@ export default function Transactions() {
             </CardContent>
           </Card>
         </div>
+      ) : typeFilter === "eletrico" && electricKpis ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <Card variant="elevated">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                  <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-success" />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">Média km/kWh</span>
+              </div>
+              <p className="text-sm sm:text-lg font-bold text-foreground">
+                {electricKpis.avgConsumption > 0 ? electricKpis.avgConsumption.toFixed(1) : "—"} km/kWh
+              </p>
+            </CardContent>
+          </Card>
+          <Card variant="elevated">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary/50 flex items-center justify-center">
+                  <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">Preço/kWh</span>
+              </div>
+              <p className="text-sm sm:text-lg font-bold text-foreground">
+                R$ {electricKpis.avgPricePerKwh.toFixed(2)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card variant="elevated">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-warning/10 flex items-center justify-center">
+                  <TrendingDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-warning" />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">Custo/km</span>
+              </div>
+              <p className="text-sm sm:text-lg font-bold text-foreground">
+                R$ {electricKpis.costPerKm > 0 ? electricKpis.costPerKm.toFixed(2) : "—"}
+              </p>
+            </CardContent>
+          </Card>
+          <Card variant="elevated">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
+                  <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive" />
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">Total Período</span>
+              </div>
+              <p className="text-sm sm:text-lg font-bold text-destructive">
+                R$ {electricKpis.totalCost.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <div className="grid grid-cols-3 gap-3 sm:gap-4">
           <Card variant="elevated">
@@ -1197,6 +1306,7 @@ export default function Transactions() {
                     <SelectItem value="receita">Receitas</SelectItem>
                     <SelectItem value="despesa">Despesas</SelectItem>
                     <SelectItem value="combustivel">Combustível</SelectItem>
+                    <SelectItem value="eletrico">Elétrico</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
