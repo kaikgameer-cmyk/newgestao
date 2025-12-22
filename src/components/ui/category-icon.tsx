@@ -1,43 +1,46 @@
-import {
-  Fuel,
-  Zap,
-  Wrench,
-  Droplets,
-  Milestone,
-  ParkingCircle,
-  UtensilsCrossed,
-  CircleDot,
-  Car,
-  Bike,
-  Package,
-  Truck,
-  ShoppingBag,
-  Box,
-  LucideIcon,
-} from "lucide-react";
+import * as LucideIcons from "lucide-react";
+import { Tag, LucideIcon } from "lucide-react";
 
-// Map icon names to Lucide components
-const iconMap: Record<string, LucideIcon> = {
+// Default icon mappings for legacy data
+const legacyIconMap: Record<string, string> = {
+  // Old names to new Lucide component names
+  fuel: "Fuel",
+  zap: "Zap",
+  wrench: "Wrench",
+  droplets: "Droplets",
+  milestone: "Milestone",
+  "parking-circle": "ParkingCircle",
+  "utensils-crossed": "UtensilsCrossed",
+  car: "Car",
+  bike: "Bike",
+  package: "Package",
+  truck: "Truck",
+  "shopping-bag": "ShoppingBag",
+  box: "Box",
+  "circle-dot": "CircleDot",
+};
+
+// Default icons for known category/platform keys
+const defaultIconByKey: Record<string, string> = {
   // Expense categories
-  fuel: Fuel,
-  zap: Zap,
-  wrench: Wrench,
-  droplets: Droplets,
-  milestone: Milestone,
-  "parking-circle": ParkingCircle,
-  "utensils-crossed": UtensilsCrossed,
-  // Platform icons
-  car: Car,
-  bike: Bike,
-  package: Package,
-  truck: Truck,
-  "shopping-bag": ShoppingBag,
-  box: Box,
-  "circle-dot": CircleDot,
+  combustivel: "Fuel",
+  eletrico: "Zap",
+  manutencao: "Wrench",
+  lavagem: "Droplets",
+  pedagio: "Ticket",
+  estacionamento: "ParkingCircle",
+  alimentacao: "Utensils",
+  // Platforms
+  "99": "Car",
+  uber: "CarTaxiFront",
+  indrive: "Navigation",
+  particular: "User",
+  lojinha: "ShoppingCart",
 };
 
 interface CategoryIconProps {
   iconName?: string | null;
+  categoryKey?: string | null;
   color?: string;
   size?: number;
   className?: string;
@@ -45,17 +48,43 @@ interface CategoryIconProps {
 
 export function CategoryIcon({
   iconName,
+  categoryKey,
   color,
   size = 16,
   className = "",
 }: CategoryIconProps) {
-  // If no icon name or not found, render a colored dot
-  if (!iconName || !iconMap[iconName]) {
+  // Resolve the icon name
+  let resolvedIconName: string | null = null;
+
+  if (iconName) {
+    // Check if it's a legacy name
+    resolvedIconName = legacyIconMap[iconName.toLowerCase()] || iconName;
+  } else if (categoryKey) {
+    // Use default based on key
+    resolvedIconName = defaultIconByKey[categoryKey.toLowerCase()] || null;
+  }
+
+  // Try to get the icon component
+  if (resolvedIconName) {
+    const IconComponent = (LucideIcons as unknown as Record<string, LucideIcon>)[resolvedIconName];
+    if (IconComponent && typeof IconComponent === 'function') {
+      return (
+        <IconComponent
+          size={size}
+          className={className}
+          style={{ color: color || "currentColor" }}
+        />
+      );
+    }
+  }
+
+  // Fallback: render a colored dot or Tag icon
+  if (color) {
     return (
       <div
         className={`rounded-full ${className}`}
         style={{
-          backgroundColor: color || "#EF4444",
+          backgroundColor: color,
           width: size * 0.75,
           height: size * 0.75,
         }}
@@ -63,13 +92,12 @@ export function CategoryIcon({
     );
   }
 
-  const IconComponent = iconMap[iconName];
-
+  // Ultimate fallback
   return (
-    <IconComponent
+    <Tag
       size={size}
       className={className}
-      style={{ color: color || "#EF4444" }}
+      style={{ color: color || "currentColor" }}
     />
   );
 }

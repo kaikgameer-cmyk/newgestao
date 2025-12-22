@@ -25,6 +25,7 @@ import { Receipt, Loader2, Plus, Trash2, Pencil } from "lucide-react";
 import { useExpenseCategories, ExpenseCategory } from "@/hooks/useExpenseCategories";
 import { useToast } from "@/hooks/use-toast";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { IconPicker } from "@/components/ui/icon-picker";
 
 export function ExpenseCategorySettings() {
   const { toast } = useToast();
@@ -44,11 +45,13 @@ export function ExpenseCategorySettings() {
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryIcon, setNewCategoryIcon] = useState("Tag");
   const [newCategoryColor, setNewCategoryColor] = useState("#EF4444");
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExpenseCategory | null>(null);
   const [editCategoryName, setEditCategoryName] = useState("");
+  const [editCategoryIcon, setEditCategoryIcon] = useState("Tag");
   const [editCategoryColor, setEditCategoryColor] = useState("#EF4444");
 
   const [deleteConfirmCategory, setDeleteConfirmCategory] = useState<ExpenseCategory | null>(null);
@@ -71,10 +74,11 @@ export function ExpenseCategorySettings() {
       : "#EF4444";
 
     createCategory.mutate(
-      { name: trimmedName, color: safeColor },
+      { name: trimmedName, color: safeColor, icon: newCategoryIcon },
       {
         onSuccess: () => {
           setNewCategoryName("");
+          setNewCategoryIcon("Tag");
           setNewCategoryColor("#EF4444");
           setIsCreateDialogOpen(false);
         },
@@ -85,6 +89,7 @@ export function ExpenseCategorySettings() {
   const handleOpenEdit = (category: ExpenseCategory) => {
     setEditingCategory(category);
     setEditCategoryName(category.name);
+    setEditCategoryIcon(category.icon || "Tag");
     setEditCategoryColor(category.color || "#EF4444");
     setIsEditDialogOpen(true);
   };
@@ -99,11 +104,12 @@ export function ExpenseCategorySettings() {
       : "#EF4444";
 
     updateCategory.mutate(
-      { categoryId: editingCategory.id, name: trimmedName, color: safeColor },
+      { categoryId: editingCategory.id, name: trimmedName, color: safeColor, icon: editCategoryIcon },
       {
         onSuccess: () => {
           setEditingCategory(null);
           setEditCategoryName("");
+          setEditCategoryIcon("Tag");
           setEditCategoryColor("#EF4444");
           setIsEditDialogOpen(false);
         },

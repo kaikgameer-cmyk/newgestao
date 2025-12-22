@@ -123,7 +123,7 @@ export function usePlatforms() {
   });
 
   const createPlatform = useMutation({
-    mutationFn: async ({ name, color }: { name: string; color: string }) => {
+    mutationFn: async ({ name, color, icon }: { name: string; color: string; icon?: string }) => {
       if (!user) throw new Error("Não autenticado");
 
       const trimmedName = name.trim();
@@ -169,6 +169,7 @@ export function usePlatforms() {
            is_default: false,
            is_other: false,
            color: safeColor,
+           icon: icon || "Tag",
          })
          .select()
          .single();
@@ -220,10 +221,12 @@ export function usePlatforms() {
       platformId,
       name,
       color,
+      icon,
     }: {
       platformId: string;
       name: string;
       color: string;
+      icon?: string;
     }) => {
       if (!user) throw new Error("Não autenticado");
 
@@ -234,7 +237,7 @@ export function usePlatforms() {
 
       const { error } = await supabase
         .from("platforms")
-        .update({ name: trimmedName, color: safeColor })
+        .update({ name: trimmedName, color: safeColor, icon: icon || "Tag" })
         .eq("id", platformId)
         .eq("user_id", user.id);
 

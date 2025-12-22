@@ -142,7 +142,7 @@ export function useExpenseCategories() {
 
   // Create custom category
   const createCategory = useMutation({
-    mutationFn: async ({ name, color }: { name: string; color: string }) => {
+    mutationFn: async ({ name, color, icon }: { name: string; color: string; icon?: string }) => {
       if (!user) throw new Error("Not authenticated");
 
       const key = name
@@ -152,12 +152,15 @@ export function useExpenseCategories() {
         .replace(/[^a-z0-9]+/g, "_")
         .replace(/^_|_$/g, "");
 
+      const categoryKey = `custom_${key}_${Date.now()}`;
+
       const { error: categoryError } = await supabase
         .from("expense_categories")
         .insert({
-          key: `custom_${key}_${Date.now()}`,
+          key: categoryKey,
           name,
           color,
+          icon: icon || "Tag",
           is_system: false,
           is_default: false,
           user_id: user.id,
@@ -165,14 +168,13 @@ export function useExpenseCategories() {
       if (categoryError) throw categoryError;
 
       // Auto-enable the new category
-      const { error: prefError } = await supabase
+      await supabase
         .from("user_expense_categories")
         .insert({
           user_id: user.id,
-          category_key: `custom_${key}_${Date.now()}`,
+          category_key: categoryKey,
           enabled: true,
         });
-      // Ignore preference error - category creation is the main goal
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expense_categories"] });
@@ -231,16 +233,18 @@ export function useExpenseCategories() {
       categoryId,
       name,
       color,
+      icon,
     }: {
       categoryId: string;
       name: string;
       color: string;
+      icon?: string;
     }) => {
       if (!user) throw new Error("Not authenticated");
 
       const { error } = await supabase
         .from("expense_categories")
-        .update({ name, color })
+        .update({ name, color, icon: icon || "Tag" })
         .eq("id", categoryId)
         .eq("user_id", user.id);
       if (error) throw error;

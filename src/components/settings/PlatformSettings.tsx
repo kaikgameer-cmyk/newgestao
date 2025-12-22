@@ -26,6 +26,7 @@ import { Car, Loader2, Plus, Trash2, Pencil } from "lucide-react";
 import { usePlatforms, Platform } from "@/hooks/usePlatforms";
 import { useToast } from "@/hooks/use-toast";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { IconPicker } from "@/components/ui/icon-picker";
 
 export function PlatformSettings() {
   const { toast } = useToast();
@@ -45,10 +46,12 @@ export function PlatformSettings() {
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newPlatformName, setNewPlatformName] = useState("");
+  const [newPlatformIcon, setNewPlatformIcon] = useState("Car");
   const [newPlatformColor, setNewPlatformColor] = useState("#FFC700");
 
   const [editingPlatformId, setEditingPlatformId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingIcon, setEditingIcon] = useState("Car");
   const [editingColor, setEditingColor] = useState("#FFC700");
 
   const [deleteConfirmPlatform, setDeleteConfirmPlatform] = useState<Platform | null>(null);
@@ -69,10 +72,11 @@ export function PlatformSettings() {
     const safeColor = /^#[0-9A-Fa-f]{6}$/.test(newPlatformColor) ? newPlatformColor : "#FFC700";
 
     createPlatform.mutate(
-      { name: trimmedName, color: safeColor },
+      { name: trimmedName, color: safeColor, icon: newPlatformIcon },
       {
         onSuccess: () => {
           setNewPlatformName("");
+          setNewPlatformIcon("Car");
           setNewPlatformColor("#FFC700");
           setIsCreateDialogOpen(false);
         },
@@ -83,6 +87,7 @@ export function PlatformSettings() {
   const openEditDialog = (platform: Platform) => {
     setEditingPlatformId(platform.id);
     setEditingName(platform.name);
+    setEditingIcon(platform.icon || "Car");
     setEditingColor(platform.color || "#FFC700");
   };
 
@@ -95,10 +100,11 @@ export function PlatformSettings() {
     const safeColor = /^#[0-9A-Fa-f]{6}$/.test(editingColor) ? editingColor : "#FFC700";
 
     updatePlatform.mutate(
-      { platformId: editingPlatformId, name: trimmedName, color: safeColor },
+      { platformId: editingPlatformId, name: trimmedName, color: safeColor, icon: editingIcon },
       {
         onSuccess: () => {
           setEditingPlatformId(null);
+          setEditingIcon("Car");
         },
       }
     );
@@ -292,12 +298,15 @@ export function PlatformSettings() {
                 placeholder="Ex: Bolt, Lojinha, Caixinha de Natal..."
                 value={newPlatformName}
                 onChange={(e) => setNewPlatformName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleCreatePlatform();
-                  }
-                }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Ícone</Label>
+              <IconPicker
+                value={newPlatformIcon}
+                onChange={setNewPlatformIcon}
+                color={newPlatformColor}
               />
             </div>
 
@@ -311,7 +320,7 @@ export function PlatformSettings() {
                   className="h-9 w-9 rounded-md border border-border bg-background p-1 cursor-pointer"
                 />
                 <span className="text-xs text-muted-foreground">
-                  Escolha uma cor para identificar esta plataforma/fonte de receita.
+                  Cor do ícone
                 </span>
               </div>
             </div>
@@ -321,6 +330,7 @@ export function PlatformSettings() {
               variant="outline"
               onClick={() => {
                 setNewPlatformName("");
+                setNewPlatformIcon("Car");
                 setNewPlatformColor("#FFC700");
                 setIsCreateDialogOpen(false);
               }}
@@ -355,12 +365,15 @@ export function PlatformSettings() {
                 placeholder="Nome da plataforma"
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleUpdatePlatform();
-                  }
-                }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Ícone</Label>
+              <IconPicker
+                value={editingIcon}
+                onChange={setEditingIcon}
+                color={editingColor}
               />
             </div>
 
@@ -374,7 +387,7 @@ export function PlatformSettings() {
                   className="h-9 w-9 rounded-md border border-border bg-background p-1 cursor-pointer"
                 />
                 <span className="text-xs text-muted-foreground">
-                  Ajuste a cor para identificar melhor esta plataforma/fonte de receita.
+                  Cor do ícone
                 </span>
               </div>
             </div>
