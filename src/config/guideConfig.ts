@@ -520,17 +520,17 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: "Plano Mensal",
         description:
-          "R$ 29,90 por mês. Renovação automática. Acesso completo a todas as funcionalidades.",
+          "R$ 39,90 por mês. Renovação automática. Acesso completo a todas as funcionalidades.",
       },
       {
         title: "Plano Trimestral",
         description:
-          "R$ 79,90 por trimestre (3 meses). Mais popular! Economia comparado ao mensal.",
+          "R$ 89,70 por trimestre (3 meses). Parcelado em 3x de R$ 32,01. Mais popular!",
       },
       {
         title: "Plano Anual",
         description:
-          "R$ 199,00 por ano. Melhor custo-benefício! Maior economia a longo prazo.",
+          "R$ 297,90 por ano. Parcelado em 12x de R$ 30,81. Melhor custo-benefício!",
       },
       {
         title: "Ver Plano Atual",

@@ -28,20 +28,22 @@ export const BRAND = {
     MONTHLY: {
       name: "New Gestão - Mensal",
       displayName: "Mensal",
-      price: "R$ 29,90 / mês",
+      price: "R$ 39,90 / mês",
       duration: "1 mês",
     },
     QUARTERLY: {
       name: "New Gestão - Trimestral", 
       displayName: "Trimestral",
-      price: "R$ 79,90 / trimestre",
+      price: "R$ 89,70 / trimestre",
       duration: "3 meses",
+      installments: "3x de R$ 32,01",
     },
     YEARLY: {
       name: "New Gestão - Anual",
       displayName: "Anual", 
-      price: "R$ 199,00 / ano",
+      price: "R$ 297,90 / ano",
       duration: "12 meses",
+      installments: "12x de R$ 30,81",
     },
   },
 } as const;
