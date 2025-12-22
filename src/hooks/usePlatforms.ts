@@ -12,6 +12,7 @@ export interface Platform {
   is_default: boolean;
   user_id: string | null;
   color: string; // cor em hex (#RRGGBB)
+  icon?: string | null; // nome do ícone Lucide
 }
 
 export interface UserPlatform {

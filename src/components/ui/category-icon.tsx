@@ -7,11 +7,18 @@ import {
   ParkingCircle,
   UtensilsCrossed,
   CircleDot,
+  Car,
+  Bike,
+  Package,
+  Truck,
+  ShoppingBag,
+  Box,
   LucideIcon,
 } from "lucide-react";
 
 // Map icon names to Lucide components
 const iconMap: Record<string, LucideIcon> = {
+  // Expense categories
   fuel: Fuel,
   zap: Zap,
   wrench: Wrench,
@@ -19,6 +26,14 @@ const iconMap: Record<string, LucideIcon> = {
   milestone: Milestone,
   "parking-circle": ParkingCircle,
   "utensils-crossed": UtensilsCrossed,
+  // Platform icons
+  car: Car,
+  bike: Bike,
+  package: Package,
+  truck: Truck,
+  "shopping-bag": ShoppingBag,
+  box: Box,
+  "circle-dot": CircleDot,
 };
 
 interface CategoryIconProps {

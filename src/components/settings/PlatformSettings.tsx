@@ -23,17 +23,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Car, Loader2, Plus, Trash2, Pencil, Sparkles } from "lucide-react";
-import { usePlatforms } from "@/hooks/usePlatforms";
+import { usePlatforms, Platform } from "@/hooks/usePlatforms";
 import { useApplyDefaults } from "@/hooks/useApplyDefaults";
 import { useToast } from "@/hooks/use-toast";
-
-interface Platform {
-  id: string;
-  key: string;
-  name: string;
-  color: string;
-  user_id: string | null;
-}
+import { CategoryIcon } from "@/components/ui/category-icon";
 
 export function PlatformSettings() {
   const { toast } = useToast();
@@ -203,9 +196,10 @@ export function PlatformSettings() {
                     className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: platform.color || "#FFC700" }}
+                      <CategoryIcon
+                        iconName={platform.icon}
+                        color={platform.color}
+                        size={18}
                       />
                       <Label htmlFor={`platform-${platform.key}`} className="font-medium cursor-pointer">
                         {platform.name}
@@ -249,9 +243,10 @@ export function PlatformSettings() {
                     className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-secondary/30 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: platform.color || "#FFC700" }}
+                      <CategoryIcon
+                        iconName={platform.icon}
+                        color={platform.color}
+                        size={18}
                       />
                       <Label htmlFor={`platform-${platform.key}`} className="font-medium cursor-pointer">
                         {platform.name}
