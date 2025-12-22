@@ -983,6 +983,47 @@ export type Database = {
         }
         Relationships: []
       }
+      maintenance_history: {
+        Row: {
+          created_at: string
+          id: string
+          maintenance_id: string
+          next_due_km: number
+          notes: string | null
+          performed_at: string
+          performed_km: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          maintenance_id: string
+          next_due_km: number
+          notes?: string | null
+          performed_at?: string
+          performed_km: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          maintenance_id?: string
+          next_due_km?: number
+          notes?: string | null
+          performed_at?: string
+          performed_km?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_history_maintenance_id_fkey"
+            columns: ["maintenance_id"]
+            isOneToOne: false
+            referencedRelation: "maintenance_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maintenance_records: {
         Row: {
           created_at: string

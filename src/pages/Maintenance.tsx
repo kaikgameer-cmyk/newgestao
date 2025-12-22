@@ -1,24 +1,30 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Wrench, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, Wrench, Loader2, Pencil, Trash2, RotateCcw, Fuel, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMaintenance, MaintenanceRecord } from "@/hooks/useMaintenance";
+import { useMaintenanceHistory } from "@/hooks/useMaintenanceHistory";
 import { MaintenanceModal } from "@/components/maintenance/MaintenanceModal";
 import { MaintenanceDeleteDialog } from "@/components/maintenance/MaintenanceDeleteDialog";
 import { MaintenanceStatusBadge } from "@/components/maintenance/MaintenanceStatusBadge";
 import { MaintenanceSummaryCard } from "@/components/maintenance/MaintenanceSummaryCard";
-import { format } from "date-fns";
+import { MaintenanceRenewModal } from "@/components/maintenance/MaintenanceRenewModal";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Maintenance() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<MaintenanceRecord | null>(null);
   const [deleteRecord, setDeleteRecord] = useState<MaintenanceRecord | null>(null);
+  const [renewRecord, setRenewRecord] = useState<MaintenanceRecord | null>(null);
 
   const { toast } = useToast();
   const {
     isLoading,
     latestOdometer,
+    odometerSource,
+    odometerDate,
     getSortedRecords,
     getCounts,
     createMaintenance,
@@ -26,13 +32,19 @@ export default function Maintenance() {
     deleteMaintenance,
   } = useMaintenance();
 
+  const { completedCount, createHistoryRecord } = useMaintenanceHistory();
+
   const sortedRecords = getSortedRecords();
   const counts = getCounts();
 
   const formatKm = (km: number) => new Intl.NumberFormat("pt-BR").format(km);
   const formatDate = (dateStr: string) => {
-    const [year, month, day] = dateStr.split("-").map(Number);
-    return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
+    try {
+      return format(parseISO(dateStr), "dd/MM/yyyy", { locale: ptBR });
+    } catch {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
+    }
   };
 
   const handleCreate = async (data: {
@@ -66,6 +78,21 @@ export default function Maintenance() {
     toast({ title: "Manutenção excluída com sucesso." });
   };
 
+  const handleRenew = async (data: {
+    performed_at: string;
+    performed_km: number;
+    next_due_km: number;
+    notes?: string;
+  }) => {
+    if (!renewRecord) return;
+    await createHistoryRecord.mutateAsync({
+      maintenance_id: renewRecord.id,
+      ...data,
+    });
+    setRenewRecord(null);
+    toast({ title: "Manutenção concluída e renovada com sucesso!" });
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center">
@@ -73,6 +100,20 @@ export default function Maintenance() {
       </div>
     );
   }
+
+  const getSourceLabel = () => {
+    if (!odometerSource) return "";
+    return odometerSource === "fuel" ? "Combustível" : "Elétrico";
+  };
+
+  const getSourceIcon = () => {
+    if (!odometerSource) return null;
+    return odometerSource === "fuel" ? (
+      <Fuel className="w-3 h-3" />
+    ) : (
+      <Zap className="w-3 h-3" />
+    );
+  };
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -96,13 +137,26 @@ export default function Maintenance() {
         ok={counts.ok}
         warning={counts.warning}
         overdue={counts.overdue}
+        completed={completedCount}
       />
 
       {/* Current Odometer Info */}
       {latestOdometer && (
-        <div className="text-sm text-muted-foreground">
-          Km atual do veículo (último abastecimento):{" "}
-          <span className="font-medium text-foreground">{formatKm(latestOdometer)} km</span>
+        <div className="text-sm text-muted-foreground space-y-1">
+          <div className="flex items-center gap-2">
+            <span>Km atual do veículo (último registro):</span>
+            <span className="font-medium text-foreground">{formatKm(latestOdometer)} km</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            {getSourceIcon()}
+            <span>Fonte: {getSourceLabel()}</span>
+            {odometerDate && (
+              <>
+                <span>•</span>
+                <span>{formatDate(odometerDate)}</span>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -195,6 +249,18 @@ export default function Maintenance() {
                       </td>
                       <td className="py-3 px-2 sm:px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {/* Show Renew button only for overdue maintenance */}
+                          {record.status === "overdue" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-primary hover:text-primary"
+                              onClick={() => setRenewRecord(record)}
+                              title="Renovar/Concluir"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -246,6 +312,16 @@ export default function Maintenance() {
         onOpenChange={(open) => !open && setDeleteRecord(null)}
         onConfirm={handleDelete}
         title={deleteRecord?.title}
+      />
+
+      {/* Renew Modal */}
+      <MaintenanceRenewModal
+        open={!!renewRecord}
+        onOpenChange={(open) => !open && setRenewRecord(null)}
+        onSubmit={handleRenew}
+        record={renewRecord}
+        suggestedKm={latestOdometer}
+        isPending={createHistoryRecord.isPending}
       />
     </div>
   );

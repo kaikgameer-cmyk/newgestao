@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLatestOdometer } from "@/hooks/useLatestOdometer";
 
 export interface MaintenanceRecord {
   id: string;
@@ -44,24 +45,11 @@ export function useMaintenance() {
     enabled: !!user,
   });
 
-  // Fetch latest odometer from fuel logs
-  const { data: latestOdometer } = useQuery({
-    queryKey: ["latest_odometer", user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-      const { data, error } = await supabase
-        .from("fuel_logs")
-        .select("odometer_km, date")
-        .eq("user_id", user.id)
-        .not("odometer_km", "is", null)
-        .order("date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      return data?.[0]?.odometer_km ? Number(data[0].odometer_km) : null;
-    },
-    enabled: !!user,
-  });
+  // Use unified odometer (fuel + electric)
+  const { data: odometerData, isLoading: isLoadingOdometer } = useLatestOdometer();
+  const latestOdometer = odometerData?.currentOdometerKm ?? null;
+  const odometerSource = odometerData?.source ?? null;
+  const odometerDate = odometerData?.date ?? null;
 
   // Calculate status for a maintenance record
   const getMaintenanceStatus = (record: MaintenanceRecord, currentOdometer: number | null): MaintenanceStatus => {
@@ -195,8 +183,10 @@ export function useMaintenance() {
 
   return {
     maintenanceRecords,
-    isLoading,
+    isLoading: isLoading || isLoadingOdometer,
     latestOdometer,
+    odometerSource,
+    odometerDate,
     getRecordsWithStatus,
     getSortedRecords,
     getCounts,

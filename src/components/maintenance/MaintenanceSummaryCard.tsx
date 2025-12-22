@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Wrench, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
+import { Wrench, CheckCircle2, AlertTriangle, AlertCircle, ClipboardCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -8,6 +8,7 @@ interface MaintenanceSummaryCardProps {
   ok: number;
   warning: number;
   overdue: number;
+  completed?: number;
   compact?: boolean;
 }
 
@@ -16,6 +17,7 @@ export function MaintenanceSummaryCard({
   ok,
   warning,
   overdue,
+  completed = 0,
   compact = false,
 }: MaintenanceSummaryCardProps) {
   if (compact) {
@@ -60,14 +62,19 @@ export function MaintenanceSummaryCard({
             <Wrench className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold">Próximas Manutenções</h3>
+            <h3 className="text-lg font-semibold">Manutenções por Quilometragem</h3>
             <p className="text-sm text-muted-foreground">
-              Acompanhe as manutenções do seu veículo por quilometragem
+              Acompanhe as manutenções do seu veículo
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-3">
+          <div className="text-center p-3 rounded-lg bg-primary/10">
+            <ClipboardCheck className="w-5 h-5 text-primary mx-auto mb-1" />
+            <p className="text-2xl font-bold text-primary">{completed}</p>
+            <p className="text-xs text-muted-foreground">Concluídas</p>
+          </div>
           <div className="text-center p-3 rounded-lg bg-green-500/10">
             <CheckCircle2 className="w-5 h-5 text-green-500 mx-auto mb-1" />
             <p className="text-2xl font-bold text-green-500">{ok}</p>
