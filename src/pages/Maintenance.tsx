@@ -11,6 +11,7 @@ import { MaintenanceStatusBadge } from "@/components/maintenance/MaintenanceStat
 import { MaintenanceSummaryCard } from "@/components/maintenance/MaintenanceSummaryCard";
 import { MaintenanceRenewModal } from "@/components/maintenance/MaintenanceRenewModal";
 import { MaintenanceHistorySection } from "@/components/maintenance/MaintenanceHistorySection";
+import { MaintenanceAlertBanner } from "@/components/maintenance/MaintenanceAlertBanner";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -37,6 +38,16 @@ export default function Maintenance() {
 
   const sortedRecords = getSortedRecords();
   const counts = getCounts();
+
+  // Build alerts for warning/overdue maintenance
+  const maintenanceAlerts = sortedRecords
+    .filter((r) => r.status === "warning" || r.status === "overdue")
+    .map((r) => ({
+      title: r.title,
+      kmRemaining: r.next_km - (latestOdometer || 0),
+      status: r.status as "warning" | "overdue",
+    }))
+    .sort((a, b) => a.kmRemaining - b.kmRemaining);
 
   const formatKm = (km: number) => new Intl.NumberFormat("pt-BR").format(km);
   const formatDate = (dateStr: string) => {
@@ -131,6 +142,9 @@ export default function Maintenance() {
           Nova Manutenção
         </Button>
       </div>
+
+      {/* Alert Banner */}
+      <MaintenanceAlertBanner alerts={maintenanceAlerts} />
 
       {/* Summary Card */}
       <MaintenanceSummaryCard
