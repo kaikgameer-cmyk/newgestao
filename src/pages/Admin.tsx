@@ -33,7 +33,8 @@ import {
   BadgeCheck,
   Ban,
   UserPlus,
-  FlaskConical
+  FlaskConical,
+  Mail
 } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -419,6 +420,38 @@ export default function AdminPage() {
     }
   });
 
+  // Test email mutation
+  const testEmailMutation = useMutation({
+    mutationFn: async () => {
+      const response = await supabase.functions.invoke("send-test-email", {
+        body: {},
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Erro ao enviar email de teste");
+      }
+      
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+      
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast({ 
+        title: "Email de teste enviado!", 
+        description: data.message || "Verifique sua caixa de entrada."
+      });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Erro ao enviar email de teste", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  });
+
   const handleCreateUser = () => {
     setCreateUserErrors({});
     const result = createUserSchema.safeParse({
@@ -529,6 +562,20 @@ export default function AdminPage() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          <Button 
+            size="sm" 
+            onClick={() => testEmailMutation.mutate()}
+            variant="outline"
+            className="w-fit gap-2"
+            disabled={testEmailMutation.isPending}
+          >
+            {testEmailMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Mail className="w-4 h-4" />
+            )}
+            Testar Email
+          </Button>
           <Button 
             size="sm" 
             onClick={() => navigate("/dashboard/admin/testes-competicoes")}
