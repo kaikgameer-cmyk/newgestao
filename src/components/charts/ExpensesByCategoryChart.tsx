@@ -1,10 +1,12 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CategoryIcon } from "@/components/ui/category-icon";
 
 interface ExpenseCategory {
   name: string;
   value: number;
   color: string;
+  icon?: string | null;
 }
 
 interface ExpensesByCategoryChartProps {
@@ -108,9 +110,11 @@ export function ExpensesByCategoryChart({ data, compact = false }: ExpensesByCat
                   className="flex items-center justify-between gap-1.5 sm:gap-2 text-xs sm:text-sm py-1 px-2 rounded-md bg-muted/30"
                 >
                   <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
-                    <div
-                      className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full shrink-0"
-                      style={{ backgroundColor: category.color }}
+                    <CategoryIcon
+                      iconName={category.icon}
+                      color={category.color}
+                      size={14}
+                      className="shrink-0"
                     />
                     <span className="text-muted-foreground truncate text-xs sm:text-sm">
                       {category.name}

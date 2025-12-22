@@ -29,6 +29,7 @@ import { DailyGoalCard } from "@/components/goals/DailyGoalCard";
 import { PeriodGoalCard } from "@/components/goals/PeriodGoalCard";
 import { GoalEditor } from "@/components/goals/GoalEditor";
 import { useDailyGoals } from "@/hooks/useDailyGoals";
+import { useExpenseCategories } from "@/hooks/useExpenseCategories";
 import { useMaintenance } from "@/hooks/useMaintenance";
 import { MaintenanceSummaryCard } from "@/components/maintenance/MaintenanceSummaryCard";
 import { DayMetricsPanel } from "@/components/dashboard/DayMetricsPanel";
@@ -96,6 +97,9 @@ export default function Dashboard() {
 
   // Fetch daily goals
   const { getGoalForDate, getGoalsForPeriod, getTotalGoalsForPeriod } = useDailyGoals();
+  
+  // Fetch expense categories for icons
+  const { enabledCategories } = useExpenseCategories();
 
   // Fetch maintenance data
   const { getCounts: getMaintenanceCounts } = useMaintenance();
@@ -164,11 +168,15 @@ export default function Dashboard() {
     despesas_fixas: "Despesas Fixas",
   };
 
-  const expenseCategoriesData = Object.entries(expensesByCategory).map(([name, value], index) => ({
-    name: categoryLabels[name] || name,
-    value,
-    color: COLORS[index % COLORS.length],
-  }));
+  const expenseCategoriesData = Object.entries(expensesByCategory).map(([key, value], index) => {
+    const category = enabledCategories.find(c => c.key === key);
+    return {
+      name: category?.name || categoryLabels[key] || key,
+      value,
+      color: category?.color || COLORS[index % COLORS.length],
+      icon: category?.icon || null,
+    };
+  });
 
   // Build period goals data for multi-day view
   const periodGoalsData = isRange
