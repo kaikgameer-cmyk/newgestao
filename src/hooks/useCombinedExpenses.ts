@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { isElectricTransaction, getEnergyUnitLabel } from "@/lib/transactionHelpers";
 
 interface CombinedExpense {
   id: string;
@@ -96,21 +97,27 @@ export function useCombinedExpenses(
         total_installments: e.total_installments,
         credit_cards: e.credit_cards,
       })),
-    ...fuelLogs.map((f) => ({
-      id: f.id,
-      user_id: f.user_id,
-      date: f.date,
-      amount: Number(f.total_value),
-      category: "combustivel",
-      payment_method: f.payment_method,
-      credit_card_id: f.credit_card_id,
-      notes: f.station ? `${f.station} - ${f.liters}L ${f.fuel_type}` : `${f.liters}L ${f.fuel_type}`,
-      source: "fuel" as const,
-      fuel_type: f.fuel_type,
-      liters: Number(f.liters),
-      station: f.station,
-      credit_cards: f.credit_cards,
-    })),
+    ...fuelLogs.map((f) => {
+      const isElectric = isElectricTransaction({ fuel_type: f.fuel_type });
+      const unit = getEnergyUnitLabel(isElectric);
+      return {
+        id: f.id,
+        user_id: f.user_id,
+        date: f.date,
+        amount: Number(f.total_value),
+        category: isElectric ? "eletrico" : "combustivel",
+        payment_method: f.payment_method,
+        credit_card_id: f.credit_card_id,
+        notes: f.station 
+          ? `${f.station} - ${f.liters}${unit} ${f.fuel_type}` 
+          : `${f.liters}${unit} ${f.fuel_type}`,
+        source: "fuel" as const,
+        fuel_type: f.fuel_type,
+        liters: Number(f.liters),
+        station: f.station,
+        credit_cards: f.credit_cards,
+      };
+    }),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const totalExpenses = combinedExpenses.reduce((sum, e) => sum + e.amount, 0);
