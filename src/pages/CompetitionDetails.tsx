@@ -70,6 +70,7 @@ import {
   DailyFeedSection,
   JoinCTA,
   JoinCompetitionInline,
+  ParticipantSummarySection,
 } from "@/components/competitions/details";
 
 export default function CompetitionDetails() {
@@ -322,6 +323,15 @@ export default function CompetitionDetails() {
             allowTeams={competition.allow_teams}
             teamId={viewer?.team_id ?? null}
             result={dashboardData.result}
+          />
+        )}
+
+        {/* Participant per-user summary */}
+        {(isMember || isHost) && (
+          <ParticipantSummarySection
+            ranking={dashboardData.ranking}
+            goalValue={competition.goal_value}
+            currentUserId={user?.id}
           />
         )}
 

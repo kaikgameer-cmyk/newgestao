@@ -6,3 +6,5 @@ export { PlatformBreakdownSection } from "./PlatformBreakdownSection";
 export { DailyFeedSection } from "./DailyFeedSection";
 export { JoinCTA } from "./JoinCTA";
 export { JoinCompetitionInline } from "./JoinCompetitionInline";
+export { ParticipantSummarySection } from "./ParticipantSummarySection";
+
