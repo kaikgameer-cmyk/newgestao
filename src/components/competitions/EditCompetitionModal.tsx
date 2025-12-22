@@ -29,7 +29,7 @@ import { format, parseISO } from "date-fns";
 
 const editCompetitionSchema = z.object({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres").max(100),
-  description: z.string().max(500).optional(),
+  description: z.string().max(3000, "A descrição deve ter no máximo 3000 caracteres.").optional(),
   goal_value: z.coerce.number().positive("Meta deve ser maior que zero"),
   has_prize: z.boolean().default(true),
   prize_value: z.coerce.number().min(0, "Prêmio não pode ser negativo").optional(),
@@ -162,9 +162,14 @@ export function EditCompetitionModal({
                     <Textarea
                       placeholder="Descrição da competição..."
                       className="resize-none"
+                      rows={4}
+                      maxLength={3000}
                       {...field}
                     />
                   </FormControl>
+                  <div className="text-xs text-muted-foreground text-right">
+                    {field.value?.length || 0}/3000
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
