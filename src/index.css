@@ -286,3 +286,31 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(0 0% 30%);
 }
+
+/* Markdown prose customization */
+@layer components {
+  .prose {
+    --tw-prose-body: hsl(var(--foreground));
+    --tw-prose-headings: hsl(var(--foreground));
+    --tw-prose-links: hsl(var(--primary));
+    --tw-prose-bold: hsl(var(--foreground));
+    --tw-prose-counters: hsl(var(--muted-foreground));
+    --tw-prose-bullets: hsl(var(--muted-foreground));
+    --tw-prose-code: hsl(var(--foreground));
+    --tw-prose-quotes: hsl(var(--muted-foreground));
+  }
+
+  .prose-sm {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .prose a {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .prose code {
+    font-size: 0.85em;
+  }
+}

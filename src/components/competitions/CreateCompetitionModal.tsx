@@ -223,12 +223,15 @@ export default function CreateCompetitionModal({
                   <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Descreva o objetivo da competição..."
+                      placeholder="Descreva o objetivo da competição... Suporta **negrito**, *itálico*, listas e [links](url)"
                       rows={4}
                       maxLength={3000}
                       {...field}
                     />
                   </FormControl>
+                  <FormDescription className="text-xs">
+                    Suporta formatação markdown: **negrito**, *itálico*, listas e links
+                  </FormDescription>
                   <div className="text-xs text-muted-foreground text-right">
                     {field.value?.length || 0}/3000
                   </div>

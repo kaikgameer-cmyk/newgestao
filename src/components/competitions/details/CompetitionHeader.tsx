@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import {
   ArrowLeft,
   Crown,
@@ -69,7 +70,7 @@ export function CompetitionHeader({
           <Badge variant={status.variant}>{status.label}</Badge>
         </div>
         {description && (
-          <p className="text-muted-foreground text-sm">{description}</p>
+          <MarkdownRenderer content={description} className="text-muted-foreground text-sm" />
         )}
       </div>
       

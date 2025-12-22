@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle, Bell, Medal } from "lucide-react";
 import { useCompetitionsForTabs } from "@/hooks/useCompetitions";
 import { useUnreadHostNotifications, useMarkNotificationRead, useDismissNotification, HostNotification } from "@/hooks/useNotifications";
@@ -215,7 +216,7 @@ export default function Competitions() {
                     </CardHeader>
                     <CardContent className="space-y-2">
                       {comp.description && (
-                        <p className="text-sm text-muted-foreground">{comp.description}</p>
+                        <MarkdownRenderer content={comp.description} className="text-sm text-muted-foreground line-clamp-2" />
                       )}
                       <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-2">
@@ -302,7 +303,7 @@ export default function Competitions() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       {comp.description && (
-                        <p className="text-sm text-muted-foreground">{comp.description}</p>
+                        <MarkdownRenderer content={comp.description} className="text-sm text-muted-foreground line-clamp-2" />
                       )}
                       <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-2">
@@ -408,7 +409,7 @@ export default function Competitions() {
                     </CardHeader>
                     <CardContent className="space-y-2">
                       {comp.description && (
-                        <p className="text-sm text-muted-foreground">{comp.description}</p>
+                        <MarkdownRenderer content={comp.description} className="text-sm text-muted-foreground line-clamp-2" />
                       )}
                       <div className="flex items-center gap-4 text-sm">
                         <div className="flex items-center gap-2">

@@ -160,13 +160,16 @@ export function EditCompetitionModal({
                   <FormLabel>Descrição (opcional)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Descrição da competição..."
+                      placeholder="Descrição da competição... Suporta **negrito**, *itálico*, listas e [links](url)"
                       className="resize-none"
                       rows={4}
                       maxLength={3000}
                       {...field}
                     />
                   </FormControl>
+                  <FormDescription className="text-xs">
+                    Suporta formatação markdown: **negrito**, *itálico*, listas e links
+                  </FormDescription>
                   <div className="text-xs text-muted-foreground text-right">
                     {field.value?.length || 0}/3000
                   </div>

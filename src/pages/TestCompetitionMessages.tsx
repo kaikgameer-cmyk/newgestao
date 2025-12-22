@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 import {
   Select,
   SelectContent,
@@ -155,7 +156,7 @@ export default function TestCompetitionMessages() {
                 <h3 className="font-semibold">{selectedCompetition.name}</h3>
                 <Badge variant="outline">{selectedCompetition.code}</Badge>
               </div>
-              <p className="text-sm text-muted-foreground">{selectedCompetition.description}</p>
+              <MarkdownRenderer content={selectedCompetition.description || ""} className="text-sm text-muted-foreground" />
               <div className="flex gap-4 text-sm">
                 <span>
                   Meta: <strong>{formatCurrency(selectedCompetition.goal_value)}</strong>
