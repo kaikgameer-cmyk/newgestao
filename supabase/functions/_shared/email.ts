@@ -187,13 +187,7 @@ export function getEmailLayout(content: string, options?: { showLogo?: boolean }
           ${showLogo ? `
           <tr>
             <td align="center" style="padding-bottom: 32px;">
-              <table role="presentation" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td style="background: linear-gradient(135deg, ${EMAIL_STYLES.accent}, ${EMAIL_STYLES.accentHover}); border-radius: 12px; padding: 16px 24px;">
-                    <span style="font-size: 28px; font-weight: bold; color: ${EMAIL_STYLES.accentDark}; letter-spacing: 2px;">NG</span>
-                  </td>
-                </tr>
-              </table>
+              <img src="https://newgestao.app/logo-ng.png" alt="New Gestão" width="64" height="64" style="display: block; margin: 0 auto;" />
               <p style="margin: 16px 0 0 0; font-size: 20px; font-weight: 600; color: ${EMAIL_STYLES.textPrimary};">New Gestão</p>
             </td>
           </tr>

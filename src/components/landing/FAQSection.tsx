@@ -8,7 +8,7 @@ import {
 const faqs = [
   {
     question: "Preciso entender de finanças para usar?",
-    answer: "Não! O DriverFinance foi criado para ser simples e direto. Você só precisa lançar suas corridas e despesas, e o sistema calcula tudo automaticamente.",
+    answer: "Não! O New Gestão foi criado para ser simples e direto. Você só precisa lançar suas corridas e despesas, e o sistema calcula tudo automaticamente.",
   },
   {
     question: "Consigo ver meus resultados por semana?",
@@ -37,7 +37,7 @@ export function FAQSection() {
             Perguntas <span className="text-gradient-primary">frequentes</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Tire suas dúvidas sobre o DriverFinance
+            Tire suas dúvidas sobre o New Gestão
           </p>
         </div>
         
