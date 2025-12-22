@@ -308,6 +308,7 @@ export type Database = {
           end_date: string
           goal_type: string
           goal_value: number
+          has_prize: boolean
           host_participates: boolean
           id: string
           is_listed: boolean
@@ -315,7 +316,7 @@ export type Database = {
           max_members: number | null
           name: string
           password_hash: string
-          prize_value: number
+          prize_value: number | null
           start_date: string
           team_size: number | null
           updated_at: string | null
@@ -330,6 +331,7 @@ export type Database = {
           end_date: string
           goal_type?: string
           goal_value: number
+          has_prize?: boolean
           host_participates?: boolean
           id?: string
           is_listed?: boolean
@@ -337,7 +339,7 @@ export type Database = {
           max_members?: number | null
           name: string
           password_hash: string
-          prize_value: number
+          prize_value?: number | null
           start_date: string
           team_size?: number | null
           updated_at?: string | null
@@ -352,6 +354,7 @@ export type Database = {
           end_date?: string
           goal_type?: string
           goal_value?: number
+          has_prize?: boolean
           host_participates?: boolean
           id?: string
           is_listed?: boolean
@@ -359,7 +362,7 @@ export type Database = {
           max_members?: number | null
           name?: string
           password_hash?: string
-          prize_value?: number
+          prize_value?: number | null
           start_date?: string
           team_size?: number | null
           updated_at?: string | null
