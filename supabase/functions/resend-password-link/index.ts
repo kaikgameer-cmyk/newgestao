@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { sendAppEmail, getEmailLayout, getEmailButton, getEmailHighlightCard, validateNoLovableUrl } from "../_shared/email.ts";
+import { Resend } from "https://esm.sh/resend@2.0.0";
+import { emailPasswordReset, BRAND } from "../_shared/emailTemplates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,44 +21,26 @@ async function hashToken(token: string): Promise<string> {
     .join("");
 }
 
-// Generate email HTML for password reset
-function getPasswordResetEmailHtml(name: string, setPasswordUrl: string): string {
-  const content = `
-    <h1 style="margin: 0 0 16px 0; font-size: 24px; font-weight: 700; color: #f8fafc;">
-      Acesso ao New Gestão 🔐
-    </h1>
-    <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.6; color: #94a3b8;">
-      Olá, <strong style="color: #f8fafc;">${name}</strong>!
-    </p>
-    <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #94a3b8;">
-      Clique no botão abaixo para definir sua senha e acessar a plataforma.
-    </p>
-    
-    ${getEmailButton('Definir Minha Senha', setPasswordUrl, 'success')}
-    
-    ${getEmailHighlightCard(`
-      <p style="margin: 0; font-size: 14px; color: #94a3b8;">
-        <strong style="color: #f8fafc;">⏰ Importante:</strong> 
-        Este link expira em 24 horas.
-      </p>
-    `, 'warning')}
-    
-    <p style="margin: 24px 0 0 0; font-size: 14px; color: #64748b;">
-      Se você não solicitou este acesso, pode ignorar este email com segurança.
-    </p>
-  `;
-
-  return getEmailLayout(content);
+/**
+ * Validates a URL does NOT contain lovable.app - blocks broken links
+ */
+function validateNoLovableUrl(url: string, context: string): void {
+  if (url.includes("lovable.app") || url.includes("lovableproject.com")) {
+    const errorMsg = `[SECURITY BLOCK] ${context}: URL contains lovable.app domain which is FORBIDDEN. URL: ${url}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
 }
 
 serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
@@ -65,7 +48,6 @@ serve(async (req: Request) => {
   try {
     const { email, userId, skipSubscriptionCheck } = await req.json();
 
-    // Must have either email or userId
     if (!email && !userId) {
       console.error("[RESEND-LINK] Missing email or userId");
       return new Response(
@@ -80,7 +62,6 @@ serve(async (req: Request) => {
     let userEmail: string | null = null;
 
     if (userId) {
-      // Look up user by ID using admin API
       const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
       if (userError) {
         console.error("[RESEND-LINK] Error getting user by ID:", userError);
@@ -93,7 +74,6 @@ serve(async (req: Request) => {
       userEmail = user?.email;
       console.log("[RESEND-LINK] User found by ID:", user?.id, "email:", userEmail);
     } else {
-      // Find user by email using admin API
       const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
       if (usersError) {
         console.error("[RESEND-LINK] Error listing users:", usersError);
@@ -108,7 +88,6 @@ serve(async (req: Request) => {
 
     if (!user) {
       console.log("[RESEND-LINK] User not found");
-      // Return success to prevent email enumeration
       return new Response(
         JSON.stringify({ 
           ok: true, 
@@ -128,7 +107,6 @@ serve(async (req: Request) => {
 
     console.log("[RESEND-LINK] User found:", user.id, "email:", userEmail);
 
-    // Check for active subscription (unless skipped by admin)
     if (!skipSubscriptionCheck) {
       const { data: subscription, error: subError } = await supabase
         .from("subscriptions")
@@ -157,7 +135,6 @@ serve(async (req: Request) => {
       console.log("[RESEND-LINK] Subscription check skipped (admin request)");
     }
 
-    // Get user profile for name
     const { data: profile } = await supabase
       .from("profiles")
       .select("name, first_name")
@@ -166,12 +143,10 @@ serve(async (req: Request) => {
 
     const userName = profile?.first_name || profile?.name || "Usuário";
 
-    // Generate custom token for password reset
     const rawToken = crypto.randomUUID() + "-" + crypto.randomUUID();
     const tokenHash = await hashToken(rawToken);
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    // Store token in password_tokens table
     const { error: tokenError } = await supabase
       .from("password_tokens")
       .insert({
@@ -187,24 +162,31 @@ serve(async (req: Request) => {
       throw new Error("Erro ao gerar link de acesso");
     }
 
-    // Build password URL - ALWAYS use production URL
     const passwordUrl = `${PROD_APP_URL}/definir-senha?token=${rawToken}`;
 
-    // CRITICAL: Validate URL before sending - block any lovable.app links
     validateNoLovableUrl(passwordUrl, "passwordUrl");
 
     console.log("[RESEND-LINK] Generated password URL - AUDIT LOG:");
-    console.log("  - redirectTo:", passwordUrl);
     console.log("  - finalVerifyUrl:", passwordUrl);
     console.log("  - linkPreview:", rawToken.substring(0, 8) + "...");
-    console.log("  - URL hostname:", new URL(passwordUrl).hostname);
 
-    // Send email
-    const emailHtml = getPasswordResetEmailHtml(userName, passwordUrl);
-    await sendAppEmail({
-      to: userEmail,
-      subject: "Acesso ao New Gestão — Definir Senha",
-      html: emailHtml,
+    const { subject, html } = emailPasswordReset({
+      name: userName,
+      resetUrl: passwordUrl,
+    });
+
+    if (!resendApiKey) {
+      console.error("[RESEND-LINK] RESEND_API_KEY not configured");
+      throw new Error("Email service not configured");
+    }
+
+    const resend = new Resend(resendApiKey);
+    await resend.emails.send({
+      from: `${BRAND.appName} <no-reply@newgestao.app>`,
+      to: [userEmail],
+      reply_to: BRAND.supportEmail,
+      subject,
+      html,
     });
 
     console.log("[RESEND-LINK] Email sent successfully to:", userEmail);

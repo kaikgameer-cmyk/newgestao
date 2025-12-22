@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { sendAppEmail, getWelcomeEmailHtml, validateNoLovableUrl } from "../_shared/email.ts";
+import { Resend } from "https://esm.sh/resend@2.0.0";
+import { emailWelcome, BRAND } from "../_shared/emailTemplates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,11 +15,20 @@ const PROD_APP_URL = "https://newgestao.app";
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
 /**
+ * Validates a URL does NOT contain lovable.app - blocks broken links
+ */
+function validateNoLovableUrl(url: string, context: string): void {
+  if (url.includes("lovable.app") || url.includes("lovableproject.com")) {
+    const errorMsg = `[SECURITY BLOCK] ${context}: URL contains lovable.app domain which is FORBIDDEN. URL: ${url}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+}
+
+/**
  * Input validation for user creation
- * Defense-in-depth: validate all inputs before processing
  */
 function validateInput(data: Record<string, unknown>): { valid: boolean; error?: string; sanitized?: Record<string, unknown> } {
-  // Validate email (required)
   if (!data.email || typeof data.email !== 'string') {
     return { valid: false, error: 'Email é obrigatório' };
   }
@@ -34,7 +44,6 @@ function validateInput(data: Record<string, unknown>): { valid: boolean; error?:
     return { valid: false, error: 'Formato de email inválido' };
   }
   
-  // Validate password (required)
   if (!data.password || typeof data.password !== 'string') {
     return { valid: false, error: 'Senha é obrigatória' };
   }
@@ -45,7 +54,6 @@ function validateInput(data: Record<string, unknown>): { valid: boolean; error?:
     return { valid: false, error: 'Senha deve ter no máximo 128 caracteres' };
   }
   
-  // Validate name (optional)
   let name: string | null = null;
   if (data.name !== undefined && data.name !== null && data.name !== '') {
     if (typeof data.name !== 'string') {
@@ -57,7 +65,6 @@ function validateInput(data: Record<string, unknown>): { valid: boolean; error?:
     }
   }
   
-  // Validate city (optional)
   let city: string | null = null;
   if (data.city !== undefined && data.city !== null && data.city !== '') {
     if (typeof data.city !== 'string') {
@@ -89,8 +96,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const hasResendKey = !!Deno.env.get("RESEND_API_KEY");
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
     // Verify the caller is an admin
     const authHeader = req.headers.get("Authorization");
@@ -102,11 +108,9 @@ serve(async (req) => {
       });
     }
 
-    // Extract the token from the header
     const token = authHeader.replace("Bearer ", "");
     console.log("Auth token received, validating...");
 
-    // Use service role client to get user from token (more reliable)
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     
     const { data: { user: callerUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
@@ -123,7 +127,6 @@ serve(async (req) => {
     
     console.log("User authenticated:", callerUser.id);
 
-    // Check if caller is admin
     const { data: isAdmin } = await supabaseAdmin.rpc("has_role", {
       _user_id: callerUser.id,
       _role: "admin",
@@ -137,7 +140,6 @@ serve(async (req) => {
       });
     }
 
-    // Parse and validate request body
     const rawData = await req.json();
     const validation = validateInput(rawData);
     
@@ -159,7 +161,6 @@ serve(async (req) => {
 
     console.log("Creating user with validated input:", { email, name, city });
 
-    // Create auth user
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -170,7 +171,6 @@ serve(async (req) => {
     if (createError) {
       console.error("Error creating user:", createError);
       
-      // Handle specific error cases with clear codes
       let errorCode = "CREATE_USER_ERROR";
       let statusCode = 400;
       let userMessage = createError.message;
@@ -179,7 +179,7 @@ serve(async (req) => {
           createError.code === "email_exists" ||
           createError.message?.includes("email_exists")) {
         errorCode = "EMAIL_ALREADY_EXISTS";
-        statusCode = 409; // Conflict
+        statusCode = 409;
         userMessage = "Já existe um usuário cadastrado com este e-mail.";
       }
       
@@ -196,14 +196,11 @@ serve(async (req) => {
       );
     }
 
-    // Handle profile creation/update
     if (newUser.user) {
       const userId = newUser.user.id;
       
-      // Wait for the trigger to potentially create the profile
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Try to update the profile first
       const { error: updateError } = await supabaseAdmin
         .from("profiles")
         .update({ 
@@ -213,7 +210,6 @@ serve(async (req) => {
         })
         .eq("user_id", userId);
 
-      // If update failed (profile doesn't exist), create it
       if (updateError) {
         console.log("Profile update failed, attempting insert:", updateError.message);
         
@@ -234,7 +230,6 @@ serve(async (req) => {
         console.log("Profile updated successfully");
       }
       
-      // Verify the profile exists
       const { data: profileCheck, error: checkError } = await supabaseAdmin
         .from("profiles")
         .select("id, name, city")
@@ -257,16 +252,11 @@ serve(async (req) => {
       }
     }
 
-    // Send welcome email with SET PASSWORD link (custom token) using centralized email module
-    // IMPORTANT: This avoids auth verify redirects being ignored/rewritten by backend allowlists.
-    if (sendWelcomeEmail && newUser.user && hasResendKey) {
+    // Send welcome email with SET PASSWORD link
+    if (sendWelcomeEmail && newUser.user && resendApiKey) {
       try {
-        const redirectTo = `${PROD_APP_URL}/definir-senha`;
-
-        // Generate a secure random token
         const rawToken = crypto.randomUUID() + "-" + crypto.randomUUID();
 
-        // Hash for storage
         const encoder = new TextEncoder();
         const data = encoder.encode(rawToken);
         const hashBuffer = await crypto.subtle.digest("SHA-256", data);
@@ -292,17 +282,23 @@ serve(async (req) => {
 
         const finalVerifyUrl = `${PROD_APP_URL}/definir-senha?token=${encodeURIComponent(rawToken)}`;
 
-        // CRITICAL: block any lovable.app URLs before sending
         validateNoLovableUrl(finalVerifyUrl, "finalVerifyUrl");
 
         console.log("[CREATE-USER] Welcome email link - AUDIT LOG:");
-        console.log("  - redirectTo:", redirectTo);
         console.log("  - finalVerifyUrl:", finalVerifyUrl);
 
-        await sendAppEmail({
-          to: email,
-          subject: "Bem-vindo ao New Gestão! 🚗",
-          html: getWelcomeEmailHtml(name || "Motorista", finalVerifyUrl),
+        const { subject, html } = emailWelcome({
+          name: name || "Motorista",
+          setPasswordUrl: finalVerifyUrl,
+        });
+
+        const resend = new Resend(resendApiKey);
+        await resend.emails.send({
+          from: `${BRAND.appName} <no-reply@newgestao.app>`,
+          to: [email],
+          reply_to: BRAND.supportEmail,
+          subject,
+          html,
         });
 
         console.log("Welcome email sent successfully");

@@ -2,16 +2,12 @@
  * Edge Function: kiwify-webhook
  * 
  * Recebe webhooks da Kiwify para processar pagamentos/assinaturas.
- * 
- * Melhorias implementadas:
- * - Idempotência por order_id + event_type (tabela webhook_logs)
- * - Geração de link via supabase.auth.admin.generateLink (recovery)
- * - Template de email dark elegante
- * - Logging completo para debugging
  */
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { Resend } from "https://esm.sh/resend@2.0.0";
+import { emailPurchaseApproved, emailSubscriptionRenewed, BRAND } from "../_shared/emailTemplates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,23 +16,19 @@ const corsHeaders = {
 
 // Event mapping to internal status
 const EVENT_STATUS_MAP: Record<string, "active" | "past_due" | "canceled"> = {
-  // Active events
   "order_approved": "active",
   "subscription_activated": "active",
   "subscription_renewed": "active",
   "payment_approved": "active",
   "compra_aprovada": "active",
-  // Past due events
   "payment_refused": "past_due",
   "subscription_past_due": "past_due",
   "payment_refunded": "past_due",
-  // Canceled events
   "subscription_canceled": "canceled",
   "subscription_expired": "canceled",
   "refund_requested": "canceled",
 };
 
-// Billing interval mapping
 function mapBillingInterval(interval: string): "month" | "quarter" | "year" {
   const normalizedInterval = interval?.toLowerCase().trim();
   
@@ -49,7 +41,6 @@ function mapBillingInterval(interval: string): "month" | "quarter" | "year" {
   return "month";
 }
 
-// Plan name based on interval
 function getPlanName(interval: "month" | "quarter" | "year"): string {
   switch (interval) {
     case "year": return "Plano Anual";
@@ -58,7 +49,6 @@ function getPlanName(interval: "month" | "quarter" | "year"): string {
   }
 }
 
-// Calculate period end based on interval
 function calculatePeriodEnd(interval: "month" | "quarter" | "year"): Date {
   const now = new Date();
   switch (interval) {
@@ -71,7 +61,6 @@ function calculatePeriodEnd(interval: "month" | "quarter" | "year"): Date {
   }
 }
 
-// Generate random password for user creation
 function generateRandomPassword(length: number = 16): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
   let password = "";
@@ -81,10 +70,9 @@ function generateRandomPassword(length: number = 16): string {
   return password;
 }
 
-// CRITICAL: Hard-coded production URL - NEVER use lovable.app
+// CRITICAL: Hard-coded production URL
 const PROD_APP_URL = "https://newgestao.app";
 
-// Validates a URL does NOT contain lovable.app - blocks broken links
 function validateNoLovableUrl(url: string, context: string): void {
   if (url.includes("lovable.app") || url.includes("lovableproject.com")) {
     const errorMsg = `[SECURITY BLOCK] ${context}: URL contains lovable.app domain which is FORBIDDEN. URL: ${url}`;
@@ -93,30 +81,6 @@ function validateNoLovableUrl(url: string, context: string): void {
   }
 }
 
-// Get email config - ALWAYS returns production URL
-function getEmailConfig() {
-  // ALWAYS use production URL - ignore any env that might have lovable.app
-  const appUrl = PROD_APP_URL;
-  
-  console.log("[EMAIL CONFIG] Using production URL:", appUrl);
-  
-  return {
-    fromEmail: Deno.env.get("RESEND_FROM_EMAIL") || "no-reply@newgestao.app",
-    fromName: "New Gestão",
-    replyTo: Deno.env.get("RESEND_REPLY_TO_EMAIL") || "newgestao.contato@outlook.com",
-    appUrl,
-  };
-}
-
-// Format currency
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(value);
-}
-
-// Format date
 function formatDate(date: Date): string {
   return date.toLocaleDateString('pt-BR', {
     day: '2-digit',
@@ -125,350 +89,40 @@ function formatDate(date: Date): string {
   });
 }
 
-// Build purchase approved email HTML (dark elegant template)
-function buildPurchaseApprovedEmail(params: {
-  name: string;
-  email: string;
-  planName: string;
-  planValue?: number;
-  orderId: string;
-  periodEnd: Date;
-  setPasswordUrl: string;
-  appUrl: string;
-}): string {
-  const { name, email, planName, planValue, orderId, periodEnd, setPasswordUrl, appUrl } = params;
-  
-  return `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Compra Aprovada - New Gestão</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0f172a;">
-    <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px;">
-          
-          <!-- Header -->
-          <tr>
-            <td align="center" style="padding-bottom: 32px;">
-              <table role="presentation" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td style="background: linear-gradient(135deg, #FFC700, #e6b300); border-radius: 12px; padding: 16px 24px;">
-                    <span style="font-size: 28px; font-weight: bold; color: #0f172a; letter-spacing: 2px;">NG</span>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin: 16px 0 0 0; font-size: 22px; font-weight: 600; color: #f8fafc;">New Gestão</p>
-            </td>
-          </tr>
-          
-          <!-- Content Card -->
-          <tr>
-            <td style="background-color: #1e293b; border-radius: 16px; padding: 32px; border: 1px solid #334155;">
-              
-              <!-- Title -->
-              <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 700; color: #22c55e; text-align: center;">
-                ✅ Compra Aprovada!
-              </h1>
-              <p style="margin: 0 0 24px 0; font-size: 16px; color: #94a3b8; text-align: center;">
-                Seu acesso ao New Gestão está pronto.
-              </p>
-              
-              <!-- Greeting -->
-              <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #e2e8f0;">
-                Olá${name && name !== email?.split("@")[0] ? `, <strong style="color: #f8fafc;">${name}</strong>` : ''}! 🎉
-              </p>
-              <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #94a3b8;">
-                Sua compra foi aprovada com sucesso. Agora você tem acesso completo a todas as funcionalidades do New Gestão para gerenciar seus ganhos como motorista de aplicativo.
-              </p>
-              
-              <!-- Order Details Card -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px 0;">
-                <tr>
-                  <td style="background-color: #334155; border-left: 4px solid #FFC700; border-radius: 8px; padding: 20px;">
-                    <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #FFC700;">📋 Detalhes do Pedido</p>
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                      <tr>
-                        <td style="padding: 4px 0; font-size: 14px; color: #94a3b8;">Plano:</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #f8fafc; text-align: right; font-weight: 500;">${planName}</td>
-                      </tr>
-                      ${planValue ? `
-                      <tr>
-                        <td style="padding: 4px 0; font-size: 14px; color: #94a3b8;">Valor:</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #22c55e; text-align: right; font-weight: 500;">${formatCurrency(planValue)}</td>
-                      </tr>
-                      ` : ''}
-                      <tr>
-                        <td style="padding: 4px 0; font-size: 14px; color: #94a3b8;">Pedido:</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #f8fafc; text-align: right; font-weight: 500;">${orderId}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 4px 0; font-size: 14px; color: #94a3b8;">Data:</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #f8fafc; text-align: right; font-weight: 500;">${formatDate(new Date())}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 4px 0; font-size: 14px; color: #94a3b8;">Válido até:</td>
-                        <td style="padding: 4px 0; font-size: 14px; color: #f8fafc; text-align: right; font-weight: 500;">${formatDate(periodEnd)}</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-              
-              <!-- Access Info Card -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px 0;">
-                <tr>
-                  <td style="background-color: #334155; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 20px;">
-                    <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #3b82f6;">🔐 Seus Dados de Acesso</p>
-                    <p style="margin: 0; font-size: 14px; color: #94a3b8;">
-                      E-mail: <strong style="color: #f8fafc;">${email}</strong>
-                    </p>
-                  </td>
-                </tr>
-              </table>
-              
-              <!-- CTA Button -->
-              <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 32px auto;">
-                <tr>
-                  <td align="center" style="background: linear-gradient(135deg, #FFC700, #e6b300); border-radius: 8px;">
-                    <a href="${setPasswordUrl}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 16px; font-weight: 600; color: #0f172a; text-decoration: none;">
-                      Definir minha senha
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              
-              <p style="margin: 0 0 24px 0; font-size: 14px; color: #64748b; text-align: center;">
-                Clique no botão acima para criar sua senha e ativar seu acesso.
-              </p>
-              
-              <!-- Warning Card -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px 0;">
-                <tr>
-                  <td style="background-color: #422006; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 16px;">
-                    <p style="margin: 0; font-size: 14px; color: #fcd34d;">
-                      <strong>⏰ Importante:</strong> Este link expira em 24 horas. Após definir sua senha, você poderá acessar o painel sempre que quiser.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-              
-              <!-- Secondary Button -->
-              <p style="margin: 24px 0 8px 0; font-size: 14px; color: #64748b; text-align: center;">
-                Depois de definir sua senha, acesse o painel em:
-              </p>
-              <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto 16px auto;">
-                <tr>
-                  <td align="center" style="border: 1px solid #FFC700; border-radius: 8px;">
-                    <a href="${appUrl}/login" target="_blank" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 500; color: #FFC700; text-decoration: none;">
-                      ${appUrl.replace('https://', '')}/login
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              
-            </td>
-          </tr>
-          
-          <!-- Footer -->
-          <tr>
-            <td align="center" style="padding-top: 32px;">
-              <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748b;">
-                Precisa de ajuda? Entre em contato:
-              </p>
-              <p style="margin: 0 0 16px 0;">
-                <a href="mailto:newgestao.contato@outlook.com" style="color: #FFC700; text-decoration: none; font-size: 14px;">
-                  newgestao.contato@outlook.com
-                </a>
-              </p>
-              <p style="margin: 0; font-size: 12px; color: #64748b;">
-                © ${new Date().getFullYear()} New Gestão. Todos os direitos reservados.
-              </p>
-              <p style="margin: 8px 0 0 0; font-size: 12px;">
-                <a href="${appUrl}" style="color: #64748b; text-decoration: none;">
-                  ${appUrl.replace('https://', '')}
-                </a>
-              </p>
-            </td>
-          </tr>
-          
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-}
-
-// Build renewal email HTML
-function buildRenewalEmail(params: {
-  name: string;
-  email: string;
-  planName: string;
-  periodEnd: Date;
-  appUrl: string;
-}): string {
-  const { name, email, planName, periodEnd, appUrl } = params;
-  
-  return `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Assinatura Renovada - New Gestão</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0f172a;">
-    <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px;">
-          
-          <!-- Header -->
-          <tr>
-            <td align="center" style="padding-bottom: 32px;">
-              <table role="presentation" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td style="background: linear-gradient(135deg, #FFC700, #e6b300); border-radius: 12px; padding: 16px 24px;">
-                    <span style="font-size: 28px; font-weight: bold; color: #0f172a; letter-spacing: 2px;">NG</span>
-                  </td>
-                </tr>
-              </table>
-              <p style="margin: 16px 0 0 0; font-size: 22px; font-weight: 600; color: #f8fafc;">New Gestão</p>
-            </td>
-          </tr>
-          
-          <!-- Content Card -->
-          <tr>
-            <td style="background-color: #1e293b; border-radius: 16px; padding: 32px; border: 1px solid #334155;">
-              
-              <h1 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 700; color: #22c55e; text-align: center;">
-                ✅ Assinatura Renovada!
-              </h1>
-              
-              <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #e2e8f0;">
-                Olá${name && name !== email?.split("@")[0] ? `, <strong style="color: #f8fafc;">${name}</strong>` : ''}!
-              </p>
-              <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #94a3b8;">
-                Sua assinatura do <strong style="color: #FFC700;">${planName}</strong> foi renovada com sucesso e está ativa até <strong style="color: #f8fafc;">${formatDate(periodEnd)}</strong>.
-              </p>
-              
-              <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #94a3b8;">
-                Seu acesso continua o mesmo. Use seu e-mail <strong style="color: #f8fafc;">${email}</strong> e a senha já cadastrada para entrar no painel.
-              </p>
-              
-              <!-- CTA Button -->
-              <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 32px auto;">
-                <tr>
-                  <td align="center" style="background: linear-gradient(135deg, #FFC700, #e6b300); border-radius: 8px;">
-                    <a href="${appUrl}/login" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 16px; font-weight: 600; color: #0f172a; text-decoration: none;">
-                      Acessar o Painel
-                    </a>
-                  </td>
-                </tr>
-              </table>
-              
-              <p style="margin: 24px 0 0 0; font-size: 14px; color: #64748b; text-align: center;">
-                Se tiver esquecido a senha, clique em "Esqueci minha senha" na tela de login.
-              </p>
-              
-            </td>
-          </tr>
-          
-          <!-- Footer -->
-          <tr>
-            <td align="center" style="padding-top: 32px;">
-              <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748b;">
-                Precisa de ajuda? Entre em contato:
-              </p>
-              <p style="margin: 0 0 16px 0;">
-                <a href="mailto:newgestao.contato@outlook.com" style="color: #FFC700; text-decoration: none; font-size: 14px;">
-                  newgestao.contato@outlook.com
-                </a>
-              </p>
-              <p style="margin: 0; font-size: 12px; color: #64748b;">
-                © ${new Date().getFullYear()} New Gestão. Todos os direitos reservados.
-              </p>
-            </td>
-          </tr>
-          
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `.trim();
-}
-
-// Send email via Resend
-async function sendEmail(to: string, subject: string, html: string): Promise<{ success: boolean; id?: string; error?: string }> {
-  const resendApiKey = Deno.env.get("RESEND_API_KEY");
-  if (!resendApiKey) {
-    console.error("[EMAIL] RESEND_API_KEY not configured");
-    return { success: false, error: "RESEND_API_KEY not configured" };
-  }
-  
-  const config = getEmailConfig();
-  const fromField = `${config.fromName} <${config.fromEmail}>`;
-  
-  console.log("[EMAIL] Sending...");
-  console.log("  - From:", fromField);
-  console.log("  - To:", to);
-  console.log("  - Subject:", subject);
-  console.log("  - Reply-To:", config.replyTo);
+async function updateWebhookLog(
+  supabase: any,
+  logId: string | undefined,
+  status: string,
+  response: any
+): Promise<void> {
+  if (!logId) return;
   
   try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: fromField,
-        to: [to],
-        subject,
-        html,
-        reply_to: config.replyTo,
-      }),
-    });
-    
-    const result = await response.json();
-    
-    if (!response.ok) {
-      console.error("[EMAIL] Resend API error:", JSON.stringify(result));
-      return { success: false, error: result.message || "Resend API error" };
-    }
-    
-    console.log("[EMAIL] Sent successfully! ID:", result.id);
-    return { success: true, id: result.id };
-  } catch (error: any) {
-    console.error("[EMAIL] Exception:", error?.message || String(error));
-    return { success: false, error: error?.message || "Unknown error" };
+    await supabase
+      .from("webhook_logs")
+      .update({
+        status,
+        response,
+        processed_at: new Date().toISOString(),
+      })
+      .eq("id", logId);
+  } catch (error) {
+    console.error("Error updating webhook log:", error);
   }
 }
 
 serve(async (req) => {
   console.log("=== KIWIFY WEBHOOK RECEIVED ===");
   console.log("Method:", req.method);
-  console.log("URL:", req.url);
   console.log("Timestamp:", new Date().toISOString());
   
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    console.log("CORS preflight - returning 200");
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Initialize Supabase client early for logging
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   
   let orderId = "";
@@ -476,31 +130,23 @@ serve(async (req) => {
   let payload: any = {};
 
   try {
-    // Get webhook secret from environment
     const webhookSecret = Deno.env.get("KIWIFY_WEBHOOK_SECRET");
     if (!webhookSecret) {
-      console.error("❌ KIWIFY_WEBHOOK_SECRET not configured");
+      console.error("KIWIFY_WEBHOOK_SECRET not configured");
       return new Response(JSON.stringify({ error: "Server configuration error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ============================================
-    // SECRET VALIDATION - Query String OR Header
-    // ============================================
     const url = new URL(req.url);
     const secretFromQuery = url.searchParams.get("secret");
     const secretFromHeader = req.headers.get("x-kiwify-secret");
     
-    console.log("Secret validation:");
-    console.log("  - Query param present:", !!secretFromQuery);
-    console.log("  - Header present:", !!secretFromHeader);
-    
     const providedSecret = secretFromQuery || secretFromHeader;
 
     if (!providedSecret) {
-      console.error("❌ Missing webhook secret (neither query param nor header)");
+      console.error("Missing webhook secret");
       return new Response(JSON.stringify({ error: "Missing webhook secret" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -508,29 +154,25 @@ serve(async (req) => {
     }
 
     if (providedSecret !== webhookSecret) {
-      console.error("❌ Invalid webhook secret");
+      console.error("Invalid webhook secret");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("✅ Webhook secret validated");
+    console.log("Webhook secret validated");
 
-    // Parse webhook payload
     payload = await req.json();
     
-    // Extract event and order_id for idempotency
     eventName = payload.webhook_event_type || payload.event || payload.trigger || payload.order_status || "";
     orderId = payload.order_id || payload.subscription?.id || payload.Subscription?.id || `unknown_${Date.now()}`;
     
     console.log("Event:", eventName);
     console.log("Order ID:", orderId);
 
-    // ============================================
-    // IDEMPOTENCY CHECK - Prevent duplicate processing
-    // ============================================
-    const { data: existingLog, error: logCheckError } = await supabase
+    // Idempotency check
+    const { data: existingLog } = await supabase
       .from("webhook_logs")
       .select("id, status, processed_at")
       .eq("source", "kiwify")
@@ -539,21 +181,13 @@ serve(async (req) => {
       .maybeSingle();
 
     if (existingLog) {
-      console.log("⚠️ DUPLICATE WEBHOOK - already processed");
-      console.log("  - Previous log ID:", existingLog.id);
-      console.log("  - Processed at:", existingLog.processed_at);
+      console.log("DUPLICATE WEBHOOK - already processed");
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          duplicate: true, 
-          message: "Event already processed",
-          logId: existingLog.id 
-        }),
+        JSON.stringify({ success: true, duplicate: true, message: "Event already processed" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Create webhook log entry
     const { data: webhookLog, error: logInsertError } = await supabase
       .from("webhook_logs")
       .insert({
@@ -566,42 +200,32 @@ serve(async (req) => {
       .select("id")
       .single();
 
-    if (logInsertError) {
-      // If unique constraint violation, it's a race condition duplicate
-      if (logInsertError.code === "23505") {
-        console.log("⚠️ Race condition duplicate detected");
-        return new Response(
-          JSON.stringify({ success: true, duplicate: true, message: "Event already being processed" }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      console.error("Error creating webhook log:", logInsertError);
+    if (logInsertError && logInsertError.code === "23505") {
+      console.log("Race condition duplicate detected");
+      return new Response(
+        JSON.stringify({ success: true, duplicate: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
     const logId = webhookLog?.id;
-    console.log("Webhook log created:", logId);
 
-    // Extract data from payload
+    // Extract data
     const customer = payload.Customer || payload.customer || {};
     const subscription = payload.Subscription || payload.subscription || {};
     const product = payload.Product || payload.product || {};
-    const orderData = payload.order || {};
 
     const email = customer.email?.toLowerCase().trim();
     const name = customer.full_name || customer.name || customer.first_name || email?.split("@")[0] || "Usuário";
     const kiwifySubscriptionId = subscription.id || payload.subscription_id || orderId;
     const kiwifyProductId = product.id || payload.product_id || "";
     const rawInterval = subscription.plan?.frequency || subscription.interval || subscription.billing_interval || "month";
-    const orderValue = orderData.total || product.price || subscription.plan?.price || null;
     
     console.log("Customer email:", email);
     console.log("Customer name:", name);
-    console.log("Product ID:", kiwifyProductId);
-    console.log("Subscription ID:", kiwifySubscriptionId);
 
-    // Validate required fields
     if (!email) {
-      console.error("❌ Missing customer email");
+      console.error("Missing customer email");
       await updateWebhookLog(supabase, logId, "error", { error: "Missing customer email" });
       return new Response(JSON.stringify({ error: "Missing customer email" }), {
         status: 400,
@@ -609,12 +233,10 @@ serve(async (req) => {
       });
     }
 
-    // Map event to status
     const status = EVENT_STATUS_MAP[eventName] || EVENT_STATUS_MAP[eventName?.toLowerCase()];
-    console.log("Mapped status:", status || "unknown");
     
     if (!status) {
-      console.log(`⚠️ Unknown event type: '${eventName}', ignoring`);
+      console.log(`Unknown event type: '${eventName}', ignoring`);
       await updateWebhookLog(supabase, logId, "ignored", { reason: "Unknown event type" });
       return new Response(JSON.stringify({ message: "Event ignored", event: eventName }), {
         status: 200,
@@ -622,34 +244,21 @@ serve(async (req) => {
       });
     }
 
-    // Map billing interval and plan name
     const billingInterval = mapBillingInterval(rawInterval);
     const planName = getPlanName(billingInterval);
-    console.log("Plan:", planName, "- Interval:", billingInterval);
 
-    // Calculate period end
     let currentPeriodEnd: Date;
     if (subscription.current_period_end || subscription.next_payment_at) {
       currentPeriodEnd = new Date(subscription.current_period_end || subscription.next_payment_at);
     } else {
       currentPeriodEnd = calculatePeriodEnd(billingInterval);
     }
-    console.log("Period end:", currentPeriodEnd.toISOString());
 
-    // Get app base URL
-    const config = getEmailConfig();
-    console.log("App URL:", config.appUrl);
-
-    // ============================================
-    // USER MANAGEMENT
-    // ============================================
-    
-    // Check if user exists
-    console.log("Searching for existing user...");
+    // User management
     const { data: existingUsers, error: searchError } = await supabase.auth.admin.listUsers();
     
     if (searchError) {
-      console.error("❌ Error searching users:", searchError);
+      console.error("Error searching users:", searchError);
       await updateWebhookLog(supabase, logId, "error", { error: searchError.message });
       throw searchError;
     }
@@ -657,12 +266,10 @@ serve(async (req) => {
     let userId: string;
     let isNewUser = false;
 
-    const existingUser = existingUsers.users.find(u => u.email?.toLowerCase() === email);
+    const existingUser = existingUsers.users.find((u: any) => u.email?.toLowerCase() === email);
 
     if (!existingUser) {
-      // Create new user with random password
       const generatedPassword = generateRandomPassword();
-      console.log("Creating new user...");
       
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email,
@@ -672,24 +279,20 @@ serve(async (req) => {
       });
 
       if (createError) {
-        console.error("❌ Error creating user:", createError);
+        console.error("Error creating user:", createError);
         await updateWebhookLog(supabase, logId, "error", { error: createError.message });
         throw createError;
       }
 
       userId = newUser.user.id;
       isNewUser = true;
-      console.log(`✅ Created new user: ${email} (ID: ${userId})`);
+      console.log(`Created new user: ${email} (ID: ${userId})`);
     } else {
       userId = existingUser.id;
-      console.log(`✅ Found existing user: ${email} (ID: ${userId})`);
+      console.log(`Found existing user: ${email} (ID: ${userId})`);
     }
 
-    // ============================================
-    // SUBSCRIPTION UPSERT
-    // ============================================
-    
-    console.log("Upserting subscription...");
+    // Subscription upsert
     const { error: subscriptionError } = await supabase
       .from("subscriptions")
       .upsert({
@@ -707,44 +310,34 @@ serve(async (req) => {
       });
 
     if (subscriptionError) {
-      console.error("❌ Error upserting subscription:", subscriptionError);
+      console.error("Error upserting subscription:", subscriptionError);
       await updateWebhookLog(supabase, logId, "error", { error: subscriptionError.message });
       throw subscriptionError;
     }
 
-    console.log(`✅ Subscription upserted: ${status}`);
+    console.log(`Subscription upserted: ${status}`);
 
-    // ============================================
-    // EMAIL SENDING (only for active status)
-    // ============================================
-    
+    // Email sending
     let emailSent = false;
     let emailError = null;
-    let setPasswordUrl = "";
 
-    if (status === "active") {
-      console.log("=== PREPARING EMAIL ===");
-      
+    if (status === "active" && resendApiKey) {
       try {
+        const resend = new Resend(resendApiKey);
+
         if (isNewUser) {
-          // Generate custom password token for newgestao.app/definir-senha
-          console.log("Generating custom password token for new user...");
-          
-          // Generate a secure random token
+          // Generate password token
           const rawToken = crypto.randomUUID() + crypto.randomUUID();
           
-          // Hash the token for storage
           const encoder = new TextEncoder();
           const data = encoder.encode(rawToken);
           const hashBuffer = await crypto.subtle.digest("SHA-256", data);
           const hashArray = Array.from(new Uint8Array(hashBuffer));
           const tokenHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
           
-          // Token expires in 24 hours
           const expiresAt = new Date();
           expiresAt.setHours(expiresAt.getHours() + 24);
           
-          // Store token in database
           const { error: tokenError } = await supabase
             .from("password_tokens")
             .insert({
@@ -755,81 +348,60 @@ serve(async (req) => {
               expires_at: expiresAt.toISOString(),
             });
           
+          let setPasswordUrl: string;
           if (tokenError) {
-            console.error("❌ Error storing password token:", tokenError.message);
-            // Fallback: use direct link with email param
-            setPasswordUrl = `${config.appUrl}/definir-senha?email=${encodeURIComponent(email)}`;
-            console.log("Using fallback URL:", setPasswordUrl);
+            console.error("Error storing password token:", tokenError.message);
+            setPasswordUrl = `${PROD_APP_URL}/definir-senha?email=${encodeURIComponent(email)}`;
           } else {
-            // Build the definir-senha URL with our custom token (ALWAYS newgestao.app)
             setPasswordUrl = `${PROD_APP_URL}/definir-senha?token=${encodeURIComponent(rawToken)}`;
-            
-            // CRITICAL: Validate URL before sending - block any lovable.app links
             validateNoLovableUrl(setPasswordUrl, "setPasswordUrl");
-            
-            console.log("✅ Custom password token generated successfully");
-            console.log("  - redirectTo:", setPasswordUrl);
-            console.log("  - finalVerifyUrl:", setPasswordUrl);
-            console.log("  - linkPreview:", rawToken.substring(0, 8) + "...");
-            console.log("  - URL hostname:", new URL(setPasswordUrl).hostname);
           }
 
-          // Build and send purchase approved email
-          const emailHtml = buildPurchaseApprovedEmail({
+          const { subject, html } = emailPurchaseApproved({
             name,
-            email,
-            planName,
-            planValue: orderValue ? parseFloat(orderValue) : undefined,
-            orderId,
-            periodEnd: currentPeriodEnd,
             setPasswordUrl,
-            appUrl: config.appUrl,
-          });
-
-          const emailResult = await sendEmail(
-            email,
-            "✅ Compra aprovada — Defina sua senha e ative seu acesso",
-            emailHtml
-          );
-
-          emailSent = emailResult.success;
-          if (!emailResult.success) {
-            emailError = emailResult.error;
-          }
-        } else {
-          // Existing user - send renewal email
-          console.log("Sending renewal email to existing user...");
-          
-          const emailHtml = buildRenewalEmail({
-            name,
-            email,
             planName,
-            periodEnd: currentPeriodEnd,
-            appUrl: config.appUrl,
+            orderId,
+            purchasedAt: formatDate(new Date()),
+            validUntil: formatDate(currentPeriodEnd),
+            buyerEmail: email,
           });
 
-          const emailResult = await sendEmail(
-            email,
-            "✅ Assinatura renovada — Seu acesso continua ativo",
-            emailHtml
-          );
+          await resend.emails.send({
+            from: `${BRAND.appName} <no-reply@newgestao.app>`,
+            to: [email],
+            reply_to: BRAND.supportEmail,
+            subject,
+            html,
+          });
 
-          emailSent = emailResult.success;
-          if (!emailResult.success) {
-            emailError = emailResult.error;
-          }
+          emailSent = true;
+          console.log("Purchase approved email sent");
+        } else {
+          // Renewal email
+          const { subject, html } = emailSubscriptionRenewed({
+            name,
+            planName,
+            validUntil: formatDate(currentPeriodEnd),
+          });
+
+          await resend.emails.send({
+            from: `${BRAND.appName} <no-reply@newgestao.app>`,
+            to: [email],
+            reply_to: BRAND.supportEmail,
+            subject,
+            html,
+          });
+
+          emailSent = true;
+          console.log("Renewal email sent");
         }
       } catch (emailErr: any) {
-        console.error("=== EMAIL ERROR ===");
-        console.error("Error:", emailErr?.message || String(emailErr));
+        console.error("Email error:", emailErr?.message || String(emailErr));
         emailError = emailErr?.message || String(emailErr);
       }
     }
 
-    // ============================================
-    // UPDATE WEBHOOK LOG WITH RESULT
-    // ============================================
-    
     await updateWebhookLog(supabase, logId, emailSent ? "completed" : "completed_no_email", {
       userId,
       isNewUser,
@@ -839,12 +411,7 @@ serve(async (req) => {
       emailError,
     });
 
-    // Return success response
     console.log("=== WEBHOOK COMPLETED ===");
-    console.log("  - User ID:", userId);
-    console.log("  - Is New User:", isNewUser);
-    console.log("  - Status:", status);
-    console.log("  - Email Sent:", emailSent);
     
     return new Response(
       JSON.stringify({
@@ -861,9 +428,8 @@ serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error("❌ Webhook error:", error?.message || String(error));
+    console.error("Webhook error:", error?.message || String(error));
     
-    // Try to log the error
     try {
       if (orderId && eventName) {
         await supabase
@@ -887,26 +453,3 @@ serve(async (req) => {
     );
   }
 });
-
-// Helper function to update webhook log
-async function updateWebhookLog(
-  supabase: any,
-  logId: string | undefined,
-  status: string,
-  response: Record<string, any>
-) {
-  if (!logId) return;
-  
-  try {
-    await supabase
-      .from("webhook_logs")
-      .update({
-        status,
-        response,
-        processed_at: new Date().toISOString(),
-      })
-      .eq("id", logId);
-  } catch (error) {
-    console.error("Error updating webhook log:", error);
-  }
-}
