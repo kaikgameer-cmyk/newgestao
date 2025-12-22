@@ -30,11 +30,19 @@ export interface EmailConfig {
  * Obtém a configuração de email a partir das variáveis de ambiente
  */
 export function getEmailConfig(): EmailConfig {
+  let appUrl = Deno.env.get("APP_BASE_URL") || "https://newgestao.app";
+  
+  // CRITICAL: Never use lovable.app domains - always force production URL
+  if (appUrl.includes("lovable.app") || appUrl.includes("lovableproject.com")) {
+    console.warn(`[EMAIL CONFIG] Overriding lovable domain: ${appUrl} -> https://newgestao.app`);
+    appUrl = "https://newgestao.app";
+  }
+  
   return {
     fromEmail: Deno.env.get("RESEND_FROM_EMAIL") || "no-reply@newgestao.app",
     fromName: "New Gestão",
     replyTo: Deno.env.get("RESEND_REPLY_TO_EMAIL") || "newgestao.contato@outlook.com",
-    appUrl: Deno.env.get("APP_BASE_URL") || "https://newgestao.app",
+    appUrl,
     isTestMode: Deno.env.get("RESEND_TEST_MODE") === "true",
   };
 }
@@ -124,15 +132,17 @@ export function getAppBaseUrl(): string {
 // ============================================
 
 const EMAIL_STYLES = {
-  // Cores do tema dark
+  // Cores do tema dark + amarelo New Gestão
   bgDark: "#0f172a",
   bgCard: "#1e293b",
   bgCardAlt: "#334155",
   textPrimary: "#f8fafc",
   textSecondary: "#94a3b8",
   textMuted: "#64748b",
-  accent: "#3b82f6",
-  accentHover: "#2563eb",
+  // Primary brand color - amarelo New Gestão
+  accent: "#FFC700",
+  accentHover: "#e6b300",
+  accentDark: "#0f172a", // texto sobre amarelo
   success: "#22c55e",
   warning: "#f59e0b",
   error: "#ef4444",
@@ -167,7 +177,7 @@ export function getEmailLayout(content: string, options?: { showLogo?: boolean }
               <table role="presentation" cellspacing="0" cellpadding="0">
                 <tr>
                   <td style="background: linear-gradient(135deg, ${EMAIL_STYLES.accent}, ${EMAIL_STYLES.accentHover}); border-radius: 12px; padding: 16px 24px;">
-                    <span style="font-size: 28px; font-weight: bold; color: ${EMAIL_STYLES.textPrimary}; letter-spacing: 2px;">NG</span>
+                    <span style="font-size: 28px; font-weight: bold; color: ${EMAIL_STYLES.accentDark}; letter-spacing: 2px;">NG</span>
                   </td>
                 </tr>
               </table>
@@ -219,12 +229,13 @@ export function getEmailLayout(content: string, options?: { showLogo?: boolean }
  */
 export function getEmailButton(text: string, url: string, variant: 'primary' | 'success' = 'primary'): string {
   const bgColor = variant === 'success' ? EMAIL_STYLES.success : EMAIL_STYLES.accent;
+  const textColor = variant === 'primary' ? EMAIL_STYLES.accentDark : EMAIL_STYLES.textPrimary;
   
   return `
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 24px 0;">
       <tr>
         <td align="center" style="background: ${bgColor}; border-radius: 8px;">
-          <a href="${url}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 16px; font-weight: 600; color: ${EMAIL_STYLES.textPrimary}; text-decoration: none;">
+          <a href="${url}" target="_blank" style="display: inline-block; padding: 14px 32px; font-size: 16px; font-weight: 600; color: ${textColor}; text-decoration: none;">
             ${text}
           </a>
         </td>

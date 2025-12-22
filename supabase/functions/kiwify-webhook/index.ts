@@ -81,13 +81,21 @@ function generateRandomPassword(length: number = 16): string {
   return password;
 }
 
-// Get email config
+// Get email config with lovable.app protection
 function getEmailConfig() {
+  let appUrl = Deno.env.get("APP_BASE_URL") || "https://newgestao.app";
+  
+  // CRITICAL: Never use lovable.app domains - always force production URL
+  if (appUrl.includes("lovable.app") || appUrl.includes("lovableproject.com")) {
+    console.warn(`[EMAIL CONFIG] Overriding lovable domain: ${appUrl} -> https://newgestao.app`);
+    appUrl = "https://newgestao.app";
+  }
+  
   return {
     fromEmail: Deno.env.get("RESEND_FROM_EMAIL") || "no-reply@newgestao.app",
     fromName: "New Gestão",
     replyTo: Deno.env.get("RESEND_REPLY_TO_EMAIL") || "newgestao.contato@outlook.com",
-    appUrl: Deno.env.get("APP_BASE_URL") || "https://newgestao.app",
+    appUrl,
   };
 }
 
@@ -140,7 +148,7 @@ function buildPurchaseApprovedEmail(params: {
             <td align="center" style="padding-bottom: 32px;">
               <table role="presentation" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td style="background: linear-gradient(135deg, #facc15, #eab308); border-radius: 12px; padding: 16px 24px;">
+                  <td style="background: linear-gradient(135deg, #FFC700, #e6b300); border-radius: 12px; padding: 16px 24px;">
                     <span style="font-size: 28px; font-weight: bold; color: #0f172a; letter-spacing: 2px;">NG</span>
                   </td>
                 </tr>
@@ -172,8 +180,8 @@ function buildPurchaseApprovedEmail(params: {
               <!-- Order Details Card -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px 0;">
                 <tr>
-                  <td style="background-color: #334155; border-left: 4px solid #facc15; border-radius: 8px; padding: 20px;">
-                    <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #facc15;">📋 Detalhes do Pedido</p>
+                  <td style="background-color: #334155; border-left: 4px solid #FFC700; border-radius: 8px; padding: 20px;">
+                    <p style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #FFC700;">📋 Detalhes do Pedido</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
                         <td style="padding: 4px 0; font-size: 14px; color: #94a3b8;">Plano:</td>
@@ -217,7 +225,7 @@ function buildPurchaseApprovedEmail(params: {
               <!-- CTA Button -->
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 32px auto;">
                 <tr>
-                  <td align="center" style="background: linear-gradient(135deg, #facc15, #eab308); border-radius: 8px;">
+                  <td align="center" style="background: linear-gradient(135deg, #FFC700, #e6b300); border-radius: 8px;">
                     <a href="${setPasswordUrl}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 16px; font-weight: 600; color: #0f172a; text-decoration: none;">
                       Definir minha senha
                     </a>
@@ -246,8 +254,8 @@ function buildPurchaseApprovedEmail(params: {
               </p>
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto 16px auto;">
                 <tr>
-                  <td align="center" style="border: 1px solid #facc15; border-radius: 8px;">
-                    <a href="${appUrl}/login" target="_blank" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 500; color: #facc15; text-decoration: none;">
+                  <td align="center" style="border: 1px solid #FFC700; border-radius: 8px;">
+                    <a href="${appUrl}/login" target="_blank" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 500; color: #FFC700; text-decoration: none;">
                       ${appUrl.replace('https://', '')}/login
                     </a>
                   </td>
@@ -264,7 +272,7 @@ function buildPurchaseApprovedEmail(params: {
                 Precisa de ajuda? Entre em contato:
               </p>
               <p style="margin: 0 0 16px 0;">
-                <a href="mailto:newgestao.contato@outlook.com" style="color: #facc15; text-decoration: none; font-size: 14px;">
+                <a href="mailto:newgestao.contato@outlook.com" style="color: #FFC700; text-decoration: none; font-size: 14px;">
                   newgestao.contato@outlook.com
                 </a>
               </p>
@@ -317,7 +325,7 @@ function buildRenewalEmail(params: {
             <td align="center" style="padding-bottom: 32px;">
               <table role="presentation" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td style="background: linear-gradient(135deg, #facc15, #eab308); border-radius: 12px; padding: 16px 24px;">
+                  <td style="background: linear-gradient(135deg, #FFC700, #e6b300); border-radius: 12px; padding: 16px 24px;">
                     <span style="font-size: 28px; font-weight: bold; color: #0f172a; letter-spacing: 2px;">NG</span>
                   </td>
                 </tr>
@@ -338,7 +346,7 @@ function buildRenewalEmail(params: {
                 Olá${name && name !== email?.split("@")[0] ? `, <strong style="color: #f8fafc;">${name}</strong>` : ''}!
               </p>
               <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #94a3b8;">
-                Sua assinatura do <strong style="color: #facc15;">${planName}</strong> foi renovada com sucesso e está ativa até <strong style="color: #f8fafc;">${formatDate(periodEnd)}</strong>.
+                Sua assinatura do <strong style="color: #FFC700;">${planName}</strong> foi renovada com sucesso e está ativa até <strong style="color: #f8fafc;">${formatDate(periodEnd)}</strong>.
               </p>
               
               <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #94a3b8;">
@@ -348,7 +356,7 @@ function buildRenewalEmail(params: {
               <!-- CTA Button -->
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 32px auto;">
                 <tr>
-                  <td align="center" style="background: linear-gradient(135deg, #facc15, #eab308); border-radius: 8px;">
+                  <td align="center" style="background: linear-gradient(135deg, #FFC700, #e6b300); border-radius: 8px;">
                     <a href="${appUrl}/login" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 16px; font-weight: 600; color: #0f172a; text-decoration: none;">
                       Acessar o Painel
                     </a>
@@ -370,7 +378,7 @@ function buildRenewalEmail(params: {
                 Precisa de ajuda? Entre em contato:
               </p>
               <p style="margin: 0 0 16px 0;">
-                <a href="mailto:newgestao.contato@outlook.com" style="color: #facc15; text-decoration: none; font-size: 14px;">
+                <a href="mailto:newgestao.contato@outlook.com" style="color: #FFC700; text-decoration: none; font-size: 14px;">
                   newgestao.contato@outlook.com
                 </a>
               </p>
