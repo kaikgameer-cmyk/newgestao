@@ -1,11 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle, Bell, Medal, Search } from "lucide-react";
+import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle, Bell, Medal } from "lucide-react";
 import { useCompetitionsForTabs } from "@/hooks/useCompetitions";
 import { useUnreadHostNotifications, useMarkNotificationRead, useDismissNotification, HostNotification } from "@/hooks/useNotifications";
 import { format, parseISO } from "date-fns";
@@ -31,7 +30,6 @@ export default function Competitions() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showRankingModal, setShowRankingModal] = useState(false);
   const [joinCode, setJoinCode] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("disponiveis");
   const [currentNotification, setCurrentNotification] = useState<HostNotification | null>(null);
   const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(() => {
@@ -45,28 +43,27 @@ export default function Competitions() {
   const markReadMutation = useMarkNotificationRead();
   const dismissMutation = useDismissNotification();
 
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["competitions-for-tabs"] });
     await queryClient.invalidateQueries({ queryKey: ["unread-host-notifications"] });
-  }, [queryClient]);
+  };
 
-  const filterBySearch = useCallback((comps: typeof competitions) => {
-    if (!searchQuery.trim()) return comps;
-    const query = searchQuery.toLowerCase();
-    return comps.filter((comp) => comp.name.toLowerCase().includes(query));
-  }, [searchQuery]);
-
+  // Competições ativas do usuário (excluindo finalizadas)
   const myCompetitions = useMemo(() => 
-    filterBySearch((competitions || []).filter((comp) => comp.computed_status === "mine")),
-    [competitions, filterBySearch]
+    (competitions || []).filter((comp) => comp.computed_status === "mine" && comp.computed_label !== "Finalizada"),
+    [competitions]
   );
+  
+  // Competições disponíveis para entrar
   const activeListedCompetitions = useMemo(() =>
-    filterBySearch((competitions || []).filter((comp) => comp.computed_status === "available")),
-    [competitions, filterBySearch]
+    (competitions || []).filter((comp) => comp.computed_status === "available"),
+    [competitions]
   );
+  
+  // Todas as competições finalizadas (tanto as que era membro quanto as públicas)
   const finishedCompetitions = useMemo(() =>
-    filterBySearch((competitions || []).filter((comp) => comp.computed_status === "finished")),
-    [competitions, filterBySearch]
+    (competitions || []).filter((comp) => comp.computed_status === "finished" || comp.computed_label === "Finalizada"),
+    [competitions]
   );
 
   // Show first unread notification automatically (with session guard)
@@ -165,16 +162,6 @@ export default function Competitions() {
           </Button>
         </div>
       </header>
-
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar competição por nome..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
-      </div>
 
       <Tabs defaultValue="disponiveis" value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
