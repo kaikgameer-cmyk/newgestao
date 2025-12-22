@@ -158,15 +158,14 @@ export default function DashboardLayout() {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
-            <Link to="/dashboard" className="flex items-center gap-2">
-              <img src={logo} alt="New Gestão" className="w-8 h-8" />
-              <span className="font-semibold text-sidebar-foreground">New Gestão</span>
+          <div className="h-16 flex items-center justify-center border-b border-sidebar-border relative">
+            <Link to="/dashboard" className="flex items-center justify-center">
+              <img src={logo} alt="New Gestão" className="w-9 h-9" />
             </Link>
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden"
+              className="lg:hidden absolute right-2"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="w-5 h-5" />
