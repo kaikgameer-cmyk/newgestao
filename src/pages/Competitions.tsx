@@ -207,13 +207,15 @@ export default function Competitions() {
                           <span className="text-muted-foreground">Meta:</span>
                           <span className="font-semibold">{formatCurrency(comp.goal_value)}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Gift className="w-4 h-4 text-yellow-500" />
-                          <span className="text-muted-foreground">Prêmio:</span>
-                          <span className="font-semibold text-yellow-500">
-                            {formatCurrency(comp.prize_value)}
-                          </span>
-                        </div>
+                        {comp.prize_value > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Gift className="w-4 h-4 text-yellow-500" />
+                            <span className="text-muted-foreground">Prêmio:</span>
+                            <span className="font-semibold text-yellow-500">
+                              {formatCurrency(comp.prize_value)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4" />
@@ -292,13 +294,15 @@ export default function Competitions() {
                           <span className="text-muted-foreground">Meta:</span>
                           <span className="font-semibold">{formatCurrency(comp.goal_value)}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Gift className="w-4 h-4 text-yellow-500" />
-                          <span className="text-muted-foreground">Prêmio:</span>
-                          <span className="font-semibold text-yellow-500">
-                            {formatCurrency(comp.prize_value)}
-                          </span>
-                        </div>
+                        {comp.prize_value > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Gift className="w-4 h-4 text-yellow-500" />
+                            <span className="text-muted-foreground">Prêmio:</span>
+                            <span className="font-semibold text-yellow-500">
+                              {formatCurrency(comp.prize_value)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4" />
@@ -388,13 +392,15 @@ export default function Competitions() {
                           <span className="text-muted-foreground">Meta:</span>
                           <span className="font-semibold">{formatCurrency(comp.goal_value)}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Gift className="w-4 h-4 text-yellow-500" />
-                          <span className="text-muted-foreground">Prêmio:</span>
-                          <span className="font-semibold text-yellow-500">
-                            {formatCurrency(comp.prize_value)}
-                          </span>
-                        </div>
+                        {comp.prize_value > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Gift className="w-4 h-4 text-yellow-500" />
+                            <span className="text-muted-foreground">Prêmio:</span>
+                            <span className="font-semibold text-yellow-500">
+                              {formatCurrency(comp.prize_value)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4" />

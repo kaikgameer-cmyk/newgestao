@@ -59,15 +59,17 @@ export function StatsCards({
         </CardHeader>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardDescription>Prêmio</CardDescription>
-          <CardTitle className="text-xl flex items-center gap-2 text-primary">
-            <Gift className="w-5 h-5" />
-            {formatCurrencyBRL(prizeValue)}
-          </CardTitle>
-        </CardHeader>
-      </Card>
+      {prizeValue > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Prêmio</CardDescription>
+            <CardTitle className="text-xl flex items-center gap-2 text-primary">
+              <Gift className="w-5 h-5" />
+              {formatCurrencyBRL(prizeValue)}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-2">
