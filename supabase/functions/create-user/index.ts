@@ -1,11 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { sendAppEmail, getAppBaseUrl, getWelcomeEmailHtml } from "../_shared/email.ts";
+import { sendAppEmail, getWelcomeEmailHtml, validateNoLovableUrl } from "../_shared/email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// CRITICAL: Hard-coded production URL - NEVER use lovable.app
+const PROD_APP_URL = "https://newgestao.app";
 
 // Email validation regex (RFC 5322 simplified)
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
@@ -257,13 +260,17 @@ serve(async (req) => {
     // Send welcome email with password reset link using centralized email module
     if (sendWelcomeEmail && newUser.user && hasResendKey) {
       try {
-        const appBaseUrl = getAppBaseUrl();
+        // ALWAYS use production URL for redirects
+        const redirectUrl = `${PROD_APP_URL}/login`;
+        
+        console.log("[CREATE-USER] Generating password reset link");
+        console.log("  - redirectTo:", redirectUrl);
         
         const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
           type: 'recovery',
           email: email,
           options: {
-            redirectTo: `${appBaseUrl}/login`,
+            redirectTo: redirectUrl,
           },
         });
 
@@ -272,8 +279,27 @@ serve(async (req) => {
           throw resetError;
         }
 
-        const resetLink = resetData?.properties?.action_link || '';
-        console.log("Generated password reset link for user");
+        let resetLink = resetData?.properties?.action_link || '';
+        
+        // CRITICAL: Validate the generated link does NOT contain lovable.app
+        // If it does, we need to replace it
+        if (resetLink.includes("lovable.app") || resetLink.includes("lovableproject.com")) {
+          console.warn("[CREATE-USER] Generated link contains lovable.app - replacing with production URL");
+          // Replace any lovable.app redirect_to with production URL
+          const url = new URL(resetLink);
+          const redirectTo = url.searchParams.get("redirect_to");
+          if (redirectTo && (redirectTo.includes("lovable.app") || redirectTo.includes("lovableproject.com"))) {
+            url.searchParams.set("redirect_to", `${PROD_APP_URL}/login`);
+            resetLink = url.toString();
+          }
+        }
+        
+        // Final validation - block if still contains lovable.app
+        validateNoLovableUrl(resetLink, "resetLink");
+        
+        console.log("[CREATE-USER] Password reset link generated - AUDIT LOG:");
+        console.log("  - computedRedirectTo:", resetLink);
+        console.log("  - linkPreview:", resetLink.substring(0, 80) + "...");
 
         // Use centralized email template
         await sendAppEmail({
