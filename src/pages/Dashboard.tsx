@@ -158,6 +158,7 @@ export default function Dashboard() {
 
   const categoryLabels: Record<string, string> = {
     combustivel: "Combustível",
+    eletrico: "Elétrico",
     manutencao: "Manutenção",
     lavagem: "Lavagem",
     pedagio: "Pedágio",

@@ -31,6 +31,9 @@ import { parseLocalDate } from "@/lib/dateUtils";
 import { useMaintenance, WARNING_KM } from "@/hooks/useMaintenance";
 import { MaintenanceAlertBanner } from "@/components/maintenance/MaintenanceAlertBanner";
 
+// Traditional fuel types (exclude electric)
+const TRADITIONAL_FUEL_TYPES = ['gasolina', 'etanol', 'diesel', 'gnv'];
+
 export default function FuelControl() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -61,6 +64,7 @@ export default function FuelControl() {
         .from("fuel_logs")
         .select("*, credit_cards(name)")
         .eq("user_id", user.id)
+        .in("fuel_type", TRADITIONAL_FUEL_TYPES)
         .order("date", { ascending: false })
         .limit(500);
       if (error) throw error;
