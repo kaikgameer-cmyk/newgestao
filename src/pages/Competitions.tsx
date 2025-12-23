@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
-import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle, Bell, Medal } from "lucide-react";
+import { Plus, Trophy, Users, Calendar, Target, LogIn, Gift, Crown, CheckCircle, Bell, Medal, Trash2 } from "lucide-react";
 import { useCompetitionsForTabs } from "@/hooks/useCompetitions";
 import { useUnreadHostNotifications, useMarkNotificationRead, useDismissNotification, HostNotification } from "@/hooks/useNotifications";
 import { format, parseISO } from "date-fns";
@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { CompetitionSkeletonGrid } from "@/components/competitions/CompetitionCardSkeleton";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useQueryClient } from "@tanstack/react-query";
+import { DeleteCompetitionDialog } from "@/components/competitions/DeleteCompetitionDialog";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -37,6 +38,10 @@ export default function Competitions() {
     const stored = sessionStorage.getItem("dismissed_notifications");
     return stored ? new Set(JSON.parse(stored)) : new Set();
   });
+  const [deleteModalCompetition, setDeleteModalCompetition] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   
   const queryClient = useQueryClient();
   const { data: competitions, isLoading } = useCompetitionsForTabs();
@@ -202,9 +207,24 @@ export default function Competitions() {
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
-                          <Badge variant={comp.computed_label === "Finalizada" ? "outline" : comp.computed_label === "Aguardando início" ? "secondary" : "default"}>
-                            {comp.computed_label}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={comp.computed_label === "Finalizada" ? "outline" : comp.computed_label === "Aguardando início" ? "secondary" : "default"}>
+                              {comp.computed_label}
+                            </Badge>
+                            {isHost && (
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteModalCompetition({ id: comp.id, name: comp.name });
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                           {comp.meta_reached && (
                             <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
                               <CheckCircle className="w-3 h-3 mr-1" />
@@ -250,6 +270,17 @@ export default function Competitions() {
                   </Card>
                 );
               })}
+
+              {deleteModalCompetition && (
+                <DeleteCompetitionDialog
+                  open={!!deleteModalCompetition}
+                  onOpenChange={(open) => {
+                    if (!open) setDeleteModalCompetition(null);
+                  }}
+                  competitionId={deleteModalCompetition.id}
+                  competitionName={deleteModalCompetition.name}
+                />
+              )}
             </div>
           ) : (
             <Card className="animate-fade-in">
