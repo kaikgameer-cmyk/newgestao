@@ -865,7 +865,7 @@ export function useUpdateCompetition() {
         name: string;
         description: string | null;
         goal_value: number;
-        prize_value: number;
+        prize_value: number | null;
         start_date: string;
         end_date: string;
         max_members: number | null;
@@ -873,16 +873,158 @@ export function useUpdateCompetition() {
         host_participates: boolean;
       };
     },
+    // Optimistic update para deixar a UI instantânea
+    onMutate: async (variables) => {
+      const optimisticPrizeValue = variables.has_prize
+        ? variables.prize_value ?? null
+        : null;
+
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ["competitions-for-tabs"] }),
+        queryClient.cancelQueries({ queryKey: ["my-competitions"] }),
+        queryClient.cancelQueries({
+          queryKey: ["competition-by-id", variables.competition_id],
+        }),
+        queryClient.cancelQueries({ queryKey: ["competition-page"] }),
+      ]);
+
+      const prevTabs = queryClient.getQueryData<CompetitionForTabs[]>([
+        "competitions-for-tabs",
+      ]);
+      const prevMy = queryClient.getQueryData<any[]>(["my-competitions"]);
+      const prevById = queryClient.getQueryData<Competition | null>([
+        "competition-by-id",
+        variables.competition_id,
+      ]);
+      const prevPages = queryClient.getQueriesData({ queryKey: ["competition-page"] });
+
+      if (prevTabs) {
+        queryClient.setQueryData<CompetitionForTabs[]>(
+          ["competitions-for-tabs"],
+          prevTabs.map((c) =>
+            c.id === variables.competition_id
+              ? {
+                  ...c,
+                  name: variables.name ?? c.name,
+                  goal_value: variables.goal_value ?? c.goal_value,
+                  prize_value:
+                    optimisticPrizeValue !== null
+                      ? optimisticPrizeValue
+                      : c.prize_value,
+                  start_date: variables.start_date ?? c.start_date,
+                  end_date: variables.end_date ?? c.end_date,
+                }
+              : c
+          )
+        );
+      }
+
+      if (prevMy) {
+        queryClient.setQueryData(
+          ["my-competitions"],
+          prevMy.map((c: any) =>
+            c.id === variables.competition_id
+              ? {
+                  ...c,
+                  name: variables.name ?? c.name,
+                  goal_value: variables.goal_value ?? c.goal_value,
+                  prize_value:
+                    optimisticPrizeValue !== null
+                      ? optimisticPrizeValue
+                      : c.prize_value,
+                  has_prize:
+                    variables.has_prize !== undefined
+                      ? variables.has_prize
+                      : c.has_prize,
+                  start_date: variables.start_date ?? c.start_date,
+                  end_date: variables.end_date ?? c.end_date,
+                  max_members: variables.max_members ?? c.max_members,
+                }
+              : c
+          )
+        );
+      }
+
+      if (prevById) {
+        queryClient.setQueryData<Competition | null>(
+          ["competition-by-id", variables.competition_id],
+          {
+            ...prevById,
+            name: variables.name ?? prevById.name,
+            goal_value: variables.goal_value ?? prevById.goal_value,
+            prize_value:
+              optimisticPrizeValue !== null
+                ? optimisticPrizeValue
+                : prevById.prize_value,
+            has_prize:
+              variables.has_prize !== undefined
+                ? variables.has_prize
+                : prevById.has_prize,
+            start_date: variables.start_date ?? prevById.start_date,
+            end_date: variables.end_date ?? prevById.end_date,
+            max_members: variables.max_members ?? prevById.max_members,
+          }
+        );
+      }
+
+      prevPages.forEach(([key, value]) => {
+        const data = value as any;
+        if (!data?.competition) return;
+        if (data.competition.id !== variables.competition_id) return;
+
+        queryClient.setQueryData(key, {
+          ...data,
+          competition: {
+            ...data.competition,
+            name: variables.name ?? data.competition.name,
+            goal_value: variables.goal_value ?? data.competition.goal_value,
+            prize_value:
+              optimisticPrizeValue !== null
+                ? optimisticPrizeValue
+                : data.competition.prize_value,
+            start_date: variables.start_date ?? data.competition.start_date,
+            end_date: variables.end_date ?? data.competition.end_date,
+            max_members:
+              variables.max_members ?? data.competition.max_members,
+          },
+        });
+      });
+
+      return { prevTabs, prevMy, prevById, prevPages };
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["competitions-for-tabs"] });
       queryClient.invalidateQueries({ queryKey: ["my-competitions"] });
-      queryClient.invalidateQueries({ queryKey: ["competition-by-id", variables.competition_id] });
-      // Invalida todas as páginas de competição (por id OU por código)
+      queryClient.invalidateQueries({
+        queryKey: ["competition-by-id", variables.competition_id],
+      });
       queryClient.invalidateQueries({ queryKey: ["competition-page"] });
-      queryClient.invalidateQueries({ queryKey: ["competition-leaderboard", variables.competition_id] });
+      queryClient.invalidateQueries({
+        queryKey: ["competition-leaderboard", variables.competition_id],
+      });
       toast.success("Competição atualizada com sucesso!");
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      if (context?.prevTabs) {
+        queryClient.setQueryData(
+          ["competitions-for-tabs"],
+          context.prevTabs
+        );
+      }
+      if (context?.prevMy) {
+        queryClient.setQueryData(["my-competitions"], context.prevMy);
+      }
+      if (context?.prevById) {
+        queryClient.setQueryData(
+          ["competition-by-id", context.prevById.id],
+          context.prevById
+        );
+      }
+      if (context?.prevPages) {
+        context.prevPages.forEach(([key, value]: [unknown, unknown]) => {
+          queryClient.setQueryData(key as any, value);
+        });
+      }
       toast.error(error.message || "Erro ao atualizar competição");
     },
   });
