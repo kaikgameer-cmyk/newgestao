@@ -877,7 +877,8 @@ export function useUpdateCompetition() {
       queryClient.invalidateQueries({ queryKey: ["competitions-for-tabs"] });
       queryClient.invalidateQueries({ queryKey: ["my-competitions"] });
       queryClient.invalidateQueries({ queryKey: ["competition-by-id", variables.competition_id] });
-      queryClient.invalidateQueries({ queryKey: ["competition-page", variables.competition_id] });
+      // Invalida todas as páginas de competição (por id OU por código)
+      queryClient.invalidateQueries({ queryKey: ["competition-page"] });
       queryClient.invalidateQueries({ queryKey: ["competition-leaderboard", variables.competition_id] });
       toast.success("Competição atualizada com sucesso!");
     },
