@@ -617,12 +617,12 @@ export default function Transactions() {
   const hasData = allIncomeDays.length > 0 || allExpenses.length > 0;
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Lançamentos</h1>
+            <h1 className="text-2xl font-bold break-words">Lançamentos</h1>
             <p className="text-muted-foreground">
               Gerencie suas receitas e despesas
             </p>
@@ -634,11 +634,11 @@ export default function Transactions() {
                 Novo Lançamento
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Novo Lançamento</DialogTitle>
+                <DialogTitle className="break-words">Novo Lançamento</DialogTitle>
               </DialogHeader>
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="receita" className="gap-2">
                     <TrendingUp className="w-4 h-4" />
