@@ -202,7 +202,7 @@ export default function JoinCompetitionModal({
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto flex flex-col gap-4">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {step === 1 && (
