@@ -210,7 +210,7 @@ export default function FuelControl() {
   const maintenanceAlerts = latestOdometerValue ? checkMaintenanceAlerts(latestOdometerValue) : [];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto w-full">
       {/* Maintenance Alert Banner */}
       {maintenanceAlerts.length > 0 && (
         <MaintenanceAlertBanner alerts={maintenanceAlerts} />
@@ -220,7 +220,7 @@ export default function FuelControl() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Combustível</h1>
+            <h1 className="text-2xl font-bold break-words">Combustível</h1>
             <p className="text-muted-foreground">
               Controle seus abastecimentos e consumo
             </p>
@@ -232,9 +232,9 @@ export default function FuelControl() {
                 Novo Abastecimento
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Registrar Abastecimento</DialogTitle>
+                <DialogTitle className="break-words">Registrar Abastecimento</DialogTitle>
               </DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); createFuelLog.mutate(); }} className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -330,7 +330,7 @@ export default function FuelControl() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card variant="elevated">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center gap-3 mb-3">
@@ -377,7 +377,7 @@ export default function FuelControl() {
         </Card>
       </div>
 
-      {/* Fuel Logs Table */}
+      {/* Fuel Logs */}
       {fuelLogs.length === 0 ? (
         <Card variant="elevated" className="p-8 sm:p-12">
           <div className="flex flex-col items-center justify-center text-center space-y-4">
@@ -393,66 +393,148 @@ export default function FuelControl() {
           </div>
         </Card>
       ) : (
-        <Card variant="elevated">
-          <CardHeader>
-            <CardTitle className="text-lg">Histórico de Abastecimentos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Data</th>
-                    <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell">Posto</th>
-                    <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Tipo</th>
-                    <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell">Litros</th>
-                    <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden md:table-cell">R$/L</th>
-                    <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Total</th>
-                    <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden lg:table-cell">Km</th>
-                    <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fuelLogs.map((log) => (
-                    <tr
-                      key={log.id}
-                      className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
-                    >
-                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm">
-                        {(() => {
-                          const [year, month, day] = log.date.split('-').map(Number);
-                          return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}`;
-                        })()}
-                      </td>
-                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm hidden sm:table-cell">{log.station || "—"}</td>
-                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm capitalize">{log.fuel_type}</td>
-                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right hidden sm:table-cell">{Number(log.liters).toFixed(1)}</td>
-                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right hidden md:table-cell">
-                        R$ {(Number(log.total_value) / Number(log.liters)).toFixed(2)}
-                      </td>
-                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right font-medium text-primary">
+        <>
+          {/* Mobile cards */}
+          <div className="space-y-3 md:hidden">
+            {fuelLogs.map((log) => {
+              const pricePerLiter = Number(log.total_value) / Number(log.liters || 1);
+              const dateLabel = (() => {
+                const [year, month, day] = log.date.split("-").map(Number);
+                return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
+              })();
+
+              return (
+                <div
+                  key={log.id}
+                  className="rounded-lg border border-border bg-card p-3 flex flex-col gap-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <FuelIcon className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium break-words">{dateLabel}</span>
+                        <span className="text-xs text-muted-foreground capitalize">
+                          {log.fuel_type}
+                        </span>
+                      </div>
+                      {log.station && (
+                        <p className="text-xs text-muted-foreground break-words">
+                          Posto: {log.station}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        <span>Litros: {Number(log.liters).toFixed(1)}</span>
+                        <span>R$/L: R$ {pricePerLiter.toFixed(2)}</span>
+                        {log.odometer_km && (
+                          <span>
+                            Km: {Number(log.odometer_km).toLocaleString("pt-BR")} km
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <span className="text-sm font-semibold text-primary">
                         R$ {Number(log.total_value).toFixed(2)}
-                      </td>
-                      <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right text-muted-foreground hidden lg:table-cell">
-                        {log.odometer_km ? Number(log.odometer_km).toLocaleString("pt-BR") : "—"}
-                      </td>
-                      <td className="py-3 px-2 sm:px-4 text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => deleteFuelLog.mutate(log.id)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        </Button>
-                      </td>
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteFuelLog.mutate(log.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <Card variant="elevated" className="hidden md:block">
+            <CardHeader>
+              <CardTitle className="text-lg">Histórico de Abastecimentos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px]">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">
+                        Data
+                      </th>
+                      <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell">
+                        Posto
+                      </th>
+                      <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">
+                        Tipo
+                      </th>
+                      <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell">
+                        Litros
+                      </th>
+                      <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden md:table-cell">
+                        R$/L
+                      </th>
+                      <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">
+                        Total
+                      </th>
+                      <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden lg:table-cell">
+                        Km
+                      </th>
+                      <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                  </thead>
+                  <tbody>
+                    {fuelLogs.map((log) => (
+                      <tr
+                        key={log.id}
+                        className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
+                      >
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm">
+                          {(() => {
+                            const [year, month, day] = log.date.split("-").map(Number);
+                            return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
+                          })()}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm hidden sm:table-cell">
+                          {log.station || "—"}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm capitalize">
+                          {log.fuel_type}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right hidden sm:table-cell">
+                          {Number(log.liters).toFixed(1)}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right hidden md:table-cell">
+                          R$ {(Number(log.total_value) / Number(log.liters)).toFixed(2)}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right font-medium text-primary">
+                          R$ {Number(log.total_value).toFixed(2)}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right text-muted-foreground hidden lg:table-cell">
+                          {log.odometer_km
+                            ? Number(log.odometer_km).toLocaleString("pt-BR")
+                            : "—"}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => deleteFuelLog.mutate(log.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );
