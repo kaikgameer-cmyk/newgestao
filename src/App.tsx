@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
@@ -34,59 +35,63 @@ import TestCompetitionMessages from "./pages/TestCompetitionMessages";
 
 const App = () => {
   const [queryClient] = useState(() => new QueryClient());
-  
+
   return (
     <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/definir-senha" element={<DefinirSenha />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Dashboard />} />
-            
-            <Route path="lancamentos" element={<Transactions />} />
-            <Route path="metas" element={<Goals />} />
-            <Route path="cartoes" element={<CreditCards />} />
-            <Route path="cartoes/:cardId/faturas" element={<CardInvoices />} />
-            <Route path="combustivel" element={<FuelControl />} />
-            <Route path="eletrico" element={<ElectricControl />} />
-            <Route path="manutencao" element={<Maintenance />} />
-            <Route path="despesas-fixas" element={<RecurringExpenses />} />
-            <Route path="timer" element={<TimerPage />} />
-            <Route path="configuracoes" element={<SettingsPage />} />
-            <Route path="assinatura" element={<SubscriptionPage />} />
-            <Route path="guia" element={<PlatformGuide />} />
-            <Route path="admin" element={<AdminPage />} />
-            <Route path="admin/testes-competicoes" element={<TestCompetitionMessages />} />
-            <Route path="competicoes" element={<Competitions />} />
-            <Route path="competicoes/entrar" element={<JoinCompetition />} />
-            <Route path="competicoes/ranking" element={<Ranking />} />
-             <Route path="competicoes/:id" element={<CompetitionDetails />} />
-           </Route>
-           <Route
-             path="/onboarding"
-             element={
-               <ProtectedRoute>
-                 <OnboardingPage />
-               </ProtectedRoute>
-             }
-           />
-           <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <InstallPrompt />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/definir-senha" element={<DefinirSenha />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Dashboard />} />
+
+              <Route path="lancamentos" element={<Transactions />} />
+              <Route path="metas" element={<Goals />} />
+              <Route path="cartoes" element={<CreditCards />} />
+              <Route path="cartoes/:cardId/faturas" element={<CardInvoices />} />
+              <Route path="combustivel" element={<FuelControl />} />
+              <Route path="eletrico" element={<ElectricControl />} />
+              <Route path="manutencao" element={<Maintenance />} />
+              <Route path="despesas-fixas" element={<RecurringExpenses />} />
+              <Route path="timer" element={<TimerPage />} />
+              <Route path="configuracoes" element={<SettingsPage />} />
+              <Route path="assinatura" element={<SubscriptionPage />} />
+              <Route path="guia" element={<PlatformGuide />} />
+              <Route path="admin" element={<AdminPage />} />
+              <Route
+                path="admin/testes-competicoes"
+                element={<TestCompetitionMessages />}
+              />
+              <Route path="competicoes" element={<Competitions />} />
+              <Route path="competicoes/entrar" element={<JoinCompetition />} />
+              <Route path="competicoes/ranking" element={<Ranking />} />
+              <Route path="competicoes/:id" element={<CompetitionDetails />} />
+            </Route>
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <OnboardingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 };
