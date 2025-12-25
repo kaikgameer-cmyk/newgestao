@@ -201,7 +201,75 @@ export default function Maintenance() {
             <CardTitle className="text-lg">Manutenções Cadastradas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Mobile cards */}
+            <div className="space-y-3 md:hidden">
+              {sortedRecords.map((record) => (
+                <div
+                  key={record.id}
+                  className="rounded-lg border border-border bg-card p-3 flex flex-col gap-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1 min-w-0">
+                      <p className="text-sm font-medium break-words">{record.title}</p>
+                      {record.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 break-words">
+                          {record.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(record.date)} • Km manutenção: {formatKm(record.current_km)} km
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Próxima: {formatKm(record.next_km)} km
+                      </p>
+                      {latestOdometer && (
+                        <p className="text-xs text-muted-foreground">
+                          Km atual: {formatKm(latestOdometer)} km
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <MaintenanceStatusBadge
+                        status={record.status}
+                        kmRemaining={record.kmRemaining}
+                      />
+                      <div className="flex items-center gap-1">
+                        {record.status === "overdue" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-primary hover:text-primary"
+                            onClick={() => setRenewRecord(record)}
+                            title="Renovar/Concluir"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setEditingRecord(record)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteRecord(record)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[720px] text-xs sm:text-sm">
                 <thead>
                   <tr className="border-b border-border">
@@ -236,7 +304,7 @@ export default function Maintenance() {
                     >
                       <td className="py-3 px-2 sm:px-4">
                         <div>
-                          <p className="text-sm font-medium">{record.title}</p>
+                          <p className="text-sm font-medium break-words">{record.title}</p>
                           {record.description && (
                             <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                               {record.description}
@@ -264,7 +332,6 @@ export default function Maintenance() {
                       </td>
                       <td className="py-3 px-2 sm:px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {/* Show Renew button only for overdue maintenance */}
                           {record.status === "overdue" && (
                             <Button
                               variant="ghost"

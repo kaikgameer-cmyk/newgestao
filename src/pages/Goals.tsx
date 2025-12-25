@@ -375,7 +375,49 @@ export default function Goals() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border overflow-x-auto">
+            {/* Mobile cards */}
+            <div className="space-y-3 md:hidden">
+              {sortedGoals.map((goal) => (
+                <div
+                  key={goal.id}
+                  className="rounded-lg border border-border bg-card p-3 flex flex-col gap-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs text-muted-foreground">Data</span>
+                      <span className="text-sm font-medium break-words">
+                        {format(parseLocalDate(goal.date), "dd/MM/yyyy (EEEE)", { locale: ptBR })}
+                      </span>
+                    </div>
+                    <span className="text-sm font-semibold text-primary whitespace-nowrap">
+                      {formatCurrency(goal.daily_goal)}
+                    </span>
+                  </div>
+                  <div className="flex justify-end gap-1 pt-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => openEditDialog(goal)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleDeleteGoal(goal.date)}
+                      disabled={deleteGoal.isPending}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

@@ -415,95 +415,178 @@ export default function RecurringExpenses() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table className="min-w-[640px] text-xs sm:text-sm">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Valor</TableHead>
-                    <TableHead className="hidden sm:table-cell">Dia/Período</TableHead>
-                    <TableHead>Ativo</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recurringExpenses.map((expense) => {
-                    const distributedDailyValue = getDistributedDailyValue(expense);
-                    return (
-                      <TableRow key={expense.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
+            <>
+              {/* Mobile cards */}
+              <div className="space-y-3 md:hidden">
+                {recurringExpenses.map((expense) => {
+                  const distributedDailyValue = getDistributedDailyValue(expense);
+                  return (
+                    <div
+                      key={expense.id}
+                      className="rounded-lg border border-border bg-card p-3 flex flex-col gap-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
                             {expense.recurrence_type === "distributed" ? (
                               <CalendarDays className="w-4 h-4 text-muted-foreground" />
                             ) : (
                               <Repeat className="w-4 h-4 text-muted-foreground" />
                             )}
-                            {expense.name}
+                            <span className="font-medium break-words">
+                              {expense.name}
+                            </span>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={expense.recurrence_type === "distributed" ? "secondary" : "default"}>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <span>
+                              Tipo: {" "}
+                              {expense.recurrence_type === "distributed" ? "Rateada" : "Mensal"}
+                            </span>
                             {expense.recurrence_type === "distributed" ? (
-                              <>
-                                <CalendarDays className="w-3 h-3 mr-1" />
-                                Rateada
-                              </>
-                            ) : (
-                              <>
-                                <Repeat className="w-3 h-3 mr-1" />
-                                Mensal
-                              </>
-                            )}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            {formatCurrencyBRL(expense.amount)}
-                            {/* Only show daily value for distributed expenses - not for monthly fixed day */}
+                              <span>
+                                Período: {format(new Date(expense.start_date + "T12:00:00"), "dd/MM")} - {" "}
+                                {expense.end_date
+                                  ? format(new Date(expense.end_date + "T12:00:00"), "dd/MM")
+                                  : "—"}
+                              </span>
+                            ) : expense.recurrence_day ? (
+                              <span>Dia {expense.recurrence_day}</span>
+                            ) : null}
+                          </div>
+                          <div className="text-sm">
+                            <span className="font-semibold">
+                              {formatCurrencyBRL(expense.amount)}
+                            </span>
                             {distributedDailyValue !== null && (
                               <span className="block text-xs text-muted-foreground">
                                 ≈ {formatCurrencyBRL(distributedDailyValue)}/dia
                               </span>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell text-muted-foreground">
-                          {expense.recurrence_type === "distributed" 
-                            ? `${format(new Date(expense.start_date + "T12:00:00"), "dd/MM")} - ${expense.end_date ? format(new Date(expense.end_date + "T12:00:00"), "dd/MM") : "—"}`
-                            : expense.recurrence_day 
-                              ? `Dia ${expense.recurrence_day}` 
-                              : "—"
-                          }
-                        </TableCell>
-                        <TableCell>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
                           <Switch
                             checked={expense.is_active}
                             onCheckedChange={() => handleToggleActive(expense)}
                           />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(expense)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(expense.id)}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleEdit(expense)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => handleDelete(expense.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table className="min-w-[640px] text-xs sm:text-sm">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead className="hidden sm:table-cell">Dia/Período</TableHead>
+                      <TableHead>Ativo</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recurringExpenses.map((expense) => {
+                      const distributedDailyValue = getDistributedDailyValue(expense);
+                      return (
+                        <TableRow key={expense.id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              {expense.recurrence_type === "distributed" ? (
+                                <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                              ) : (
+                                <Repeat className="w-4 h-4 text-muted-foreground" />
+                              )}
+                              <span className="break-words">{expense.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={expense.recurrence_type === "distributed" ? "secondary" : "default"}>
+                              {expense.recurrence_type === "distributed" ? (
+                                <>
+                                  <CalendarDays className="w-3 h-3 mr-1" />
+                                  Rateada
+                                </>
+                              ) : (
+                                <>
+                                  <Repeat className="w-3 h-3 mr-1" />
+                                  Mensal
+                                </>
+                              )}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              {formatCurrencyBRL(expense.amount)}
+                              {distributedDailyValue !== null && (
+                                <span className="block text-xs text-muted-foreground">
+                                  ≈ {formatCurrencyBRL(distributedDailyValue)}/dia
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-muted-foreground">
+                            {expense.recurrence_type === "distributed"
+                              ? `${format(new Date(expense.start_date + "T12:00:00"), "dd/MM")} - ${
+                                  expense.end_date
+                                    ? format(new Date(expense.end_date + "T12:00:00"), "dd/MM")
+                                    : "—"
+                                }`
+                              : expense.recurrence_day
+                              ? `Dia ${expense.recurrence_day}`
+                              : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <Switch
+                              checked={expense.is_active}
+                              onCheckedChange={() => handleToggleActive(expense)}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(expense)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(expense.id)}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
