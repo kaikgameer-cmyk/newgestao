@@ -308,11 +308,11 @@ export default function RecurringExpenses() {
   const allExpensesDailyCost = calculateAllExpensesDailyCost(recurringExpenses);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Despesas Fixas</h1>
+          <h1 className="text-2xl font-bold break-words">Despesas Fixas</h1>
           <p className="text-muted-foreground">
             Gerencie parcelas de carro, aluguel, MEI e outras despesas
           </p>
@@ -327,9 +327,9 @@ export default function RecurringExpenses() {
               Nova Despesa Fixa
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[450px]">
+          <DialogContent className="sm:max-w-[450px] max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Adicionar Despesa Fixa</DialogTitle>
+              <DialogTitle className="break-words">Adicionar Despesa Fixa</DialogTitle>
             </DialogHeader>
             <ExpenseForm
               isEdit={false}
@@ -599,9 +599,9 @@ export default function RecurringExpenses() {
           setEditingExpense(null);
         }
       }}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="sm:max-w-[450px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Editar Despesa Fixa</DialogTitle>
+            <DialogTitle className="break-words">Editar Despesa Fixa</DialogTitle>
           </DialogHeader>
           <ExpenseForm
             isEdit={true}
