@@ -403,7 +403,7 @@ export default function CardInvoices() {
                   >
                     <CollapsibleTrigger asChild>
                       <div className="p-4 cursor-pointer hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                               <Calendar className="w-5 h-5 text-primary" />
@@ -418,7 +418,7 @@ export default function CardInvoices() {
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center justify-between sm:justify-end gap-3">
                             <div className="text-right">
                               <p className="font-bold text-lg">
                                 {formatCurrencyBRL(invoice.total_amount)}
@@ -434,7 +434,10 @@ export default function CardInvoices() {
                                 </p>
                               )}
                             </div>
-                            <Badge variant={config.variant} className="flex items-center gap-1">
+                            <Badge
+                              variant={config.variant}
+                              className="flex items-center gap-1 text-[11px] sm:text-xs px-2 py-0.5"
+                            >
                               <StatusIcon className="w-3 h-3" />
                               {config.label}
                             </Badge>
@@ -466,7 +469,7 @@ export default function CardInvoices() {
                             {transactions.map((tx) => (
                               <div
                                 key={tx.id}
-                                className={`flex items-center justify-between py-2 px-3 rounded-lg text-sm ${
+                                className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-2 px-3 rounded-lg text-sm ${
                                   tx.type === "payment"
                                     ? "bg-success/10"
                                     : tx.type === "refund"
@@ -478,14 +481,14 @@ export default function CardInvoices() {
                                   <span className="font-medium truncate">
                                     {tx.description || tx.category || tx.type}
                                   </span>
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                                     <span>{formatDate(tx.date)}</span>
                                     {tx.total_installments && tx.total_installments > 1 && (
                                       <span className="text-primary">
                                         {tx.current_installment}/{tx.total_installments}x
                                       </span>
                                     )}
-                                    <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                                       {tx.type === "purchase"
                                         ? "Compra"
                                         : tx.type === "payment"
@@ -498,7 +501,7 @@ export default function CardInvoices() {
                                     </Badge>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-between sm:justify-end gap-2 mt-1 sm:mt-0">
                                   <span
                                     className={`font-medium ${
                                       tx.type === "payment"
@@ -514,7 +517,7 @@ export default function CardInvoices() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       deleteTransaction.mutate(tx.id);

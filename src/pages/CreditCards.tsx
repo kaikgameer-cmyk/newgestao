@@ -470,35 +470,37 @@ export default function CreditCards() {
 
               return (
                 <Card key={card.id} variant="elevated" className="hover:border-primary/30 transition-colors">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="text-lg">{card.name}</CardTitle>
+                    <CardHeader className="pb-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-lg break-words max-w-[240px] sm:max-w-none">
+                            {card.name}
+                          </CardTitle>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                          <span>{card.brand || "—"}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                            onClick={() => handleEditCard(card)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => deleteCard.mutate(card.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">{card.brand || "—"}</span>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          onClick={() => handleEditCard(card)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => deleteCard.mutate(card.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {card.last_digits ? `•••• ${card.last_digits}` : "—"}
-                    </p>
-                  </CardHeader>
+                      <p className="text-sm text-muted-foreground">
+                        {card.last_digits ? `•••• ${card.last_digits}` : "—"}
+                      </p>
+                    </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Alert for cards without closing_day configured */}
                     {!card.closing_day && (
@@ -583,43 +585,55 @@ export default function CreditCards() {
                             const isOverdue = invoice.status === 'overdue';
                             const isClosed = invoice.status === 'closed';
                             return (
-                              <div 
-                                key={invoice.id} 
-                                className={`p-3 rounded-lg border ${isOverdue ? 'border-destructive/50 bg-destructive/5' : isClosed ? 'border-primary/50 bg-primary/5' : 'border-border bg-muted/30'}`}
+                              <div
+                                key={invoice.id}
+                                className={`p-3 rounded-lg border ${
+                                  isOverdue
+                                    ? "border-destructive/50 bg-destructive/5"
+                                    : isClosed
+                                    ? "border-primary/50 bg-primary/5"
+                                    : "border-border bg-muted/30"
+                                }`}
                               >
-                                <div className="flex justify-between items-start gap-2">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                   <div className="flex-1">
                                     <p className="text-sm font-medium">
-                                      Fatura {format(new Date(invoice.closing_date + 'T12:00:00'), "MMM/yy", { locale: ptBR })}
+                                      Fatura {format(new Date(invoice.closing_date + "T12:00:00"), "MMM/yy", { locale: ptBR })}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
-                                      Vence: {format(new Date(invoice.due_date + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR })}
+                                      Vence: {format(new Date(invoice.due_date + "T12:00:00"), "dd/MM/yyyy", { locale: ptBR })}
                                     </p>
                                   </div>
-                                  <div className="text-right flex-shrink-0">
-                                    <p className={`text-sm font-bold ${isOverdue ? 'text-destructive' : ''}`}>
-                                      {formatCurrencyBRL(Number(invoice.balance))}
-                                    </p>
-                                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                      isOverdue ? 'bg-destructive/20 text-destructive' : 
-                                      isClosed ? 'bg-primary/20 text-primary' : 
-                                      'bg-muted text-muted-foreground'
-                                    }`}>
-                                      {isOverdue ? 'Vencida' : isClosed ? 'Fechada' : 'Aberta'}
-                                    </span>
+                                  <div className="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0">
+                                    <div className="text-right">
+                                      <p className={`text-sm font-bold ${isOverdue ? "text-destructive" : ""}`}>
+                                        {formatCurrencyBRL(Number(invoice.balance))}
+                                      </p>
+                                      <span
+                                        className={`inline-flex items-center justify-center text-[11px] sm:text-xs px-2 py-0.5 rounded-full ${
+                                          isOverdue
+                                            ? "bg-destructive/20 text-destructive"
+                                            : isClosed
+                                            ? "bg-primary/20 text-primary"
+                                            : "bg-muted text-muted-foreground"
+                                        }`}
+                                      >
+                                        {isOverdue ? "Vencida" : isClosed ? "Fechada" : "Aberta"}
+                                      </span>
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 px-2 flex-shrink-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleOpenPaymentDialog(invoice);
+                                      }}
+                                    >
+                                      <Banknote className="w-4 h-4 mr-1" />
+                                      Pagar
+                                    </Button>
                                   </div>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 px-2 flex-shrink-0"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenPaymentDialog(invoice);
-                                    }}
-                                  >
-                                    <Banknote className="w-4 h-4 mr-1" />
-                                    Pagar
-                                  </Button>
                                 </div>
                               </div>
                             );
