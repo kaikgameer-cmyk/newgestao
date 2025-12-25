@@ -393,7 +393,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Meta Total</p>
                     <p className="text-lg font-bold text-primary">
@@ -566,7 +566,7 @@ export default function Dashboard() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {periodKpis.map((kpi, index) => (
           <Card
             key={index}
@@ -576,7 +576,7 @@ export default function Dashboard() {
             <CardContent className="p-4 sm:p-5">
               <div className="flex items-center gap-2 mb-2">
                 <kpi.icon className={`w-4 h-4 ${kpi.highlight ? "text-primary" : "text-muted-foreground"}`} />
-                <span className="text-xs text-muted-foreground">{kpi.title}</span>
+                <span className="text-xs text-muted-foreground break-words">{kpi.title}</span>
               </div>
               <p className={`text-lg sm:text-xl font-bold truncate ${kpi.highlight && !kpi.isNegative ? "text-primary" : ""} ${kpi.isNegative ? "text-destructive" : ""}`}>
                 {kpi.value}
@@ -712,7 +712,7 @@ export default function Dashboard() {
               <CardContent>
                 {hasGoalsInPeriod ? (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-center">
                         <p className="text-xs text-muted-foreground mb-1">Meta Total</p>
                         <p className="text-lg font-bold text-primary">
