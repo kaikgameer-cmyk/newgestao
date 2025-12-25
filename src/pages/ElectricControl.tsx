@@ -439,8 +439,169 @@ export default function ElectricControl() {
               </CardContent>
             </Card>
           )}
+        </div>
+      )}
 
       {/* Electric Logs */}
+      {electricLogs.length === 0 ? (
+        <Card variant="elevated" className="p-8 sm:p-12">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
+              <Zap className="w-8 h-8 text-success" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold">Nenhuma recarga no período</h3>
+              <p className="text-muted-foreground max-w-md">
+                Registre suas recargas para acompanhar seu consumo e custos com energia elétrica.
+              </p>
+            </div>
+          </div>
+        </Card>
+      ) : (
+        <>
+          {/* Mobile cards */}
+          <div className="space-y-3 md:hidden">
+            {electricLogs.map((log) => {
+              const pricePerKwh = Number(log.total_value) / Number(log.liters || 1);
+              const dateLabel = (() => {
+                const [year, month, day] = log.date.split("-").map(Number);
+                return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
+              })();
+
+              return (
+                <div
+                  key={log.id}
+                  className="rounded-lg border border-border bg-card p-3 flex flex-col gap-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Zap className="w-4 h-4 text-success" />
+                        <span className="text-sm font-medium break-words">{dateLabel}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {chargeTypeLabels[log.fuel_type] || log.fuel_type}
+                        </span>
+                      </div>
+                      {log.station && (
+                        <p className="text-xs text-muted-foreground break-words">
+                          Estação: {log.station}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        <span>kWh: {Number(log.liters).toFixed(1)}</span>
+                        <span>R$/kWh: R$ {pricePerKwh.toFixed(2)}</span>
+                        {log.odometer_km && (
+                          <span>
+                            Km: {Number(log.odometer_km).toLocaleString("pt-BR")} km
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <span className="text-sm font-semibold text-success">
+                        R$ {Number(log.total_value).toFixed(2)}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteElectricLog.mutate(log.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table */}
+          <Card variant="elevated" className="hidden md:block">
+            <CardHeader>
+              <CardTitle className="text-lg">Histórico de Recargas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px]">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">
+                        Data
+                      </th>
+                      <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell">
+                        Estação
+                      </th>
+                      <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">
+                        Tipo
+                      </th>
+                      <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell">
+                        kWh
+                      </th>
+                      <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden md:table-cell">
+                        R$/kWh
+                      </th>
+                      <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">
+                        Total
+                      </th>
+                      <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden lg:table-cell">
+                        Km
+                      </th>
+                      <th className="text-right py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {electricLogs.map((log) => (
+                      <tr
+                        key={log.id}
+                        className="border-b border-border/50 hover:bg-secondary/30 transition-colors"
+                      >
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm">
+                          {(() => {
+                            const [year, month, day] = log.date.split("-").map(Number);
+                            return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
+                          })()}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm hidden sm:table-cell">
+                          {log.station || "—"}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm">
+                          {chargeTypeLabels[log.fuel_type] || log.fuel_type}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right hidden sm:table-cell">
+                          {Number(log.liters).toFixed(1)}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right hidden md:table-cell">
+                          R$ {(Number(log.total_value) / Number(log.liters)).toFixed(2)}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right font-medium text-success">
+                          R$ {Number(log.total_value).toFixed(2)}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm text-right text-muted-foreground hidden lg:table-cell">
+                          {log.odometer_km
+                            ? Number(log.odometer_km).toLocaleString("pt-BR")
+                            : "—"}
+                        </td>
+                        <td className="py-3 px-2 sm:px-4 text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground hover:text-destructive"
+                            onClick={() => deleteElectricLog.mutate(log.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
       {electricLogs.length === 0 ? (
         <Card variant="elevated" className="p-8 sm:p-12">
           <div className="flex flex-col items-center justify-center text-center space-y-4">
