@@ -116,7 +116,7 @@ export function ExpensesByCategoryChart({ data, compact = false }: ExpensesByCat
                       size={14}
                       className="shrink-0"
                     />
-                    <span className="text-muted-foreground truncate text-xs sm:text-sm">
+                    <span className="text-muted-foreground break-words text-xs sm:text-sm">
                       {category.name}
                     </span>
                   </div>

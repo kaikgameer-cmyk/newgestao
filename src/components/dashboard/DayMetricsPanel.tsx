@@ -187,7 +187,7 @@ export function DayMetricsPanel({
     <Card variant="elevated">
       <CardContent className="p-4">
         <h3 className="font-semibold mb-4 text-base">Métricas do Dia</h3>
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
           {metrics.map((metric, index) => (
             <div
               key={metric.title}
@@ -195,11 +195,15 @@ export function DayMetricsPanel({
             >
               <div className="flex items-center gap-1.5 mb-1">
                 <metric.icon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${metric.color}`} />
-                <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                <span className="text-[10px] sm:text-xs text-muted-foreground break-words">
                   {metric.title}
                 </span>
               </div>
-              <p className={`font-semibold ${metric.small ? "text-xs sm:text-sm" : "text-sm sm:text-base"} ${metric.color} truncate`}>
+              <p
+                className={`font-semibold ${
+                  metric.small ? "text-xs sm:text-sm" : "text-sm sm:text-base"
+                } ${metric.color} break-words`}
+              >
                 {metric.value}
               </p>
             </div>

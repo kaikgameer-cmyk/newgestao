@@ -578,7 +578,11 @@ export default function Dashboard() {
                 <kpi.icon className={`w-4 h-4 ${kpi.highlight ? "text-primary" : "text-muted-foreground"}`} />
                 <span className="text-xs text-muted-foreground break-words">{kpi.title}</span>
               </div>
-              <p className={`text-lg sm:text-xl font-bold truncate ${kpi.highlight && !kpi.isNegative ? "text-primary" : ""} ${kpi.isNegative ? "text-destructive" : ""}`}>
+              <p
+                className={`text-lg sm:text-xl font-bold break-words ${
+                  kpi.highlight && !kpi.isNegative ? "text-primary" : ""
+                } ${kpi.isNegative ? "text-destructive" : ""}`}
+              >
                 {kpi.value}
               </p>
             </CardContent>

@@ -54,7 +54,7 @@ export function DailySummaryCard({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Summary Stats */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-center">
             <TrendingUp className="w-4 h-4 text-success mx-auto mb-1" />
             <p className="text-xs text-muted-foreground">Receita</p>
@@ -92,9 +92,9 @@ export function DailySummaryCard({
                   className="flex items-center justify-between py-1.5 px-2 rounded bg-secondary/30 text-sm"
                 >
                   <div className="flex flex-col">
-                    <span className="font-medium capitalize">{revenue.app}</span>
+                    <span className="font-medium capitalize break-words">{revenue.app}</span>
                     {revenue.notes && (
-                      <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                      <span className="text-xs text-muted-foreground break-words max-w-[220px]">
                         {revenue.notes}
                       </span>
                     )}
@@ -122,13 +122,13 @@ export function DailySummaryCard({
                   className="flex items-center justify-between py-1.5 px-2 rounded bg-secondary/30 text-sm"
                 >
                   <div className="flex flex-col">
-                    <span className="font-medium">
+                    <span className="font-medium break-words">
                       {expense.source === "fuel"
                         ? "Combustível"
                         : categoryLabels[expense.category || ""] || expense.category}
                     </span>
                     {expense.notes && (
-                      <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                      <span className="text-xs text-muted-foreground break-words max-w-[220px]">
                         {expense.notes}
                       </span>
                     )}

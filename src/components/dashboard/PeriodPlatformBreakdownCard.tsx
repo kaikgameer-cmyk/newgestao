@@ -76,12 +76,14 @@ export function PeriodPlatformBreakdownCard({
                     key={`${revenue.platform_key}-${revenue.platform_label || index}`}
                     className="flex items-center justify-between py-2 px-3 rounded-lg bg-secondary/30 border border-border"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span
                         className="inline-block h-3 w-3 rounded-full border border-border"
                         style={{ backgroundColor: platformInfo.color }}
                       />
-                      <span className="font-medium text-sm">{getDisplayName(revenue)}</span>
+                      <span className="font-medium text-sm break-words">
+                        {getDisplayName(revenue)}
+                      </span>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-sm">

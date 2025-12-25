@@ -62,7 +62,7 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {platformsList.map((platform) => {
                 const percentage = totalRevenue > 0 ? (platform.total / totalRevenue) * 100 : 0;
                 const platformInfo = getPlatformInfo(platform.name);
@@ -76,7 +76,7 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
                         className="inline-block h-3 w-3 rounded-full border border-border"
                         style={{ backgroundColor: platformInfo.color }}
                       />
-                      <span className="font-medium capitalize text-sm truncate">
+                      <span className="font-medium capitalize text-sm break-words">
                         {platform.name}
                       </span>
                     </div>
