@@ -34,8 +34,8 @@ export function MaintenanceHistorySection({
       <Card className="bg-card border-border">
         <CollapsibleTrigger asChild>
           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <CardTitle className="text-lg flex items-center gap-2 break-words">
                 <History className="h-5 w-5 text-primary" />
                 Histórico de Manutenções ({historyRecords.length})
               </CardTitle>
@@ -61,36 +61,36 @@ export function MaintenanceHistorySection({
                 {historyRecords.map((record) => (
                   <div
                     key={record.id}
-                    className="flex items-start justify-between p-3 rounded-lg bg-muted/30 border border-border"
+                    className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 p-3 rounded-lg bg-muted/30 border border-border"
                   >
-                    <div className="space-y-1">
-                      <p className="font-medium text-foreground">
-                        {getMaintenanceTitle(record.maintenance_id)}
+                  <div className="space-y-1 min-w-0">
+                    <p className="font-medium text-foreground break-words">
+                      {getMaintenanceTitle(record.maintenance_id)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Realizada em{" "}
+                      {format(new Date(record.performed_at), "dd/MM/yyyy", {
+                        locale: ptBR,
+                      })}
+                    </p>
+                    {record.notes && (
+                      <p className="text-sm text-muted-foreground italic break-words">
+                        {record.notes}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        Realizada em{" "}
-                        {format(new Date(record.performed_at), "dd/MM/yyyy", {
-                          locale: ptBR,
-                        })}
-                      </p>
-                      {record.notes && (
-                        <p className="text-sm text-muted-foreground italic">
-                          {record.notes}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right space-y-1">
-                      <div className="flex items-center gap-1 text-sm text-foreground">
-                        <Gauge className="h-3.5 w-3.5 text-primary" />
-                        <span>{record.performed_km.toLocaleString()} km</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Próx: {record.next_due_km.toLocaleString()} km
-                      </p>
-                    </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                  <div className="text-right space-y-1 flex-shrink-0">
+                    <div className="flex items-center justify-end gap-1 text-sm text-foreground">
+                      <Gauge className="h-3.5 w-3.5 text-primary" />
+                      <span>{record.performed_km.toLocaleString()} km</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Próx: {record.next_due_km.toLocaleString()} km
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
             )}
           </CardContent>
         </CollapsibleContent>

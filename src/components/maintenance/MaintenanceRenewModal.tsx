@@ -98,9 +98,9 @@ export function MaintenanceRenewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 break-words">
             <RotateCcw className="w-5 h-5 text-primary" />
             Renovar Manutenção
           </DialogTitle>

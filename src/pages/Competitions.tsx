@@ -173,7 +173,12 @@ export default function Competitions() {
           </div>
         </header>
 
-        <Tabs defaultValue="disponiveis" value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs
+          defaultValue="disponiveis"
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
           <TabsList className="flex w-full overflow-x-auto rounded-lg border border-border/40 bg-muted/40">
             <TabsTrigger value="disponiveis" className="flex-1 whitespace-nowrap text-sm">
               Disponíveis
@@ -186,115 +191,129 @@ export default function Competitions() {
             </TabsTrigger>
           </TabsList>
 
-        <TabsContent value="minhas" className="space-y-4 mt-4">
-          {isLoading ? (
-            <CompetitionSkeletonGrid count={3} />
-          ) : myCompetitions && myCompetitions.length > 0 ? (
-            <div className="space-y-3 animate-fade-in">
-              {myCompetitions.map((comp) => {
-                const memberCount = comp.participants_count;
-                const isHost = comp.user_is_host;
-                
-                return (
-                  <Card
-                    key={comp.id}
-                    className="w-full cursor-pointer hover:border-primary/50 transition-colors"
-                    onClick={() => navigate(`/dashboard/competicoes/${comp.id}`)}
-                  >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                          <CardTitle className="text-lg break-words">{comp.name}</CardTitle>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Users className="w-4 h-4" />
-                            {memberCount} participante{memberCount !== 1 ? 's' : ''}
-                            {isHost && (
-                              <Badge variant="outline" className="text-xs">
-                                <Crown className="w-3 h-3 mr-1" />
-                                Host
+          <TabsContent value="minhas" className="space-y-4 mt-4">
+            {isLoading ? (
+              <CompetitionSkeletonGrid count={3} />
+            ) : myCompetitions && myCompetitions.length > 0 ? (
+              <div className="space-y-3 animate-fade-in">
+                {myCompetitions.map((comp) => {
+                  const memberCount = comp.participants_count;
+                  const isHost = comp.user_is_host;
+
+                  return (
+                    <Card
+                      key={comp.id}
+                      className="w-full cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => navigate(`/dashboard/competicoes/${comp.id}`)}
+                    >
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <CardTitle className="text-lg break-words">{comp.name}</CardTitle>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Users className="w-4 h-4" />
+                              {memberCount} participante{memberCount !== 1 ? "s" : ""}
+                              {isHost && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Crown className="w-3 h-3 mr-1" />
+                                  Host
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant={
+                                  comp.computed_label === "Finalizada"
+                                    ? "outline"
+                                    : comp.computed_label === "Aguardando início"
+                                      ? "secondary"
+                                      : "default"
+                                }
+                              >
+                                {comp.computed_label}
+                              </Badge>
+                              {(isHost || isAdmin) && (
+                                <Button
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-8 w-8"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteModalCompetition({ id: comp.id, name: comp.name });
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                            {comp.meta_reached && (
+                              <Badge
+                                variant="outline"
+                                className="bg-green-500/10 text-green-500 border-green-500/30"
+                              >
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Meta atingida
                               </Badge>
                             )}
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-2">
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {comp.description && (
+                          <MarkdownRenderer
+                            content={comp.description}
+                            className="text-sm text-muted-foreground line-clamp-2"
+                          />
+                        )}
+                        <div className="flex flex-wrap items-center gap-3 text-sm">
                           <div className="flex items-center gap-2">
-                            <Badge variant={comp.computed_label === "Finalizada" ? "outline" : comp.computed_label === "Aguardando início" ? "secondary" : "default"}>
-                              {comp.computed_label}
-                            </Badge>
-                            {(isHost || isAdmin) && (
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-8 w-8"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeleteModalCompetition({ id: comp.id, name: comp.name });
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
+                            <Target className="w-4 h-4 text-primary" />
+                            <span className="text-muted-foreground">Meta:</span>
+                            <span className="font-semibold">{formatCurrency(comp.goal_value)}</span>
                           </div>
-                          {comp.meta_reached && (
-                            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Meta atingida
-                            </Badge>
+                          {comp.prize_value > 0 && (
+                            <div className="flex items-center gap-2">
+                              <Gift className="w-4 h-4 text-yellow-500" />
+                              <span className="text-muted-foreground">Prêmio:</span>
+                              <span className="font-semibold text-yellow-500">
+                                {formatCurrency(comp.prize_value)}
+                              </span>
+                            </div>
                           )}
                         </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {comp.description && (
-                        <MarkdownRenderer content={comp.description} className="text-sm text-muted-foreground line-clamp-2" />
-                      )}
-                      <div className="flex flex-wrap items-center gap-3 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Target className="w-4 h-4 text-primary" />
-                          <span className="text-muted-foreground">Meta:</span>
-                          <span className="font-semibold">{formatCurrency(comp.goal_value)}</span>
-                        </div>
-                        {comp.prize_value > 0 && (
-                          <div className="flex items-center gap-2">
-                            <Gift className="w-4 h-4 text-yellow-500" />
-                            <span className="text-muted-foreground">Prêmio:</span>
-                            <span className="font-semibold text-yellow-500">
-                              {formatCurrency(comp.prize_value)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <Calendar className="w-4 h-4" />
-                        <span>
-                          {format(parseISO(comp.start_date), "dd/MM/yy", { locale: ptBR })} -{" "}
-                          {format(parseISO(comp.end_date), "dd/MM/yy", { locale: ptBR })}
-                        </span>
-                        {comp.computed_label === "Em andamento" && (
-                          <span className="ml-auto text-primary font-medium">
-                            {getDaysInfo(comp)}
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="w-4 h-4" />
+                          <span>
+                            {format(parseISO(comp.start_date), "dd/MM/yy", { locale: ptBR })} -{" "}
+                            {format(parseISO(comp.end_date), "dd/MM/yy", { locale: ptBR })}
                           </span>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <Card className="animate-fade-in">
-              <CardContent className="pt-6 text-center space-y-4">
-                <Trophy className="w-16 h-16 text-muted-foreground mx-auto" />
-                <div>
-                  <p className="font-medium">Você ainda não está em nenhuma competição</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Crie uma nova ou entre em uma existente
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+                          {comp.computed_label === "Em andamento" && (
+                            <span className="ml-auto text-primary font-medium">
+                              {getDaysInfo(comp)}
+                            </span>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <Card className="animate-fade-in">
+                <CardContent className="pt-6 text-center space-y-4">
+                  <Trophy className="w-16 h-16 text-muted-foreground mx-auto" />
+                  <div>
+                    <p className="font-medium">Você ainda não está em nenhuma competição</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Crie uma nova ou entre em uma existente
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
         <TabsContent value="disponiveis" className="space-y-4 mt-4">
           {isLoading ? (
@@ -497,6 +516,7 @@ export default function Competitions() {
           )}
         </TabsContent>
       </Tabs>
+      </div>
 
       <CreateCompetitionModal
         open={showCreateModal}
