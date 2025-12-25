@@ -132,7 +132,7 @@ export default function Competitions() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh} className="p-4 md:p-6 space-y-6 min-h-[calc(100vh-4rem)]">
-      <header className="flex items-start justify-between gap-4">
+      <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
@@ -152,17 +152,17 @@ export default function Competitions() {
             Compete com outros motoristas e ganhe prêmios
           </p>
         </div>
-        <div className="flex flex-wrap justify-end gap-2 sm:gap-3">
-          <Button onClick={() => setShowRankingModal(true)} variant="outline" className="gap-2 min-h-[44px]">
+        <div className="flex flex-col sm:flex-row flex-wrap justify-end gap-2 sm:gap-3 w-full md:w-auto">
+          <Button onClick={() => setShowRankingModal(true)} variant="outline" className="gap-2 min-h-[44px] w-full sm:w-auto">
             <Medal className="w-4 h-4" />
             <span className="hidden sm:inline">Ranking</span>
           </Button>
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2 min-h-[44px]">
+          <Button onClick={() => setShowCreateModal(true)} className="gap-2 min-h-[44px] w-full sm:w-auto">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Criar Competição</span>
             <span className="sm:hidden">Criar</span>
           </Button>
-          <Button onClick={() => setShowJoinModal(true)} variant="outline" className="gap-2 min-h-[44px]">
+          <Button onClick={() => setShowJoinModal(true)} variant="outline" className="gap-2 min-h-[44px] w-full sm:w-auto">
             <LogIn className="w-4 h-4" />
             Entrar
           </Button>
@@ -170,10 +170,16 @@ export default function Competitions() {
       </header>
 
       <Tabs defaultValue="disponiveis" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="disponiveis">Disponíveis</TabsTrigger>
-          <TabsTrigger value="minhas">Minhas</TabsTrigger>
-          <TabsTrigger value="finalizadas">Finalizadas</TabsTrigger>
+        <TabsList className="flex w-full overflow-x-auto rounded-lg border border-border/40 bg-muted/40">
+          <TabsTrigger value="disponiveis" className="flex-1 whitespace-nowrap text-sm">
+            Disponíveis
+          </TabsTrigger>
+          <TabsTrigger value="minhas" className="flex-1 whitespace-nowrap text-sm">
+            Minhas
+          </TabsTrigger>
+          <TabsTrigger value="finalizadas" className="flex-1 whitespace-nowrap text-sm">
+            Finalizadas
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="minhas" className="space-y-4 mt-4">
@@ -188,13 +194,13 @@ export default function Competitions() {
                 return (
                   <Card
                     key={comp.id}
-                    className="cursor-pointer hover:border-primary/50 transition-colors"
+                    className="w-full cursor-pointer hover:border-primary/50 transition-colors"
                     onClick={() => navigate(`/dashboard/competicoes/${comp.id}`)}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
-                          <CardTitle className="text-lg">{comp.name}</CardTitle>
+                          <CardTitle className="text-lg break-words">{comp.name}</CardTitle>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Users className="w-4 h-4" />
                             {memberCount} participante{memberCount !== 1 ? 's' : ''}
@@ -238,7 +244,7 @@ export default function Competitions() {
                       {comp.description && (
                         <MarkdownRenderer content={comp.description} className="text-sm text-muted-foreground line-clamp-2" />
                       )}
-                      <div className="flex items-center gap-4 text-sm">
+                      <div className="flex flex-wrap items-center gap-3 text-sm">
                         <div className="flex items-center gap-2">
                           <Target className="w-4 h-4 text-primary" />
                           <span className="text-muted-foreground">Meta:</span>
@@ -254,7 +260,7 @@ export default function Competitions() {
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4" />
                         <span>
                           {format(parseISO(comp.start_date), "dd/MM/yy", { locale: ptBR })} -{" "}
@@ -307,13 +313,13 @@ export default function Competitions() {
                 return (
                   <Card
                     key={comp.id}
-                    className="cursor-pointer hover:border-primary/50 transition-colors"
+                    className="w-full cursor-pointer hover:border-primary/50 transition-colors"
                     onClick={() => navigate(`/dashboard/competicoes/${comp.id}`)}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
-                          <CardTitle className="text-lg">{comp.name}</CardTitle>
+                          <CardTitle className="text-lg break-words">{comp.name}</CardTitle>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Users className="w-4 h-4" />
                             {comp.participants_count} participante
@@ -336,7 +342,7 @@ export default function Competitions() {
                       {comp.description && (
                         <MarkdownRenderer content={comp.description} className="text-sm text-muted-foreground line-clamp-2" />
                       )}
-                      <div className="flex items-center gap-4 text-sm">
+                      <div className="flex flex-wrap items-center gap-3 text-sm">
                         <div className="flex items-center gap-2">
                           <Target className="w-4 h-4 text-primary" />
                           <span className="text-muted-foreground">Meta:</span>
@@ -352,7 +358,7 @@ export default function Competitions() {
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4" />
                         <span>
                           {format(parseISO(comp.start_date), "dd/MM/yy", { locale: ptBR })} -{" "}
@@ -406,13 +412,13 @@ export default function Competitions() {
                 return (
                   <Card
                     key={comp.id}
-                    className="cursor-pointer hover:opacity-90 transition-opacity border-zinc-700"
+                    className="w-full cursor-pointer hover:opacity-90 transition-opacity border-zinc-700"
                     onClick={() => navigate(`/dashboard/competicoes/${comp.id}`)}
                   >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="space-y-1">
-                          <CardTitle className="text-lg">{comp.name}</CardTitle>
+                          <CardTitle className="text-lg break-words">{comp.name}</CardTitle>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Users className="w-4 h-4" />
                             {memberCount} participante{memberCount !== 1 ? "s" : ""}
@@ -442,7 +448,7 @@ export default function Competitions() {
                       {comp.description && (
                         <MarkdownRenderer content={comp.description} className="text-sm text-muted-foreground line-clamp-2" />
                       )}
-                      <div className="flex items-center gap-4 text-sm">
+                      <div className="flex flex-wrap items-center gap-3 text-sm">
                         <div className="flex items-center gap-2">
                           <Target className="w-4 h-4 text-primary" />
                           <span className="text-muted-foreground">Meta:</span>
@@ -458,7 +464,7 @@ export default function Competitions() {
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="w-4 h-4" />
                         <span>
                           {format(parseISO(comp.start_date), "dd/MM/yy", { locale: ptBR })} -{" "}
