@@ -48,7 +48,7 @@ export function StatsCards({
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
       <Card>
         <CardHeader className="pb-2">
           <CardDescription>Meta individual</CardDescription>
