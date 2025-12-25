@@ -215,7 +215,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Configurações</h1>
@@ -224,7 +224,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Profile Card */}
         <Card variant="elevated">
           <CardHeader>
@@ -475,7 +475,7 @@ export default function SettingsPage() {
           <CardTitle className="text-lg">Resumo da Conta</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid sm:grid-cols-3 gap-6">
+          <div className="grid gap-6 sm:grid-cols-3">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
                 <Calendar className="w-6 h-6 text-primary" />
@@ -510,12 +510,22 @@ export default function SettingsPage() {
       </Card>
 
       {/* Save Button */}
-      <div className="flex justify-between items-center">
-        <Button variant="outline" onClick={handleLogout} className="gap-2 text-destructive hover:text-destructive">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Button
+          variant="outline"
+          onClick={handleLogout}
+          className="gap-2 text-destructive hover:text-destructive w-full sm:w-auto justify-center"
+        >
           <LogOut className="w-4 h-4" />
           Sair da conta
         </Button>
-        <Button variant="hero" size="lg" onClick={handleSave} disabled={saveProfile.isPending}>
+        <Button
+          variant="hero"
+          size="lg"
+          onClick={handleSave}
+          disabled={saveProfile.isPending}
+          className="w-full sm:w-auto justify-center"
+        >
           {saveProfile.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar Configurações"}
         </Button>
       </div>

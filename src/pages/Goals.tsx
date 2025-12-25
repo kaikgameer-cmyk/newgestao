@@ -141,11 +141,11 @@ export default function Goals() {
             Defina suas metas de faturamento por dia
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           {/* Bulk Add Dialog */}
           <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2 w-full sm:w-auto">
                 <Calendar className="w-4 h-4" />
                 Adicionar em Lote
               </Button>
@@ -234,7 +234,7 @@ export default function Goals() {
           {/* Add Single Goal Dialog */}
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="hero" className="gap-2">
+              <Button variant="hero" className="gap-2 w-full sm:w-auto">
                 <Plus className="w-5 h-5" />
                 Nova Meta
               </Button>
@@ -375,7 +375,7 @@ export default function Goals() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
