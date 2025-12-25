@@ -69,25 +69,25 @@ export function MaintenanceSummaryCard({
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div className="text-center p-3 rounded-lg bg-primary/10">
             <ClipboardCheck className="w-5 h-5 text-primary mx-auto mb-1" />
-            <p className="text-2xl font-bold text-primary">{completed}</p>
+            <p className="text-2xl font-bold text-primary break-words">{completed}</p>
             <p className="text-xs text-muted-foreground">Concluídas</p>
           </div>
           <div className="text-center p-3 rounded-lg bg-green-500/10">
             <CheckCircle2 className="w-5 h-5 text-green-500 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-green-500">{ok}</p>
+            <p className="text-2xl font-bold text-green-500 break-words">{ok}</p>
             <p className="text-xs text-muted-foreground">Em dia</p>
           </div>
           <div className="text-center p-3 rounded-lg bg-yellow-500/10">
             <AlertTriangle className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-yellow-500">{warning}</p>
+            <p className="text-2xl font-bold text-yellow-500 break-words">{warning}</p>
             <p className="text-xs text-muted-foreground">Próximas</p>
           </div>
           <div className="text-center p-3 rounded-lg bg-red-500/10">
             <AlertCircle className="w-5 h-5 text-red-500 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-red-500">{overdue}</p>
+            <p className="text-2xl font-bold text-red-500 break-words">{overdue}</p>
             <p className="text-xs text-muted-foreground">Vencidas</p>
           </div>
         </div>

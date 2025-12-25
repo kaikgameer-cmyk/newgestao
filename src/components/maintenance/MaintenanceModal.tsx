@@ -95,9 +95,9 @@ export function MaintenanceModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="break-words">
             {isEditing ? "Editar Manutenção" : "Nova Manutenção"}
           </DialogTitle>
         </DialogHeader>
