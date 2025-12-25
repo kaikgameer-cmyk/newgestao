@@ -20,6 +20,7 @@ import { CompetitionSkeletonGrid } from "@/components/competitions/CompetitionCa
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useQueryClient } from "@tanstack/react-query";
 import { DeleteCompetitionDialog } from "@/components/competitions/DeleteCompetitionDialog";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -27,6 +28,7 @@ const formatCurrency = (value: number) =>
 export default function Competitions() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isAdmin } = useIsAdmin();
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -217,7 +219,7 @@ export default function Competitions() {
                             <Badge variant={comp.computed_label === "Finalizada" ? "outline" : comp.computed_label === "Aguardando início" ? "secondary" : "default"}>
                               {comp.computed_label}
                             </Badge>
-                            {isHost && (
+                            {(isHost || isAdmin) && (
                               <Button
                                 size="icon"
                                 variant="outline"
@@ -276,17 +278,6 @@ export default function Competitions() {
                   </Card>
                 );
               })}
-
-              {deleteModalCompetition && (
-                <DeleteCompetitionDialog
-                  open={!!deleteModalCompetition}
-                  onOpenChange={(open) => {
-                    if (!open) setDeleteModalCompetition(null);
-                  }}
-                  competitionId={deleteModalCompetition.id}
-                  competitionName={deleteModalCompetition.name}
-                />
-              )}
             </div>
           ) : (
             <Card className="animate-fade-in">
@@ -431,10 +422,25 @@ export default function Competitions() {
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <Badge variant="outline" className="ml-auto">
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Finalizada
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="ml-auto">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Finalizada
+                            </Badge>
+                            {(isHost || isAdmin) && (
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteModalCompetition({ id: comp.id, name: comp.name });
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                           {comp.meta_reached && (
                             <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
                               <Target className="w-3 h-3 mr-1" />
@@ -505,6 +511,17 @@ export default function Competitions() {
         open={showRankingModal}
         onOpenChange={setShowRankingModal}
       />
+
+      {deleteModalCompetition && (
+        <DeleteCompetitionDialog
+          open={!!deleteModalCompetition}
+          onOpenChange={(open) => {
+            if (!open) setDeleteModalCompetition(null);
+          }}
+          competitionId={deleteModalCompetition.id}
+          competitionName={deleteModalCompetition.name}
+        />
+      )}
 
       {currentNotification && (
         <HostPayoutNotification
