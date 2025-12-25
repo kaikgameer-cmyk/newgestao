@@ -132,11 +132,11 @@ export default function Goals() {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6 max-w-5xl mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Metas Diárias</h1>
+          <h1 className="text-2xl font-bold break-words">Metas Diárias</h1>
           <p className="text-muted-foreground">
             Defina suas metas de faturamento por dia
           </p>

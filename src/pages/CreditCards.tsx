@@ -292,11 +292,11 @@ export default function CreditCards() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Cartões de Crédito</h1>
+      <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto w-full">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold break-words">Cartões de Crédito</h1>
           <p className="text-muted-foreground">
             Gerencie seus cartões e acompanhe suas faturas
           </p>
@@ -413,8 +413,7 @@ export default function CreditCards() {
         </Card>
       ) : (
         <>
-          {/* Summary Cards */}
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card variant="elevated">
               <CardContent className="p-6">
                 <div className="flex items-center gap-3 mb-3">
@@ -553,7 +552,7 @@ export default function CreditCards() {
                     )}
 
                     {/* Card details */}
-                    <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border/50">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-border/50">
                       <div className="text-center">
                         <p className="text-xs text-muted-foreground">Fechamento</p>
                         <p className="font-medium">{card.closing_day ? `Dia ${card.closing_day}` : "—"}</p>
