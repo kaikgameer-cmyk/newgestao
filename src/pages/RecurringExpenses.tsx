@@ -416,7 +416,7 @@ export default function RecurringExpenses() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-[640px] text-xs sm:text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>

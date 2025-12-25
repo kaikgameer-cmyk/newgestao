@@ -202,7 +202,7 @@ export default function Maintenance() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[720px] text-xs sm:text-sm">
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">

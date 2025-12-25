@@ -1370,15 +1370,15 @@ export default function Transactions() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[640px] text-xs sm:text-sm">
                     <thead>
                       <tr className="border-b border-border">
-                        <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Data</th>
-                        <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Tipo</th>
-                        <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden sm:table-cell">Categoria</th>
-                        <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground hidden md:table-cell">Detalhes</th>
-                        <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Valor</th>
-                        <th className="text-center py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-muted-foreground">Ações</th>
+                        <th className="text-center py-3 px-2 sm:px-4 font-medium text-muted-foreground">Data</th>
+                        <th className="text-center py-3 px-2 sm:px-4 font-medium text-muted-foreground">Tipo</th>
+                        <th className="text-center py-3 px-2 sm:px-4 font-medium text-muted-foreground hidden sm:table-cell">Categoria</th>
+                        <th className="text-center py-3 px-2 sm:px-4 font-medium text-muted-foreground hidden md:table-cell">Detalhes</th>
+                        <th className="text-center py-3 px-2 sm:px-4 font-medium text-muted-foreground">Valor</th>
+                        <th className="text-center py-3 px-2 sm:px-4 font-medium text-muted-foreground">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
