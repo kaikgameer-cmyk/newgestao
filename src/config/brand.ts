@@ -17,7 +17,7 @@ export const BRAND = {
   
   // Paths de assets
   LOGO_PATH: "/logo-ng.png",
-  FAVICON_PATH: "/favicon.png",
+  FAVICON_PATH: "/favicon-v2.png",
   
   // Descrições para SEO
   DESCRIPTION: "Controle financeiro simples para motoristas de Uber, 99 e InDrive. Veja quanto entrou, quanto saiu e quanto sobrou no fim da semana.",
