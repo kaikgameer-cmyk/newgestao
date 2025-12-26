@@ -19,7 +19,6 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Lock, CheckCircle2, Eye, EyeOff, AlertCircle, Mail, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import logo from "@/assets/logo-ng.png";
 import { z } from "zod";
 
 // Email validation schema
@@ -410,7 +409,7 @@ export default function DefinirSenha() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <Link to="/" className="flex items-center justify-center gap-2 mb-4">
-            <img src={logo} alt="New Gestão" className="w-12 h-12" />
+            <img src="/logo-ng.png" alt="New Gestão" className="w-12 h-12" />
             <span className="text-xl font-semibold">New Gestão</span>
           </Link>
 
