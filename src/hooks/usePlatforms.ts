@@ -129,7 +129,49 @@ export function usePlatforms() {
       const trimmedName = name.trim();
       if (!trimmedName) throw new Error("Nome é obrigatório");
 
-      // Generate a slug from the name (lowercase, no accents, hyphens)
+      // Normalize for case-insensitive comparison
+      const normalizedName = trimmedName
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      // Check against system platforms (user_id IS NULL)
+      const { data: systemPlatforms, error: systemError } = await supabase
+        .from("platforms")
+        .select("name")
+        .is("user_id", null);
+
+      if (systemError) throw systemError;
+
+      const systemNames = new Set(
+        (systemPlatforms || []).map((p) =>
+          p.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        )
+      );
+
+      if (systemNames.has(normalizedName)) {
+        throw new Error(`Já existe uma plataforma padrão com o nome "${trimmedName}". Escolha outro nome.`);
+      }
+
+      // Check against user's own platforms
+      const { data: userPlatforms, error: userError } = await supabase
+        .from("platforms")
+        .select("name")
+        .eq("user_id", user.id);
+
+      if (userError) throw userError;
+
+      const userNames = new Set(
+        (userPlatforms || []).map((p) =>
+          p.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        )
+      );
+
+      if (userNames.has(normalizedName)) {
+        throw new Error(`Você já possui uma plataforma com o nome "${trimmedName}".`);
+      }
+
+      // Generate slug
       const baseSlug = trimmedName
         .normalize("NFD")
         .replace(/\p{Diacritic}/gu, "")
@@ -140,64 +182,43 @@ export function usePlatforms() {
 
       if (!baseSlug) throw new Error("Nome inválido para gerar identificador interno");
 
-      // Ensure slug uniqueness by suffixing -2, -3, ... if needed
-      let slug = baseSlug;
-      let counter = 2;
-      const existingSlugs = new Set(platforms.map((p) => p.key));
-      while (existingSlugs.has(slug)) {
-        slug = `${baseSlug}-${counter++}`;
-      }
+      const slug = `custom_${baseSlug}_${Date.now()}`;
+      const safeColor = /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "#2563eb";
 
-      // Check if platform with same display name already exists
-      const existingPlatform = platforms.find(
-        (p) => p.name.toLowerCase() === trimmedName.toLowerCase()
-      );
-      if (existingPlatform) {
-        throw new Error("Já existe uma plataforma com esse nome");
-      }
- 
-       const safeColor = /^#[0-9A-Fa-f]{6}$/.test(color) ? color : "#2563eb";
- 
-        // Insert platform
-       const { data: newPlatform, error: platformError } = await supabase
-         .from("platforms")
-         .insert({
-           user_id: user.id,
-           key: slug,
-           name: trimmedName,
-           is_active: true,
-           is_default: false,
-           is_other: false,
-           color: safeColor,
-           icon: icon || "Tag",
-         })
-         .select()
-         .single();
+      // Insert platform
+      const { data: newPlatform, error: platformError } = await supabase
+        .from("platforms")
+        .insert({
+          user_id: user.id,
+          key: slug,
+          name: trimmedName,
+          is_active: true,
+          is_default: false,
+          is_other: false,
+          color: safeColor,
+          icon: icon || "Tag",
+        })
+        .select()
+        .single();
 
-       if (platformError) {
-         // Tratar erro de unicidade vindo do backend
-         if ((platformError as any)?.code === "23505") {
-           throw new Error("Já existe uma plataforma com esse nome");
-         }
-         throw platformError;
-       }
- 
-       // Auto-enable the new platform for the user
-       const { error: prefError } = await supabase
-         .from("user_platforms")
-         .upsert(
-           {
-             user_id: user.id,
-             platform_key: newPlatform.key,
-             enabled: true,
-           },
-           { onConflict: "user_id,platform_key" }
-         );
- 
-       if (prefError) throw prefError;
- 
-       return newPlatform;
-     },
+      if (platformError) throw platformError;
+
+      // Auto-enable the new platform for the user
+      const { error: prefError } = await supabase
+        .from("user_platforms")
+        .upsert(
+          {
+            user_id: user.id,
+            platform_key: newPlatform.key,
+            enabled: true,
+          },
+          { onConflict: "user_id,platform_key" }
+        );
+
+      if (prefError) throw prefError;
+
+      return newPlatform;
+    },
      onSuccess: () => {
        queryClient.invalidateQueries({ queryKey: ["platforms"] });
        queryClient.invalidateQueries({ queryKey: ["user_platforms"] });

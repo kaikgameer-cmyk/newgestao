@@ -143,9 +143,56 @@ export function useExpenseCategories() {
   // Create custom category
   const createCategory = useMutation({
     mutationFn: async ({ name, color, icon }: { name: string; color: string; icon?: string }) => {
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new Error("Não autenticado");
 
-      const key = name
+      const trimmedName = name.trim();
+      if (!trimmedName) throw new Error("Nome é obrigatório");
+
+      // Normalize for case-insensitive comparison
+      const normalizedName = trimmedName
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      // Check against system categories (user_id IS NULL, is_system=true)
+      const { data: systemCategories, error: systemError } = await supabase
+        .from("expense_categories")
+        .select("name")
+        .is("user_id", null)
+        .eq("is_system", true);
+
+      if (systemError) throw systemError;
+
+      const systemNames = new Set(
+        (systemCategories || []).map((c) =>
+          c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        )
+      );
+
+      if (systemNames.has(normalizedName)) {
+        throw new Error(`Já existe uma categoria padrão com o nome "${trimmedName}". Escolha outro nome.`);
+      }
+
+      // Check against user's own categories
+      const { data: userCategories, error: userError } = await supabase
+        .from("expense_categories")
+        .select("name")
+        .eq("user_id", user.id);
+
+      if (userError) throw userError;
+
+      const userNames = new Set(
+        (userCategories || []).map((c) =>
+          c.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        )
+      );
+
+      if (userNames.has(normalizedName)) {
+        throw new Error(`Você já possui uma categoria com o nome "${trimmedName}".`);
+      }
+
+      // Generate key
+      const key = trimmedName
         .toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
@@ -158,7 +205,7 @@ export function useExpenseCategories() {
         .from("expense_categories")
         .insert({
           key: categoryKey,
-          name,
+          name: trimmedName,
           color,
           icon: icon || "Tag",
           is_system: false,
@@ -184,9 +231,10 @@ export function useExpenseCategories() {
         description: "Nova categoria de despesa adicionada.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Erro ao criar categoria",
+        description: error.message,
         variant: "destructive",
       });
     },
