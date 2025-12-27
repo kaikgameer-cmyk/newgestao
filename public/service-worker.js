@@ -1,4 +1,4 @@
-const CACHE_NAME = "ng-static-v4";
+const CACHE_NAME = "ng-static-v3";
 
 const URLS_TO_CACHE = [
   "/",
@@ -9,69 +9,32 @@ const URLS_TO_CACHE = [
   "/icon-192.png",
   "/icon-512.png",
   "/maskable-icon-512.png",
-  "/logo-ng.png",
-  "/screenshots/dashboard.png",
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(URLS_TO_CACHE)),
   );
-
-  self.skipWaiting?.();
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) =>
-      Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name)),
-      ),
+    caches.keys().then((names) =>
+      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))),
     ),
   );
-
-  self.clients?.claim?.();
+  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-  const request = event.request;
+  const req = event.request;
+  if (req.method !== "GET") return;
 
-  if (request.method !== "GET") return;
-
-  const acceptHeader = request.headers.get("accept") || "";
-  const isNavigateRequest =
-    request.mode === "navigate" || acceptHeader.includes("text/html");
-
-  // Navegação: network-first com fallback para "/" em modo offline
-  if (isNavigateRequest) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() =>
-          caches.match(request).then((cached) => cached || caches.match("/")),
-        ),
-    );
-    return;
-  }
-
-  // Assets: cache-first com fallback para network
   event.respondWith(
-    caches.match(request).then((cached) => {
+    caches.match(req).then((cached) => {
       if (cached) return cached;
-
-      return fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match(request));
+      return fetch(req).catch(() => caches.match("/"));
     }),
   );
 });
