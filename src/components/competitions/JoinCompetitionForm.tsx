@@ -25,6 +25,29 @@ import {
 import { LogIn, Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Key } from "lucide-react";
 import { useJoinCompetition } from "@/hooks/useCompetitions";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+const mapJoinErrorMessage = (rawMessage: string): string => {
+  const msg = rawMessage.toLowerCase();
+
+  if (msg.includes("invalid_password") || msg.includes("senha incorreta")) {
+    return "Senha incorreta. Verifique e tente novamente.";
+  }
+
+  if (msg.includes("competition_full") || msg.includes("lotada") || msg.includes("max_members")) {
+    return "Esta competição já atingiu o número máximo de participantes.";
+  }
+
+  if (msg.includes("not_joinable") || msg.includes("join_window")) {
+    return "Esta competição não está mais aberta para novas inscrições.";
+  }
+
+  if (msg.includes("already_member")) {
+    return "Você já participa desta competição.";
+  }
+
+  return "Não foi possível entrar na competição. Tente novamente em alguns segundos.";
+};
 
 const step1Schema = z.object({
   code: z
@@ -56,6 +79,7 @@ interface JoinCompetitionFormProps {
 
 export default function JoinCompetitionForm({ initialCode = "" }: JoinCompetitionFormProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [step1Data, setStep1Data] = useState<Step1Values | null>(null);
@@ -102,29 +126,76 @@ export default function JoinCompetitionForm({ initialCode = "" }: JoinCompetitio
     setSubmitError(null);
     setIsCheckingCompetition(true);
 
+    console.log("[join] Step1 - checking competition", { code: values.code, userId: user?.id });
+
     try {
-      const { data, error } = await supabase
+      // Get competition info
+      const { data: compData, error: compError } = await supabase
         .from("competitions")
-        .select("prize_value")
+        .select("id, name, prize_value, has_prize")
         .eq("code", values.code.toUpperCase())
         .maybeSingle();
 
-      if (error) {
-        console.error("Erro ao buscar competição", error);
-        setStep1Error("Não foi possível buscar a competição. Tente novamente.");
+      console.log("[join] Step1 - competition query response", { 
+        data: compData, 
+        error: compError,
+        errorMessage: compError?.message,
+        errorDetails: compError?.details 
+      });
+
+      if (compError) {
+        console.error("[join] Step1 - Competition query error", compError);
+        const errorDetail = compError.message.includes("permission") ?
+          "Sem permissão para visualizar esta competição" :
+          `Erro: ${compError.message}`;
+        setStep1Error(errorDetail);
         return;
       }
 
-      if (!data) {
-        setStep1Error("Competição não encontrada. Verifique o código digitado.");
+      if (!compData) {
+        console.warn("[join] Step1 - Competition not found", { code: values.code });
+        setStep1Error("Competição não encontrada. Verifique o código.");
         return;
       }
 
-      const hasPrizeFlag = (data.prize_value || 0) > 0;
+      console.log("[join] Step1 - Competition found", { 
+        id: compData.id, 
+        name: compData.name, 
+        has_prize: compData.has_prize,
+        prize_value: compData.prize_value 
+      });
+
+      // Check if already a member
+      const { data: memberData, error: memberError } = await supabase
+        .from("competition_members")
+        .select("user_id")
+        .eq("competition_id", compData.id)
+        .eq("user_id", user?.id)
+        .maybeSingle();
+
+      console.log("[join] Step1 - membership check", { 
+        memberData, 
+        memberError,
+        isMember: !!memberData 
+      });
+
+      if (memberError) {
+        console.error("[join] Step1 - Membership check error", memberError);
+      }
+
+      if (memberData) {
+        console.log("[join] Step1 - User already member, redirecting", { competitionId: compData.id });
+        navigate(`/dashboard/competicoes/${compData.id}`);
+        return;
+      }
+
+      console.log("[join] Step1 - User not member, proceeding to join flow");
+
+      const hasPrizeFlag = (compData.prize_value || 0) > 0;
       setHasPrize(hasPrizeFlag);
       setStep(hasPrizeFlag ? 2 : 3);
     } catch (err) {
-      console.error("Erro inesperado ao buscar competição", err);
+      console.error("[join] Step1 - Unexpected error", err);
       setStep1Error("Ocorreu um erro ao buscar a competição. Tente novamente em alguns segundos.");
     } finally {
       setIsCheckingCompetition(false);
@@ -136,20 +207,34 @@ export default function JoinCompetitionForm({ initialCode = "" }: JoinCompetitio
   };
 
   const onStep3Submit = async (_values: Step3Values) => {
-     if (!step1Data) return;
- 
-     const result = await joinMutation.mutateAsync({
-       code: step1Data.code,
-       password: step1Data.password,
-       pix_key: hasPrize ? step2Data?.pix_key || "" : "",
-       pix_key_type: hasPrize ? step2Data?.pix_key_type || undefined : undefined,
-     });
- 
-     if (result.competition_id) {
--      navigate(`/dashboard/competicoes`);
-+      navigate(`/dashboard/competicoes/${result.competition_id}`);
-     }
-   };
+    if (!step1Data) return;
+    setSubmitError(null);
+
+    console.log("[join] Step3 - Submitting final join", { 
+      code: step1Data.code, 
+      has_pix: !!step2Data?.pix_key 
+    });
+
+    try {
+      const result = await joinMutation.mutateAsync({
+        code: step1Data.code,
+        password: step1Data.password,
+        pix_key: hasPrize ? step2Data?.pix_key || "" : "",
+        pix_key_type: hasPrize ? step2Data?.pix_key_type || undefined : undefined,
+      });
+
+      console.log("[join] Step3 - Join successful", result);
+
+      if (result.competition_id) {
+        console.log("[join] Step3 - Redirecting to competition", { id: result.competition_id });
+        navigate(`/dashboard/competicoes/${result.competition_id}`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err ?? "");
+      console.error("[join] Step3 - Join failed", { error: err, message });
+      setSubmitError(mapJoinErrorMessage(message));
+    }
+  };
 
   const handleBack = () => {
     setStep((prev) => (prev === 3 ? (hasPrize ? 2 : 1) : 1));

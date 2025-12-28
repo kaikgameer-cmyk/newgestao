@@ -113,17 +113,35 @@ export function useCompetitionDashboard(idOrCode: string | undefined) {
   return useQuery({
     queryKey: ["competition-dashboard", idOrCode],
     queryFn: async (): Promise<CompetitionDashboardData | null> => {
-      if (!idOrCode) return null;
+      console.log("[useCompetitionDashboard] Starting query", { idOrCode, userId: user?.id });
+
+      if (!idOrCode) {
+        console.warn("[useCompetitionDashboard] No id/code provided");
+        return null;
+      }
 
       const competitionId = await resolveCompetitionId(idOrCode);
-      if (!competitionId) return null;
+      console.log("[useCompetitionDashboard] Resolved ID", { idOrCode, competitionId });
+
+      if (!competitionId) {
+        console.warn("[useCompetitionDashboard] Could not resolve competition ID");
+        return null;
+      }
 
       const { data, error } = await supabase.rpc("get_competition_dashboard", {
         p_competition_id: competitionId,
       });
 
+      console.log("[useCompetitionDashboard] RPC response", { 
+        data: !!data, 
+        error,
+        errorCode: error?.code,
+        errorMessage: error?.message,
+        errorDetails: error?.details 
+      });
+
       if (error) {
-        console.error("get_competition_dashboard error:", error);
+        console.error("[useCompetitionDashboard] RPC error", error);
         throw error;
       }
 
