@@ -69,6 +69,8 @@ export default function JoinCompetitionModal({
   const [joinedCompetitionId, setJoinedCompetitionId] = useState<string | null>(null);
   const [transparencyChecked, setTransparencyChecked] = useState(false);
   const [hasPrize, setHasPrize] = useState<boolean | null>(null);
+  const [isCheckingCompetition, setIsCheckingCompetition] = useState(false);
+  const [step1Error, setStep1Error] = useState<string | null>(null);
 
   const joinMutation = useJoinCompetition();
   const acceptTransparencyMutation = useAcceptCompetitionTransparency();
@@ -102,6 +104,9 @@ export default function JoinCompetitionModal({
       setStep1Data(null);
       setJoinedCompetitionId(null);
       setTransparencyChecked(false);
+      setHasPrize(null);
+      setIsCheckingCompetition(false);
+      setStep1Error(null);
       step1Form.reset();
       step2Form.reset();
     }
@@ -124,15 +129,28 @@ export default function JoinCompetitionModal({
 
   const onStep1Submit = async (values: Step1Values) => {
     setStep1Data(values);
+    setStep1Error(null);
+    setIsCheckingCompetition(true);
 
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("competitions")
         .select("prize_value")
         .eq("code", values.code.toUpperCase())
         .maybeSingle();
 
-      const hasPrizeFlag = (data?.prize_value || 0) > 0;
+      if (error) {
+        console.error("Erro ao buscar competição", error);
+        setStep1Error("Não foi possível buscar a competição. Tente novamente.");
+        return;
+      }
+
+      if (!data) {
+        setStep1Error("Competição não encontrada. Verifique o código digitado.");
+        return;
+      }
+
+      const hasPrizeFlag = (data.prize_value || 0) > 0;
       setHasPrize(hasPrizeFlag);
 
       if (hasPrizeFlag) {
@@ -144,13 +162,11 @@ export default function JoinCompetitionModal({
       } else {
         await handleJoinWithoutPix(values);
       }
-    } catch {
-      step2Form.reset({
-        pix_key: "",
-        pix_key_type: "" as unknown as Step2Values["pix_key_type"],
-      });
-      setHasPrize(true);
-      setStep(2);
+    } catch (err) {
+      console.error("Erro inesperado ao buscar competição", err);
+      setStep1Error("Ocorreu um erro ao buscar a competição. Tente novamente em alguns segundos.");
+    } finally {
+      setIsCheckingCompetition(false);
     }
   };
 
@@ -303,18 +319,32 @@ export default function JoinCompetitionModal({
                 )}
               />
 
+              {step1Error && (
+                <p className="text-sm text-destructive">{step1Error}</p>
+              )}
+
               <div className="flex gap-2 pt-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleClose}
                   className="flex-1"
+                  disabled={isCheckingCompetition}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" className="flex-1">
-                  Próximo
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                <Button type="submit" className="flex-1" disabled={isCheckingCompetition}>
+                  {isCheckingCompetition ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Verificando competição...
+                    </>
+                  ) : (
+                    <>
+                      Próximo
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  )}
                 </Button>
               </div>
             </form>

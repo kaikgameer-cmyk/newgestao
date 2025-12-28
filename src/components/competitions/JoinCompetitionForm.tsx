@@ -61,6 +61,8 @@ export default function JoinCompetitionForm({ initialCode = "" }: JoinCompetitio
   const [step1Data, setStep1Data] = useState<Step1Values | null>(null);
   const [step2Data, setStep2Data] = useState<Step2Values | null>(null);
   const [hasPrize, setHasPrize] = useState<boolean | null>(null);
+  const [isCheckingCompetition, setIsCheckingCompetition] = useState(false);
+  const [step1Error, setStep1Error] = useState<string | null>(null);
 
   const joinMutation = useJoinCompetition();
 
@@ -95,23 +97,37 @@ export default function JoinCompetitionForm({ initialCode = "" }: JoinCompetitio
 
   const onStep1Submit = async (values: Step1Values) => {
     setStep1Data(values);
+    setStep1Error(null);
+    setIsCheckingCompetition(true);
 
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("competitions")
         .select("prize_value")
         .eq("code", values.code.toUpperCase())
         .maybeSingle();
 
-      const hasPrizeFlag = (data?.prize_value || 0) > 0;
+      if (error) {
+        console.error("Erro ao buscar competição", error);
+        setStep1Error("Não foi possível buscar a competição. Tente novamente.");
+        return;
+      }
+
+      if (!data) {
+        setStep1Error("Competição não encontrada. Verifique o código digitado.");
+        return;
+      }
+
+      const hasPrizeFlag = (data.prize_value || 0) > 0;
       setHasPrize(hasPrizeFlag);
       setStep(hasPrizeFlag ? 2 : 3);
-    } catch {
-      setHasPrize(true);
-      setStep(2);
+    } catch (err) {
+      console.error("Erro inesperado ao buscar competição", err);
+      setStep1Error("Ocorreu um erro ao buscar a competição. Tente novamente em alguns segundos.");
+    } finally {
+      setIsCheckingCompetition(false);
     }
   };
-
   const onStep2Submit = (values: Step2Values) => {
     setStep2Data(values);
     setStep(3);
