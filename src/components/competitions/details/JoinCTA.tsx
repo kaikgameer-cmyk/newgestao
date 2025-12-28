@@ -32,13 +32,15 @@ export function JoinCTA({ isJoinable, participantsCount, prizeValue, onJoinClick
         </div>
         <h3 className="text-xl font-bold mb-2">Entre na Competição!</h3>
         <p className="text-muted-foreground mb-4 max-w-sm">
-          Junte-se a {participantsCount} participante{participantsCount !== 1 ? "s" : ""} e 
-          concorra ao prêmio de R$ {prizeValue.toLocaleString("pt-BR")}.
+          Junte-se a {participantsCount} participante{participantsCount !== 1 ? "s" : ""} 
+          {prizeValue > 0 && (
+            <> e concorra ao prêmio de R$ {prizeValue.toLocaleString("pt-BR")}</>
+          )}.
         </p>
         <Button 
           size="lg" 
           onClick={() => {
-            console.log("enter competition clicked", { participantsCount, prizeValue });
+            console.log("[JoinCTA] Enter competition clicked", { participantsCount, prizeValue });
             onJoinClick();
           }}
           className="gap-2"

@@ -103,6 +103,15 @@ function CompetitionDetailsInner() {
   const { data: dashboardData, isLoading, error } = useCompetitionDashboard(id);
   const finalizeMutation = useFinalizeOnce();
 
+  console.log("[CompetitionDetails] Dashboard data", { 
+    id, 
+    isLoading, 
+    error,
+    hasData: !!dashboardData,
+    competition: dashboardData?.competition,
+    viewer: dashboardData?.viewer
+  });
+
   const competition = dashboardData?.competition;
   const viewer = dashboardData?.viewer;
   const totals = dashboardData?.totals;
@@ -175,18 +184,44 @@ function CompetitionDetailsInner() {
 
   // Not found state
   if (!competition || error) {
+    console.error("[CompetitionDetails] Error state", { 
+      error, 
+      competition: !!competition,
+      errorMessage: error?.message 
+    });
+
+    // Show specific error for permission denied
+    const isPermissionDenied = error?.message?.includes("permission") || 
+                               error?.message?.includes("PGRST");
+    
     return (
       <div className="p-4 md:p-6">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Trophy className="w-12 h-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Competição não encontrada</h3>
+            <h3 className="text-lg font-medium mb-2">
+              {isPermissionDenied ? "Sem acesso" : "Competição não encontrada"}
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              A competição pode ter sido excluída ou você não tem permissão para visualizá-la.
+              {isPermissionDenied 
+                ? "Você precisa participar desta competição para visualizar os detalhes."
+                : "A competição pode ter sido excluída ou o link está incorreto."
+              }
             </p>
-            <Button onClick={() => navigate("/dashboard/competicoes")}>
-              Voltar para Competições
-            </Button>
+            {import.meta.env.DEV && error && (
+              <details className="text-xs text-left bg-muted p-2 rounded mb-4 max-w-md">
+                <summary className="cursor-pointer font-medium">Detalhes do erro (dev)</summary>
+                <pre className="mt-2 whitespace-pre-wrap">{JSON.stringify(error, null, 2)}</pre>
+              </details>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate("/dashboard/competicoes")}>
+                Voltar
+              </Button>
+              <Button onClick={() => window.location.reload()}>
+                Tentar Novamente
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
