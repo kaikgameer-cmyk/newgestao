@@ -72,8 +72,9 @@ import {
   JoinCompetitionInline,
   ParticipantSummarySection,
 } from "@/components/competitions/details";
+import { CompetitionErrorBoundary } from "@/components/competitions/CompetitionErrorBoundary";
 
-export default function CompetitionDetails() {
+function CompetitionDetailsInner() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -629,5 +630,13 @@ export default function CompetitionDetails() {
         )}
       </div>
     </PullToRefresh>
+  );
+}
+
+export default function CompetitionDetails() {
+  return (
+    <CompetitionErrorBoundary>
+      <CompetitionDetailsInner />
+    </CompetitionErrorBoundary>
   );
 }
