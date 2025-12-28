@@ -37,7 +37,10 @@ export function JoinCTA({ isJoinable, participantsCount, prizeValue, onJoinClick
         </p>
         <Button 
           size="lg" 
-          onClick={onJoinClick}
+          onClick={() => {
+            console.log("enter competition clicked", { participantsCount, prizeValue });
+            onJoinClick();
+          }}
           className="gap-2"
         >
           <UserPlus className="w-5 h-5" />

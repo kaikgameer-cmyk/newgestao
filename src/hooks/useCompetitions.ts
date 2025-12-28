@@ -412,15 +412,26 @@ export function useJoinCompetition() {
       pix_key: string;
       pix_key_type?: string;
     }) => {
-      const { data, error } = await supabase.rpc("join_competition", {
-        p_code: params.code.toUpperCase(),
-        p_password: params.password,
-        p_pix_key: params.pix_key,
-        p_pix_key_type: params.pix_key_type || null,
-      });
+      console.log("joinCompetition mutation start", params);
+      try {
+        const { data, error } = await supabase.rpc("join_competition", {
+          p_code: params.code.toUpperCase(),
+          p_password: params.password,
+          p_pix_key: params.pix_key,
+          p_pix_key_type: params.pix_key_type || null,
+        });
 
-      if (error) throw error;
-      return data as { competition_id: string; name: string; message: string };
+        if (error) {
+          console.error("joinCompetition RPC error", error);
+          throw error;
+        }
+
+        console.log("joinCompetition mutation success", data);
+        return data as { competition_id: string; name: string; message: string };
+      } catch (err) {
+        console.error("joinCompetition mutation failed", err);
+        throw err;
+      }
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["competitions-for-tabs"] });

@@ -133,6 +133,13 @@ export function JoinCompetitionInline({
 
     setIsSubmitting(true);
     try {
+      console.log("joinCompetitionInline submit", {
+        competitionId,
+        hasPrize,
+        pix_key: values.pix_key,
+        pix_key_type: values.pix_key_type,
+      });
+
       const { data, error } = await supabase.rpc("join_competition_with_password", {
         p_competition_id: competitionId,
         p_password: step1Data.password,
@@ -140,7 +147,10 @@ export function JoinCompetitionInline({
         p_pix_key_type: values.pix_key_type,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("join_competition_with_password RPC error", error);
+        throw error;
+      }
 
       const result = data as { competition_id: string; membership_id: string; message: string };
 
@@ -156,6 +166,7 @@ export function JoinCompetitionInline({
       handleClose();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro ao entrar na competição";
+      console.error("joinCompetitionInline error", error);
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -168,6 +179,7 @@ export function JoinCompetitionInline({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
+        console.log("joinCompetitionInline dialog openChange", { nextOpen, isSubmitting });
         if (!nextOpen && !isSubmitting) {
           handleClose();
         }
