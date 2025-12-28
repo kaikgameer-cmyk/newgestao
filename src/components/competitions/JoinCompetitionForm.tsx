@@ -118,19 +118,20 @@ export default function JoinCompetitionForm({ initialCode = "" }: JoinCompetitio
   };
 
   const onStep3Submit = async (_values: Step3Values) => {
-    if (!step1Data) return;
-
-    const result = await joinMutation.mutateAsync({
-      code: step1Data.code,
-      password: step1Data.password,
-      pix_key: hasPrize ? step2Data?.pix_key || "" : "",
-      pix_key_type: hasPrize ? step2Data?.pix_key_type || undefined : undefined,
-    });
-
-    if (result.competition_id) {
-      navigate(`/dashboard/competicoes`);
-    }
-  };
+     if (!step1Data) return;
+ 
+     const result = await joinMutation.mutateAsync({
+       code: step1Data.code,
+       password: step1Data.password,
+       pix_key: hasPrize ? step2Data?.pix_key || "" : "",
+       pix_key_type: hasPrize ? step2Data?.pix_key_type || undefined : undefined,
+     });
+ 
+     if (result.competition_id) {
+-      navigate(`/dashboard/competicoes`);
++      navigate(`/dashboard/competicoes/${result.competition_id}`);
+     }
+   };
 
   const handleBack = () => {
     setStep((prev) => (prev === 3 ? (hasPrize ? 2 : 1) : 1));
