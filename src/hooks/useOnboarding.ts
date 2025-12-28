@@ -37,14 +37,22 @@ export function useOnboarding() {
     enabled: !!user,
   });
 
-  // Helper to detect complete legacy profiles (used only for one-time migration)
-  const isLegacyProfileComplete = (p: OnboardingProfile | null | undefined) => {
+  // Helper to detect complete profiles (single source of truth)
+  const isProfileComplete = (p: OnboardingProfile | null | undefined) => {
     if (!p) return false;
     if (!p.first_name || p.first_name.trim() === "") return false;
     if (!p.last_name || p.last_name.trim() === "") return false;
     if (!p.whatsapp || p.whatsapp.trim() === "") return false;
     if (!p.city || p.city.trim() === "") return false;
     if (!p.vehicle_type) return false;
+    return true;
+  };
+
+  // Helper to detect complete legacy profiles (used only for one-time migration)
+  const isLegacyProfileComplete = (p: OnboardingProfile | null | undefined) => {
+    if (!isProfileComplete(p)) return false;
+
+    if (!p) return false;
 
     const hasEnabledPlatform = enabledPlatforms.length > 0;
     if (!hasEnabledPlatform && userPlatforms.length > 0) {
@@ -75,10 +83,11 @@ export function useOnboarding() {
     void markCompleted();
   }, [user, profile, enabledPlatforms, userPlatforms, queryClient]);
 
-  // Final rule: only show onboarding when the flag is false or profile doesn't exist
+  // Final rule: only show onboarding when the profile is missing or incomplete
   const needsOnboarding = (): boolean => {
     if (!user) return false;
     if (!profile) return true;
+    if (!isProfileComplete(profile)) return true;
     return !profile.onboarding_completed;
   };
 
@@ -94,33 +103,59 @@ export function useOnboarding() {
     }) => {
       if (!user) throw new Error("Não autenticado");
 
-      // Update profile
-      const { error: profileError } = await supabase
+      // Upsert profile using user_id as the conflict target
+      const { data: upsertedProfile, error: profileError } = await supabase
         .from("profiles")
-        .update({
-          first_name: data.first_name,
-          last_name: data.last_name,
-          whatsapp: data.whatsapp,
-          city: data.city,
-          onboarding_completed: true,
-          vehicle_type: data.vehicleType,
-          // Also update legacy 'name' field for backwards compatibility
-          name: `${data.first_name} ${data.last_name}`.trim(),
-        })
-        .eq("user_id", user.id);
+        .upsert(
+          {
+            user_id: user.id,
+            first_name: data.first_name,
+            last_name: data.last_name,
+            whatsapp: data.whatsapp,
+            city: data.city,
+            onboarding_completed: true,
+            vehicle_type: data.vehicleType,
+            // Also update legacy 'name' field for backwards compatibility
+            name: `${data.first_name} ${data.last_name}`.trim(),
+            email: user.email ?? undefined,
+          },
+          { onConflict: "user_id" }
+        )
+        .select(
+          "first_name, last_name, whatsapp, city, vehicle_type, onboarding_completed, email"
+        )
+        .maybeSingle();
 
-      if (profileError) throw profileError;
+      console.log("[onboarding] upsert profile response", {
+        data: upsertedProfile,
+        error: profileError,
+      });
+
+      if (profileError) {
+        console.error("[onboarding] error upserting profile", profileError);
+        throw profileError;
+      }
+
+      if (!upsertedProfile) {
+        console.error("[onboarding] profile not returned after upsert");
+        throw new Error("Perfil não foi retornado após salvar");
+      }
 
       // Update platform preferences - enable selected, disable others
-      const { data: allPlatforms } = await supabase
+      const { data: allPlatforms, error: platformsError } = await supabase
         .from("platforms")
         .select("key")
         .or(`user_id.is.null,user_id.eq.${user.id}`);
 
+      if (platformsError) {
+        console.error("[onboarding] error loading platforms", platformsError);
+        throw platformsError;
+      }
+
       if (allPlatforms) {
         for (const platform of allPlatforms) {
           const enabled = data.enabledPlatformKeys.includes(platform.key);
-          await supabase
+          const { error: userPlatformError } = await supabase
             .from("user_platforms")
             .upsert(
               {
@@ -130,11 +165,26 @@ export function useOnboarding() {
               },
               { onConflict: "user_id,platform_key" }
             );
+
+          if (userPlatformError) {
+            console.error("[onboarding] error upserting user_platform", userPlatformError);
+            throw userPlatformError;
+          }
         }
       }
+
+      return upsertedProfile;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["onboarding-profile"] });
+    onSuccess: (upsertedProfile) => {
+      if (user && upsertedProfile) {
+        // Immediately update onboarding profile cache to avoid loops
+        queryClient.setQueryData(
+          ["onboarding-profile", user.id],
+          upsertedProfile
+        );
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["onboarding-profile", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["user-profile"] });
       queryClient.invalidateQueries({ queryKey: ["vehicle-type"] });
@@ -151,3 +201,4 @@ export function useOnboarding() {
     userEmail: user?.email || profile?.email || "",
   };
 }
+

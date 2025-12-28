@@ -13,7 +13,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, User, Phone, MapPin, Mail, Car, Zap, Fuel } from "lucide-react";
+import {
+  Loader2,
+  User,
+  Phone,
+  MapPin,
+  Mail,
+  Car,
+  Zap,
+  Fuel,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { usePlatforms } from "@/hooks/usePlatforms";
@@ -27,7 +36,9 @@ const onboardingSchema = z.object({
     .min(10, "WhatsApp inválido")
     .regex(/^[\d\s\(\)\-\+]+$/, "Formato de telefone inválido"),
   city: z.string().min(2, "Cidade deve ter pelo menos 2 caracteres"),
-  enabledPlatformKeys: z.array(z.string()).min(1, "Selecione pelo menos 1 plataforma"),
+  enabledPlatformKeys: z
+    .array(z.string())
+    .min(1, "Selecione pelo menos 1 plataforma"),
   vehicleType: z.enum(["electric", "fuel"]),
 });
 
@@ -84,11 +95,12 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
   const formatWhatsApp = (value: string) => {
     // Remove non-digits
     const digits = value.replace(/\D/g, "");
-    
+
     // Format as (XX) XXXXX-XXXX
     if (digits.length <= 2) return digits;
     if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-    if (digits.length <= 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    if (digits.length <= 11)
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
   };
 
@@ -109,7 +121,7 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
     };
 
     const result = onboardingSchema.safeParse(formData);
-    
+
     if (!result.success) {
       const fieldErrors: Record<string, string> = {};
       result.error.errors.forEach((err) => {
@@ -124,6 +136,15 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
     setErrors({});
 
     try {
+      console.log("[onboarding] submitting profile", {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        whatsapp: formData.whatsapp,
+        city: formData.city,
+        enabledPlatformKeys: formData.enabledPlatformKeys,
+        vehicleType: formData.vehicleType,
+      });
+
       await completeOnboarding.mutateAsync({
         first_name: formData.first_name,
         last_name: formData.last_name,
@@ -132,15 +153,26 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
         enabledPlatformKeys: formData.enabledPlatformKeys,
         vehicleType: formData.vehicleType,
       });
+
       toast({
         title: "Perfil configurado!",
         description: "Bem-vindo ao New Gestão. Boas corridas!",
       });
-      navigate("/dashboard");
-    } catch (error) {
+
+      navigate("/dashboard", { replace: true });
+    } catch (error: any) {
+      console.error("[onboarding] error saving profile", {
+        message: error?.message,
+        code: error?.code,
+        details: error,
+      });
+
       toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar seu perfil. Tente novamente.",
+        description:
+          import.meta.env.DEV && error?.message
+            ? `Não foi possível salvar seu perfil. Detalhes: ${error.message}`
+            : "Não foi possível salvar seu perfil. Tente novamente.",
         variant: "destructive",
       });
     }
@@ -261,7 +293,9 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
 
             <RadioGroup
               value={vehicleType}
-              onValueChange={(value) => setVehicleType(value as "electric" | "fuel")}
+              onValueChange={(value) =>
+                setVehicleType(value as "electric" | "fuel")
+              }
               className="grid grid-cols-2 gap-3"
             >
               <div className="relative">
@@ -276,7 +310,9 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
                 >
                   <Fuel className="w-8 h-8 mb-2 text-orange-500" />
                   <span className="font-semibold">Combustível</span>
-                  <span className="text-xs text-muted-foreground">Gasolina, Etanol, Diesel</span>
+                  <span className="text-xs text-muted-foreground">
+                    Gasolina, Etanol, Diesel
+                  </span>
                 </Label>
               </div>
               <div className="relative">
@@ -291,7 +327,9 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
                 >
                   <Zap className="w-8 h-8 mb-2 text-emerald-500" />
                   <span className="font-semibold">Elétrico</span>
-                  <span className="text-xs text-muted-foreground">Recarga em kWh</span>
+                  <span className="text-xs text-muted-foreground">
+                    Recarga em kWh
+                  </span>
                 </Label>
               </div>
             </RadioGroup>
@@ -323,7 +361,9 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
                   >
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-3 h-3 rounded-full ${getPlatformColor(platform.key)}`}
+                        className={`w-3 h-3 rounded-full ${getPlatformColor(
+                          platform.key
+                        )}`}
                       />
                       <span className="font-medium">{platform.name}</span>
                     </div>
@@ -336,7 +376,9 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
               </div>
             )}
             {errors.enabledPlatformKeys && (
-              <p className="text-xs text-destructive">{errors.enabledPlatformKeys}</p>
+              <p className="text-xs text-destructive">
+                {errors.enabledPlatformKeys}
+              </p>
             )}
           </div>
         </div>
