@@ -63,6 +63,7 @@ export default function JoinCompetitionForm({ initialCode = "" }: JoinCompetitio
   const [hasPrize, setHasPrize] = useState<boolean | null>(null);
   const [isCheckingCompetition, setIsCheckingCompetition] = useState(false);
   const [step1Error, setStep1Error] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const joinMutation = useJoinCompetition();
 
@@ -98,6 +99,7 @@ export default function JoinCompetitionForm({ initialCode = "" }: JoinCompetitio
   const onStep1Submit = async (values: Step1Values) => {
     setStep1Data(values);
     setStep1Error(null);
+    setSubmitError(null);
     setIsCheckingCompetition(true);
 
     try {
