@@ -71,6 +71,7 @@ export default function JoinCompetitionModal({
   const [hasPrize, setHasPrize] = useState<boolean | null>(null);
   const [isCheckingCompetition, setIsCheckingCompetition] = useState(false);
   const [step1Error, setStep1Error] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const joinMutation = useJoinCompetition();
   const acceptTransparencyMutation = useAcceptCompetitionTransparency();
@@ -107,29 +108,60 @@ export default function JoinCompetitionModal({
       setHasPrize(null);
       setIsCheckingCompetition(false);
       setStep1Error(null);
+      setSubmitError(null);
       step1Form.reset();
       step2Form.reset();
     }
   }, [open, step1Form, step2Form]);
 
-  const handleJoinWithoutPix = async (values: Step1Values) => {
-    const result = await joinMutation.mutateAsync({
-      code: values.code,
-      password: values.password,
-      pix_key: "",
-      pix_key_type: undefined,
-    });
+  const mapJoinErrorMessage = (rawMessage: string): string => {
+    const msg = rawMessage.toLowerCase();
 
-    if (result.competition_id) {
-      setJoinedCompetitionId(result.competition_id);
-      setTransparencyChecked(false);
-      setStep(3);
+    if (msg.includes("invalid_password") || msg.includes("senha incorreta")) {
+      return "Senha incorreta. Verifique e tente novamente.";
+    }
+
+    if (msg.includes("competition_full") || msg.includes("lotada") || msg.includes("max_members")) {
+      return "Esta competição já atingiu o número máximo de participantes.";
+    }
+
+    if (msg.includes("not_joinable") || msg.includes("join_window")) {
+      return "Esta competição não está mais aberta para novas inscrições.";
+    }
+
+    if (msg.includes("already_member")) {
+      return "Você já participa desta competição.";
+    }
+
+    return "Não foi possível entrar na competição. Tente novamente em alguns segundos.";
+  };
+  const handleJoinWithoutPix = async (values: Step1Values) => {
+    setSubmitError(null);
+
+    try {
+      const result = await joinMutation.mutateAsync({
+        code: values.code,
+        password: values.password,
+        pix_key: "",
+        pix_key_type: undefined,
+      });
+
+      if (result.competition_id) {
+        setJoinedCompetitionId(result.competition_id);
+        setTransparencyChecked(false);
+        setStep(3);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err ?? "");
+      console.error("Erro ao entrar na competição (sem PIX)", err);
+      setSubmitError(mapJoinErrorMessage(message));
     }
   };
 
   const onStep1Submit = async (values: Step1Values) => {
     setStep1Data(values);
     setStep1Error(null);
+    setSubmitError(null);
     setIsCheckingCompetition(true);
 
     try {
@@ -169,7 +201,6 @@ export default function JoinCompetitionModal({
       setIsCheckingCompetition(false);
     }
   };
-
   const onStep2Submit = async (values: Step2Values) => {
     if (!step1Data) return;
 
@@ -400,6 +431,10 @@ export default function JoinCompetitionModal({
                   </FormItem>
                 )}
               />
+
+              {submitError && (
+                <p className="text-sm text-destructive">{submitError}</p>
+              )}
 
               <div className="flex gap-2 pt-2">
                 <Button
