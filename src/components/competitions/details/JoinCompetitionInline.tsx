@@ -173,7 +173,7 @@ export function JoinCompetitionInline({
         }
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[95vw] sm:max-w-md max-h-[85vh] overflow-y-auto flex flex-col gap-4">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {step === 1 && (
