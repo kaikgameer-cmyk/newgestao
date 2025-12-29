@@ -32,6 +32,7 @@ import CompetitionDetails from "./pages/CompetitionDetails";
 import JoinCompetition from "./pages/JoinCompetition";
 import Ranking from "./pages/Ranking";
 import TestCompetitionMessages from "./pages/TestCompetitionMessages";
+import Support from "./pages/Support";
 
 const App = () => {
   const [queryClient] = useState(() => new QueryClient());
@@ -79,6 +80,7 @@ const App = () => {
               <Route path="competicoes/entrar" element={<JoinCompetition />} />
               <Route path="competicoes/ranking" element={<Ranking />} />
               <Route path="competicoes/:id" element={<CompetitionDetails />} />
+              <Route path="suporte" element={<Support />} />
             </Route>
             <Route
               path="/onboarding"
