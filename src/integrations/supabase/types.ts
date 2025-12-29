@@ -1240,6 +1240,7 @@ export type Database = {
           last_name: string | null
           name: string | null
           onboarding_completed: boolean
+          role: string
           start_week_day: string | null
           updated_at: string
           user_id: string
@@ -1258,6 +1259,7 @@ export type Database = {
           last_name?: string | null
           name?: string | null
           onboarding_completed?: boolean
+          role?: string
           start_week_day?: string | null
           updated_at?: string
           user_id: string
@@ -1276,6 +1278,7 @@ export type Database = {
           last_name?: string | null
           name?: string | null
           onboarding_completed?: boolean
+          role?: string
           start_week_day?: string | null
           updated_at?: string
           user_id?: string
@@ -1415,6 +1418,124 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      support_messages: {
+        Row: {
+          attachments: Json | null
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+          sender_role: string
+          ticket_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+          sender_role: string
+          ticket_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+          sender_role?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_sender_fk"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "support_messages_ticket_fk"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_reads: {
+        Row: {
+          last_read_at: string
+          ticket_id: string
+          user_id: string
+        }
+        Insert: {
+          last_read_at?: string
+          ticket_id: string
+          user_id: string
+        }
+        Update: {
+          last_read_at?: string
+          ticket_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_reads_ticket_fk"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          created_at: string
+          created_by_role: string
+          id: string
+          last_message_at: string
+          priority: string
+          resolved_at: string | null
+          status: string
+          subject: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_role?: string
+          id?: string
+          last_message_at?: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by_role?: string
+          id?: string
+          last_message_at?: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          subject?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_user_fk"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       user_expense_categories: {
         Row: {
