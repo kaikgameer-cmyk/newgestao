@@ -1,10 +1,14 @@
+import { useState, useMemo } from "react";
 import { useTickets } from "@/hooks/useSupport";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Loader2, TicketIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+type StatusFilter = "all" | "open" | "pending" | "resolved";
 
 interface TicketListProps {
   userId: string;
@@ -20,6 +24,20 @@ export function TicketList({
   selectedTicketId,
 }: TicketListProps) {
   const { data: tickets, isLoading } = useTickets(userId, isAdmin);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const filteredTickets = useMemo(() => {
+    if (!tickets) return [];
+    if (statusFilter === "all") return tickets;
+    return tickets.filter((ticket) => ticket.status === statusFilter);
+  }, [tickets, statusFilter]);
+
+  const statusFilters: { value: StatusFilter; label: string }[] = [
+    { value: "all", label: "Todos" },
+    { value: "open", label: "Abertos" },
+    { value: "pending", label: "Pendentes" },
+    { value: "resolved", label: "Resolvidos" },
+  ];
 
   if (isLoading) {
     return (
@@ -56,51 +74,78 @@ export function TicketList({
   };
 
   return (
-    <div className="flex-1 overflow-auto p-4 space-y-2">
-      {tickets.map((ticket) => {
-        const statusInfo = getStatusBadge(ticket.status);
-        const isSelected = ticket.id === selectedTicketId;
-
-        return (
-          <Card
-            key={ticket.id}
-            className={cn(
-              "p-4 cursor-pointer hover:bg-accent/50 transition-colors",
-              isSelected && "bg-accent border-primary"
-            )}
-            onClick={() => onSelectTicket(ticket.id)}
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Status Filters */}
+      <div className="p-3 border-b border-border flex gap-1 flex-wrap">
+        {statusFilters.map((filter) => (
+          <Button
+            key={filter.value}
+            variant={statusFilter === filter.value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStatusFilter(filter.value)}
+            className="text-xs h-7"
           >
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm truncate">
-                  {ticket.subject || `Ticket #${ticket.id.slice(0, 8)}`}
-                </h3>
-                {isAdmin && ticket.profiles && (
-                  <p className="text-xs text-muted-foreground truncate">
-                    {ticket.profiles.name || ticket.profiles.email || "Usuário"}
-                  </p>
+            {filter.label}
+          </Button>
+        ))}
+      </div>
+
+      {/* Ticket List */}
+      <div className="flex-1 overflow-auto p-4 space-y-2">
+        {filteredTickets.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <TicketIcon className="h-10 w-10 text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">
+              Nenhum ticket {statusFilter !== "all" ? `com status "${statusFilters.find(f => f.value === statusFilter)?.label}"` : "encontrado"}
+            </p>
+          </div>
+        ) : (
+          filteredTickets.map((ticket) => {
+            const statusInfo = getStatusBadge(ticket.status);
+            const isSelected = ticket.id === selectedTicketId;
+
+            return (
+              <Card
+                key={ticket.id}
+                className={cn(
+                  "p-4 cursor-pointer hover:bg-accent/50 transition-colors",
+                  isSelected && "bg-accent border-primary"
                 )}
-              </div>
-              <Badge variant={statusInfo.variant as any} className="shrink-0">
-                {statusInfo.label}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                {formatDistanceToNow(new Date(ticket.last_message_at), {
-                  addSuffix: true,
-                  locale: ptBR,
-                })}
-              </span>
-              {ticket.unread_count && ticket.unread_count > 0 ? (
-                <Badge variant="destructive" className="h-5 min-w-5 px-1.5">
-                  {ticket.unread_count}
-                </Badge>
-              ) : null}
-            </div>
-          </Card>
-        );
-      })}
+                onClick={() => onSelectTicket(ticket.id)}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm truncate">
+                      {ticket.subject || `Ticket #${ticket.id.slice(0, 8)}`}
+                    </h3>
+                    {isAdmin && ticket.profiles && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {ticket.profiles.name || ticket.profiles.email || "Usuário"}
+                      </p>
+                    )}
+                  </div>
+                  <Badge variant={statusInfo.variant as any} className="shrink-0">
+                    {statusInfo.label}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    {formatDistanceToNow(new Date(ticket.last_message_at), {
+                      addSuffix: true,
+                      locale: ptBR,
+                    })}
+                  </span>
+                  {ticket.unread_count && ticket.unread_count > 0 ? (
+                    <Badge variant="destructive" className="h-5 min-w-5 px-1.5">
+                      {ticket.unread_count}
+                    </Badge>
+                  ) : null}
+                </div>
+              </Card>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
