@@ -20,6 +20,7 @@ import {
   Trophy,
   Fuel,
   Zap,
+  MessageCircleQuestion,
 } from "lucide-react";
 import {
   Tooltip,
@@ -146,6 +147,7 @@ export default function DashboardLayout() {
     { icon: Trophy, label: "Competições", path: "/dashboard/competicoes" },
     { icon: Crown, label: "Assinatura", path: "/dashboard/assinatura" },
     { icon: Book, label: "Guia da Plataforma", path: "/dashboard/guia" },
+    { icon: MessageCircleQuestion, label: "Suporte", path: "/dashboard/suporte" },
     { icon: Settings, label: "Configurações", path: "/dashboard/configuracoes" },
   ];
 
