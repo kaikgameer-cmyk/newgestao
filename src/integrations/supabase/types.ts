@@ -1925,6 +1925,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_support_access: { Args: { _user_id: string }; Returns: boolean }
       insert_default_expense_categories_for_user: {
         Args: { p_user_id: string }
         Returns: undefined

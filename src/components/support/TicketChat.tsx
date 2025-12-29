@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTicketMessages, useSendMessage, useMarkTicketRead, useUpdateTicketStatus, useTickets } from "@/hooks/useSupport";
+import { useSupportRole } from "@/hooks/useSupportAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +26,7 @@ interface TicketChatProps {
 }
 
 export function TicketChat({ ticketId, userId, isAdmin }: TicketChatProps) {
+  const { role: userRole } = useSupportRole();
   const { data: messages, isLoading } = useTicketMessages(ticketId);
   const { data: tickets } = useTickets(userId, isAdmin);
   const sendMessage = useSendMessage();
@@ -134,7 +136,7 @@ export function TicketChat({ ticketId, userId, isAdmin }: TicketChatProps) {
       {
         ticketId,
         userId,
-        role: isAdmin ? "admin" : "user",
+        role: userRole,
         message: messageInput.trim(),
         attachments: uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
       },
@@ -244,7 +246,7 @@ export function TicketChat({ ticketId, userId, isAdmin }: TicketChatProps) {
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {messages?.map((msg) => {
           const isOwn = msg.sender_id === userId;
-          const isAdminMsg = msg.sender_role === "admin";
+          const isStaffMsg = msg.sender_role === "admin" || msg.sender_role === "support";
 
           return (
             <div
@@ -254,13 +256,13 @@ export function TicketChat({ ticketId, userId, isAdmin }: TicketChatProps) {
               <Card
                 className={cn(
                   "max-w-[80%] p-3",
-                  isAdminMsg && "bg-primary/10 border-primary/20",
-                  isOwn && !isAdminMsg && "bg-accent"
+                  isStaffMsg && "bg-primary/10 border-primary/20",
+                  isOwn && !isStaffMsg && "bg-accent"
                 )}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <Badge variant={isAdminMsg ? "default" : "secondary"} className="text-xs">
-                    {isAdminMsg ? "Admin" : "Você"}
+                  <Badge variant={isStaffMsg ? "default" : "secondary"} className="text-xs">
+                    {msg.sender_role === "admin" ? "Admin" : msg.sender_role === "support" ? "Suporte" : "Você"}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
                     {format(new Date(msg.created_at), "HH:mm - dd/MM", {

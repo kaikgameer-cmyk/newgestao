@@ -24,7 +24,7 @@ export interface SupportMessage {
   id: string;
   ticket_id: string;
   sender_id: string;
-  sender_role: "user" | "admin";
+  sender_role: "user" | "admin" | "support";
   message: string;
   attachments: Array<{
     path: string;
@@ -186,7 +186,7 @@ export function useSendMessage() {
     }: {
       ticketId: string;
       userId: string;
-      role: "user" | "admin";
+      role: "user" | "admin" | "support";
       message: string;
       attachments?: Array<{ path: string; url: string; type: string; size: number; name: string }>;
     }) => {
