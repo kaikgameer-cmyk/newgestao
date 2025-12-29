@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useSupportAccess } from "@/hooks/useSupportAccess";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowLeft } from "lucide-react";
 import { TicketList } from "@/components/support/TicketList";
@@ -10,7 +10,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function Support() {
   const { user } = useAuth();
-  const { isAdmin } = useIsAdmin();
+  const { hasSupportAccess } = useSupportAccess();
   const isMobile = useIsMobile();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
@@ -42,7 +42,7 @@ export default function Support() {
             <div className="flex-1 overflow-auto">
               <TicketList
                 userId={user.id}
-                isAdmin={isAdmin}
+                isAdmin={hasSupportAccess}
                 onSelectTicket={setSelectedTicketId}
                 selectedTicketId={selectedTicketId}
               />
@@ -64,7 +64,7 @@ export default function Support() {
               <TicketChat
                 ticketId={selectedTicketId}
                 userId={user.id}
-                isAdmin={isAdmin}
+                isAdmin={hasSupportAccess}
               />
             </div>
           </>
@@ -96,7 +96,7 @@ export default function Support() {
         <div className="w-96 border-r border-border flex flex-col">
           <TicketList
             userId={user.id}
-            isAdmin={isAdmin}
+            isAdmin={hasSupportAccess}
             onSelectTicket={setSelectedTicketId}
             selectedTicketId={selectedTicketId}
           />
@@ -108,7 +108,7 @@ export default function Support() {
             <TicketChat
               ticketId={selectedTicketId}
               userId={user.id}
-              isAdmin={isAdmin}
+              isAdmin={hasSupportAccess}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
