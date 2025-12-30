@@ -5,10 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, TicketIcon } from "lucide-react";
+import { Loader2, TicketIcon, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = "all" | "open" | "pending" | "resolved";
+type SortOrder = "newest" | "oldest";
 
 interface TicketListProps {
   userId: string;
@@ -25,12 +26,22 @@ export function TicketList({
 }: TicketListProps) {
   const { data: tickets, isLoading } = useTickets(userId, isAdmin);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
 
   const filteredTickets = useMemo(() => {
     if (!tickets) return [];
-    if (statusFilter === "all") return tickets;
-    return tickets.filter((ticket) => ticket.status === statusFilter);
-  }, [tickets, statusFilter]);
+    let result = statusFilter === "all" 
+      ? [...tickets] 
+      : tickets.filter((ticket) => ticket.status === statusFilter);
+    
+    result.sort((a, b) => {
+      const dateA = new Date(a.last_message_at).getTime();
+      const dateB = new Date(b.last_message_at).getTime();
+      return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+    });
+    
+    return result;
+  }, [tickets, statusFilter, sortOrder]);
 
   const statusFilters: { value: StatusFilter; label: string }[] = [
     { value: "all", label: "Todos" },
@@ -75,19 +86,30 @@ export function TicketList({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Status Filters */}
-      <div className="p-3 border-b border-border flex gap-1 flex-wrap">
-        {statusFilters.map((filter) => (
-          <Button
-            key={filter.value}
-            variant={statusFilter === filter.value ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter(filter.value)}
-            className="text-xs h-7"
-          >
-            {filter.label}
-          </Button>
-        ))}
+      {/* Status Filters & Sort */}
+      <div className="p-3 border-b border-border flex items-center justify-between gap-2">
+        <div className="flex gap-1 flex-wrap">
+          {statusFilters.map((filter) => (
+            <Button
+              key={filter.value}
+              variant={statusFilter === filter.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter(filter.value)}
+              className="text-xs h-7"
+            >
+              {filter.label}
+            </Button>
+          ))}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setSortOrder(prev => prev === "newest" ? "oldest" : "newest")}
+          className="text-xs h-7 gap-1 shrink-0"
+        >
+          <ArrowUpDown className="h-3 w-3" />
+          {sortOrder === "newest" ? "Recentes" : "Antigos"}
+        </Button>
       </div>
 
       {/* Ticket List */}
