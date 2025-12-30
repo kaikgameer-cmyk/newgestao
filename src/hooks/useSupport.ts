@@ -2,6 +2,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
+export interface SupportTicketProfile {
+  name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+}
+
 export interface SupportTicket {
   id: string;
   user_id: string;
@@ -13,11 +21,9 @@ export interface SupportTicket {
   resolved_at: string | null;
   last_message_at: string;
   created_by_role: string;
-  profiles?: {
-    name: string | null;
-    email: string | null;
-  };
+  profiles?: SupportTicketProfile;
   unread_count?: number;
+  last_message_preview?: string;
 }
 
 export interface SupportMessage {
@@ -34,6 +40,12 @@ export interface SupportMessage {
     name: string;
   }> | null;
   created_at: string;
+  sender_profile?: {
+    name: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
+  };
 }
 
 export function useTickets(userId: string, isAdmin: boolean) {
@@ -44,7 +56,7 @@ export function useTickets(userId: string, isAdmin: boolean) {
         .from("support_tickets")
         .select(`
           *,
-          profiles:user_id (name, email)
+          profiles:user_id (name, first_name, last_name, email, avatar_url)
         `)
         .order("last_message_at", { ascending: false });
 
@@ -56,9 +68,10 @@ export function useTickets(userId: string, isAdmin: boolean) {
 
       if (error) throw error;
 
-      // Get unread counts
-      const ticketsWithUnread = await Promise.all(
+      // Get unread counts and last message preview
+      const ticketsWithDetails = await Promise.all(
         (data || []).map(async (ticket) => {
+          // Get unread count
           const { data: readData } = await supabase
             .from("support_reads")
             .select("last_read_at")
@@ -75,26 +88,46 @@ export function useTickets(userId: string, isAdmin: boolean) {
               readData?.last_read_at || new Date(0).toISOString()
             );
 
+          // Get last message preview
+          const { data: lastMessage } = await supabase
+            .from("support_messages")
+            .select("message, sender_role")
+            .eq("ticket_id", ticket.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const preview = lastMessage?.message 
+            ? (lastMessage.sender_role !== "user" ? "Staff: " : "") + 
+              (lastMessage.message.length > 60 
+                ? lastMessage.message.slice(0, 60) + "..." 
+                : lastMessage.message)
+            : null;
+
           return {
             ...ticket,
             unread_count: count || 0,
+            last_message_preview: preview,
           };
         })
       );
 
-      return ticketsWithUnread as SupportTicket[];
+      return ticketsWithDetails as SupportTicket[];
     },
-    refetchInterval: 30000, // refetch every 30s
+    refetchInterval: 30000,
   });
 }
 
 export function useTicketMessages(ticketId: string | null) {
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: ["support-messages", ticketId],
     queryFn: async () => {
       if (!ticketId) return [];
 
-      const { data, error } = await supabase
+      // Get messages
+      const { data: messages, error } = await supabase
         .from("support_messages")
         .select("*")
         .eq("ticket_id", ticketId)
@@ -102,7 +135,27 @@ export function useTicketMessages(ticketId: string | null) {
 
       if (error) throw error;
 
-      return data as SupportMessage[];
+      // Get sender profiles for all unique sender_ids
+      const senderIds = [...new Set(messages?.map(m => m.sender_id) || [])];
+      
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, name, first_name, last_name, avatar_url")
+        .in("user_id", senderIds);
+
+      const profileMap = new Map(
+        profiles?.map(p => [p.user_id, p]) || []
+      );
+
+      // Attach profile to each message
+      const messagesWithProfiles = messages?.map(msg => ({
+        ...msg,
+        attachments: msg.attachments as SupportMessage["attachments"],
+        sender_role: msg.sender_role as SupportMessage["sender_role"],
+        sender_profile: profileMap.get(msg.sender_id) || null,
+      }));
+
+      return messagesWithProfiles as SupportMessage[];
     },
     enabled: !!ticketId,
   });

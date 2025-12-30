@@ -2,9 +2,10 @@ import { useState, useMemo } from "react";
 import { useTickets } from "@/hooks/useSupport";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, TicketIcon, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Loader2, TicketIcon, ArrowUp, ArrowDown, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -16,6 +17,30 @@ interface TicketListProps {
   isAdmin: boolean;
   onSelectTicket: (ticketId: string) => void;
   selectedTicketId: string | null;
+}
+
+function getInitials(name: string | null | undefined, firstName?: string | null, lastName?: string | null): string {
+  if (firstName && lastName) {
+    return `${firstName[0]}${lastName[0]}`.toUpperCase();
+  }
+  if (name) {
+    const parts = name.split(" ");
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+  return "U";
+}
+
+function getStatusConfig(status: string) {
+  const configs: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; color: string }> = {
+    open: { label: "Aberto", variant: "default", color: "bg-green-500" },
+    pending: { label: "Pendente", variant: "secondary", color: "bg-yellow-500" },
+    resolved: { label: "Resolvido", variant: "outline", color: "bg-blue-500" },
+    closed: { label: "Fechado", variant: "outline", color: "bg-muted-foreground" },
+  };
+  return configs[status] || configs.open;
 }
 
 export function TicketList({
@@ -49,7 +74,7 @@ export function TicketList({
       all: tickets.length,
       open: tickets.filter(t => t.status === "open").length,
       pending: tickets.filter(t => t.status === "pending").length,
-      resolved: tickets.filter(t => t.status === "resolved").length,
+      resolved: tickets.filter(t => t.status === "resolved" || t.status === "closed").length,
     };
   }, [tickets]);
 
@@ -83,16 +108,6 @@ export function TicketList({
       </div>
     );
   }
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: any; label: string }> = {
-      open: { variant: "default", label: "Aberto" },
-      pending: { variant: "secondary", label: "Pendente" },
-      resolved: { variant: "outline", label: "Resolvido" },
-      closed: { variant: "outline", label: "Fechado" },
-    };
-    return variants[status] || variants.open;
-  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -131,7 +146,7 @@ export function TicketList({
       </div>
 
       {/* Ticket List */}
-      <div className="flex-1 overflow-auto p-4 space-y-2">
+      <div className="flex-1 overflow-auto p-3 space-y-2">
         {filteredTickets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <TicketIcon className="h-10 w-10 text-muted-foreground mb-3" />
@@ -141,45 +156,79 @@ export function TicketList({
           </div>
         ) : (
           filteredTickets.map((ticket) => {
-            const statusInfo = getStatusBadge(ticket.status);
+            const statusInfo = getStatusConfig(ticket.status);
             const isSelected = ticket.id === selectedTicketId;
+            const authorName = ticket.profiles?.first_name && ticket.profiles?.last_name
+              ? `${ticket.profiles.first_name} ${ticket.profiles.last_name}`
+              : ticket.profiles?.name || ticket.profiles?.email || "Usuário";
+            const authorInitials = getInitials(
+              ticket.profiles?.name,
+              ticket.profiles?.first_name,
+              ticket.profiles?.last_name
+            );
 
             return (
               <Card
                 key={ticket.id}
                 className={cn(
-                  "p-4 cursor-pointer hover:bg-accent/50 transition-colors",
-                  isSelected && "bg-accent border-primary"
+                  "p-3 cursor-pointer hover:bg-accent/50 transition-colors",
+                  isSelected && "bg-accent border-primary ring-1 ring-primary/20"
                 )}
                 onClick={() => onSelectTicket(ticket.id)}
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex gap-3">
+                  {/* Avatar do autor (visível apenas para admin) */}
+                  {isAdmin && (
+                    <Avatar className="h-10 w-10 shrink-0">
+                      <AvatarImage src={ticket.profiles?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                        {authorInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm truncate">
-                      {ticket.subject || `Ticket #${ticket.id.slice(0, 8)}`}
-                    </h3>
-                    {isAdmin && ticket.profiles && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {ticket.profiles.name || ticket.profiles.email || "Usuário"}
+                    {/* Header: título + badge */}
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="font-semibold text-sm truncate flex-1">
+                        {ticket.subject || `Ticket #${ticket.id.slice(0, 8)}`}
+                      </h3>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={cn("h-2 w-2 rounded-full", statusInfo.color)} />
+                        <span className="text-[10px] text-muted-foreground">{statusInfo.label}</span>
+                      </div>
+                    </div>
+                    
+                    {/* Author name (for admin) */}
+                    {isAdmin && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                        <User className="h-3 w-3" />
+                        {authorName}
                       </p>
                     )}
+                    
+                    {/* Preview da última mensagem */}
+                    {ticket.last_message_preview && (
+                      <p className="text-xs text-muted-foreground line-clamp-1 mb-1.5">
+                        {ticket.last_message_preview}
+                      </p>
+                    )}
+                    
+                    {/* Footer: tempo + unread */}
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {formatDistanceToNow(new Date(ticket.last_message_at), {
+                          addSuffix: true,
+                          locale: ptBR,
+                        })}
+                      </span>
+                      {ticket.unread_count && ticket.unread_count > 0 ? (
+                        <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-[10px]">
+                          {ticket.unread_count > 9 ? "9+" : ticket.unread_count}
+                        </Badge>
+                      ) : null}
+                    </div>
                   </div>
-                  <Badge variant={statusInfo.variant as any} className="shrink-0">
-                    {statusInfo.label}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    {formatDistanceToNow(new Date(ticket.last_message_at), {
-                      addSuffix: true,
-                      locale: ptBR,
-                    })}
-                  </span>
-                  {ticket.unread_count && ticket.unread_count > 0 ? (
-                    <Badge variant="destructive" className="h-5 min-w-5 px-1.5">
-                      {ticket.unread_count}
-                    </Badge>
-                  ) : null}
                 </div>
               </Card>
             );
