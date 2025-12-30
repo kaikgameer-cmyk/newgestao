@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Send, Image as ImageIcon, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SupportAttachmentPreview } from "./SupportAttachmentPreview";
 import { toast } from "@/hooks/use-toast";
 
 interface TicketChatProps {
@@ -272,21 +273,9 @@ export function TicketChat({ ticketId, userId, isAdmin }: TicketChatProps) {
                 </div>
                 <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>
                 {msg.attachments && msg.attachments.length > 0 && (
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {msg.attachments.map((att, idx) => (
-                      <a
-                        key={idx}
-                        href={att.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block"
-                      >
-                        <img
-                          src={att.url}
-                          alt={att.name}
-                          className="max-w-full rounded border border-border"
-                        />
-                      </a>
+                      <SupportAttachmentPreview key={idx} attachment={att} />
                     ))}
                   </div>
                 )}
