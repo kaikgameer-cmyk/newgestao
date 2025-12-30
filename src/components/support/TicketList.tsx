@@ -2,11 +2,11 @@ import { useState, useMemo } from "react";
 import { useTickets } from "@/hooks/useSupport";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, TicketIcon, ArrowUpDown } from "lucide-react";
+import { Loader2, TicketIcon, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type StatusFilter = "all" | "open" | "pending" | "resolved";
 type SortOrder = "newest" | "oldest";
@@ -42,6 +42,16 @@ export function TicketList({
     
     return result;
   }, [tickets, statusFilter, sortOrder]);
+
+  const statusCounts = useMemo(() => {
+    if (!tickets) return { all: 0, open: 0, pending: 0, resolved: 0 };
+    return {
+      all: tickets.length,
+      open: tickets.filter(t => t.status === "open").length,
+      pending: tickets.filter(t => t.status === "pending").length,
+      resolved: tickets.filter(t => t.status === "resolved").length,
+    };
+  }, [tickets]);
 
   const statusFilters: { value: StatusFilter; label: string }[] = [
     { value: "all", label: "Todos" },
@@ -87,30 +97,37 @@ export function TicketList({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Status Filters & Sort */}
-      <div className="p-3 border-b border-border">
-        <div className="flex items-center justify-center gap-2 flex-wrap">
-          {statusFilters.map((filter) => (
-            <Button
-              key={filter.value}
-              variant={statusFilter === filter.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => setStatusFilter(filter.value)}
-              className="text-xs h-7"
-            >
-              {filter.label}
-            </Button>
-          ))}
-          <div className="w-px h-5 bg-border mx-1" />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSortOrder(prev => prev === "newest" ? "oldest" : "newest")}
-            className="text-xs h-7 gap-1"
-          >
-            <ArrowUpDown className="h-3 w-3" />
-            {sortOrder === "newest" ? "Recentes" : "Antigos"}
-          </Button>
-        </div>
+      <div className="p-3 border-b border-border space-y-2">
+        <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)} className="w-full">
+          <TabsList className="w-full grid grid-cols-4 h-9">
+            {statusFilters.map((filter) => (
+              <TabsTrigger 
+                key={filter.value} 
+                value={filter.value}
+                className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                {filter.label}
+                {statusCounts[filter.value] > 0 && (
+                  <span className="text-[10px] opacity-70">
+                    ({statusCounts[filter.value]})
+                  </span>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        
+        <button
+          onClick={() => setSortOrder(prev => prev === "newest" ? "oldest" : "newest")}
+          className="w-full flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+        >
+          {sortOrder === "newest" ? (
+            <ArrowDown className="h-3 w-3" />
+          ) : (
+            <ArrowUp className="h-3 w-3" />
+          )}
+          {sortOrder === "newest" ? "Mais recentes primeiro" : "Mais antigos primeiro"}
+        </button>
       </div>
 
       {/* Ticket List */}
