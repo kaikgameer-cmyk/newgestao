@@ -87,8 +87,8 @@ export function TicketList({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Status Filters & Sort */}
-      <div className="p-3 border-b border-border flex items-center justify-between gap-2">
-        <div className="flex gap-1 flex-wrap">
+      <div className="p-3 border-b border-border">
+        <div className="flex items-center justify-center gap-2 flex-wrap">
           {statusFilters.map((filter) => (
             <Button
               key={filter.value}
@@ -100,16 +100,17 @@ export function TicketList({
               {filter.label}
             </Button>
           ))}
+          <div className="w-px h-5 bg-border mx-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSortOrder(prev => prev === "newest" ? "oldest" : "newest")}
+            className="text-xs h-7 gap-1"
+          >
+            <ArrowUpDown className="h-3 w-3" />
+            {sortOrder === "newest" ? "Recentes" : "Antigos"}
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setSortOrder(prev => prev === "newest" ? "oldest" : "newest")}
-          className="text-xs h-7 gap-1 shrink-0"
-        >
-          <ArrowUpDown className="h-3 w-3" />
-          {sortOrder === "newest" ? "Recentes" : "Antigos"}
-        </Button>
       </div>
 
       {/* Ticket List */}
