@@ -10,11 +10,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useFeedback } from "@/hooks/useFeedback";
+import { useFeedbackPrompt } from "@/hooks/useFeedbackPrompt";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 export function FeedbackModal() {
-  const { activeCampaign, shouldShowModal, submitResponse, dismissResponse } = useFeedback();
+  const { submitResponse, dismissResponse } = useFeedback();
+  const { shouldShowModal, activeCampaign, cancelPopup } = useFeedbackPrompt();
   const { toast } = useToast();
   
   const [stars, setStars] = useState(0);
@@ -34,6 +36,10 @@ export function FeedbackModal() {
     try {
       await submitResponse.mutateAsync({ stars, comment });
       toast({ title: "Obrigado pela avaliação!", description: "Seu feedback é muito importante para nós." });
+      cancelPopup();
+      // Reset form
+      setStars(0);
+      setComment("");
     } catch {
       toast({ title: "Erro ao enviar", variant: "destructive" });
     }
@@ -42,8 +48,13 @@ export function FeedbackModal() {
   const handleDismiss = async () => {
     try {
       await dismissResponse.mutateAsync();
+      cancelPopup();
+      // Reset form
+      setStars(0);
+      setComment("");
     } catch {
       // Silently handle - user just wants to close
+      cancelPopup();
     }
   };
 

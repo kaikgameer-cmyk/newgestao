@@ -47,7 +47,7 @@ export function useFeedback() {
   const queryClient = useQueryClient();
 
   // Buscar campanha ativa para o usuário (considerando targeting)
-  const { data: activeCampaign } = useQuery({
+  const { data: activeCampaign, isLoading: isLoadingCampaign } = useQuery({
     queryKey: ["active-feedback-campaign", user?.id],
     queryFn: async () => {
       if (!user) return null;
@@ -74,7 +74,7 @@ export function useFeedback() {
   });
 
   // Verificar se o usuário já respondeu a campanha ativa
-  const { data: userResponse } = useQuery({
+  const { data: userResponse, isLoading: isLoadingResponse } = useQuery({
     queryKey: ["user-feedback-response", activeCampaign?.id, user?.id],
     queryFn: async () => {
       if (!activeCampaign || !user) return null;
@@ -142,13 +142,15 @@ export function useFeedback() {
     },
   });
 
-  // Determinar se deve mostrar o modal
+  // Determinar se deve mostrar o modal (lógica básica, useFeedbackPrompt faz a lógica completa)
   const shouldShowModal = activeCampaign && !userResponse;
 
   return {
     activeCampaign,
     userResponse,
     shouldShowModal,
+    isLoadingCampaign,
+    isLoadingResponse,
     submitResponse,
     dismissResponse,
   };
