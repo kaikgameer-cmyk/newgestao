@@ -44,10 +44,13 @@ export function DayModeSelector({
     setClickCount(newClickCount);
 
     if (newClickCount === 1) {
-      // First click - set single day
+      // First click - set single day and close immediately
       const dateStr = formatLocalDate(range.from);
       setTempRange({ from: range.from, to: range.from });
       onDateRangeChange(dateStr, dateStr);
+      // Fechar automaticamente após selecionar um dia (modo rápido)
+      setCalendarOpen(false);
+      setClickCount(0);
     } else if (newClickCount === 2 && range.to) {
       // Second click on different day - set range
       const start = range.from < range.to ? range.from : range.to;

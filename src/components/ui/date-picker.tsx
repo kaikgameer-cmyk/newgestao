@@ -55,10 +55,11 @@ export function DatePicker({
             selected={date}
             onSelect={(newDate) => {
               onDateChange(newDate);
+              // Fechar automaticamente ao selecionar uma data
               setOpen(false);
             }}
             locale={ptBR}
-            className="pointer-events-auto"
+            className="p-3 pointer-events-auto"
           />
         </PopoverContent>
       </Popover>
