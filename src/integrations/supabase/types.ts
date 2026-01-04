@@ -800,6 +800,7 @@ export type Database = {
           is_active: boolean
           starts_at: string
           subtitle: string
+          target_user_ids: string[] | null
           title: string
           updated_at: string
         }
@@ -811,6 +812,7 @@ export type Database = {
           is_active?: boolean
           starts_at?: string
           subtitle?: string
+          target_user_ids?: string[] | null
           title?: string
           updated_at?: string
         }
@@ -822,6 +824,7 @@ export type Database = {
           is_active?: boolean
           starts_at?: string
           subtitle?: string
+          target_user_ids?: string[] | null
           title?: string
           updated_at?: string
         }

@@ -13,6 +13,7 @@ interface FeedbackCampaign {
   ends_at: string | null;
   created_at: string;
   updated_at: string;
+  target_user_ids: string[] | null;
 }
 
 interface FeedbackResponse {
@@ -45,21 +46,29 @@ export function useFeedback() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  // Buscar campanha ativa para o usuário
+  // Buscar campanha ativa para o usuário (considerando targeting)
   const { data: activeCampaign } = useQuery({
-    queryKey: ["active-feedback-campaign"],
+    queryKey: ["active-feedback-campaign", user?.id],
     queryFn: async () => {
+      if (!user) return null;
+
       const { data, error } = await supabase
         .from("feedback_campaigns")
         .select("*")
         .eq("is_active", true)
         .or("ends_at.is.null,ends_at.gt.now()")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return data as FeedbackCampaign | null;
+      
+      // Filtrar campanhas que são para todos (target_user_ids = null) 
+      // ou que incluem o usuário atual
+      const campaigns = (data as FeedbackCampaign[]) || [];
+      const targetedCampaign = campaigns.find((c) => 
+        c.target_user_ids === null || c.target_user_ids.includes(user.id)
+      );
+      
+      return targetedCampaign || null;
     },
     enabled: !!user,
   });
