@@ -101,24 +101,27 @@ export default function FuelControl() {
     mutationFn: async () => {
       if (!user) throw new Error("Não autenticado");
       const newOdometer = odometerKm ? parseFloat(odometerKm) : null;
-      const { error } = await supabase.from("fuel_logs").insert({
-        user_id: user.id,
-        date,
-        station: station || null,
-        liters: parseFloat(liters),
-        total_value: parseFloat(totalValue),
-        fuel_type: fuelType,
-        odometer_km: newOdometer,
-        payment_method: paymentMethod || null,
-        credit_card_id: paymentMethod === "credito" && creditCardId ? creditCardId : null,
+      // Usar a RPC que cria fuel_log E expense vinculados para aparecer em Lançamentos
+      const { error } = await supabase.rpc('create_fuel_expense', {
+        p_date: date,
+        p_liters: parseFloat(liters),
+        p_total_value: parseFloat(totalValue),
+        p_fuel_type: fuelType,
+        p_station: station || null,
+        p_odometer_km: newOdometer,
+        p_payment_method: paymentMethod || null,
+        p_credit_card_id: paymentMethod === "credito" && creditCardId ? creditCardId : null,
+        p_notes: null,
       });
       if (error) throw error;
       return newOdometer;
     },
     onSuccess: (newOdometer) => {
       invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["fuel_logs"] });
       queryClient.invalidateQueries({ queryKey: ["maintenance_records"] });
       queryClient.invalidateQueries({ queryKey: ["latest_odometer"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Abastecimento registrado!" });
@@ -152,11 +155,28 @@ export default function FuelControl() {
 
   const deleteFuelLog = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("fuel_logs").delete().eq("id", id);
-      if (error) throw error;
+      // Usar a RPC delete_fuel_expense que remove expense e fuel_log vinculados
+      // Primeiro buscar o expense vinculado ao fuel_log
+      const { data: linkedExpense } = await supabase
+        .from("expenses")
+        .select("id")
+        .eq("fuel_log_id", id)
+        .maybeSingle();
+      
+      if (linkedExpense) {
+        // Deletar via RPC para limpar tudo corretamente
+        const { error } = await supabase.rpc('delete_fuel_expense', { p_expense_id: linkedExpense.id });
+        if (error) throw error;
+      } else {
+        // Fallback: deletar apenas o fuel_log (caso antigo sem expense vinculado)
+        const { error } = await supabase.from("fuel_logs").delete().eq("id", id);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ["fuel_logs"] });
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
       toast({ title: "Abastecimento removido!" });
     },
   });

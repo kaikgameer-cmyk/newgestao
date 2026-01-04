@@ -26,9 +26,19 @@ export function DateRangePicker({
   className,
   placeholder = "Selecione o período",
 }: DateRangePickerProps) {
+  const [open, setOpen] = React.useState(false);
+
+  const handleSelect = (range: DateRange | undefined) => {
+    onDateRangeChange(range);
+    // Fechar automaticamente quando ambas as datas forem selecionadas
+    if (range?.from && range?.to) {
+      setOpen(false);
+    }
+  };
+
   return (
     <div className={cn("grid gap-2", className)}>
-      <Popover>
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             id="date"
@@ -59,10 +69,10 @@ export function DateRangePicker({
             mode="range"
             defaultMonth={dateRange?.from}
             selected={dateRange}
-            onSelect={onDateRangeChange}
+            onSelect={handleSelect}
             numberOfMonths={2}
             locale={ptBR}
-            className="pointer-events-auto"
+            className="p-3 pointer-events-auto"
           />
         </PopoverContent>
       </Popover>
