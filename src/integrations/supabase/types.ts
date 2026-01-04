@@ -791,6 +791,83 @@ export type Database = {
           },
         ]
       }
+      feedback_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          starts_at: string
+          subtitle: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          starts_at?: string
+          subtitle?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          starts_at?: string
+          subtitle?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      feedback_responses: {
+        Row: {
+          campaign_id: string
+          comment: string | null
+          id: string
+          meta: Json | null
+          stars: number | null
+          status: string
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          comment?: string | null
+          id?: string
+          meta?: Json | null
+          stars?: number | null
+          status?: string
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          comment?: string | null
+          id?: string
+          meta?: Json | null
+          stars?: number | null
+          status?: string
+          submitted_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_responses_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fixed_bills: {
         Row: {
           amount: number

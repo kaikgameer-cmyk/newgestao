@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { FeedbackAdminPanel } from "@/components/feedback/FeedbackAdminPanel";
 import { 
   Shield, 
   Users, 
@@ -793,6 +794,13 @@ export default function AdminPage() {
               Ver Logs no Supabase
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Feedback/Avaliação Panel */}
+      <Card>
+        <CardContent className="p-4 md:p-6">
+          <FeedbackAdminPanel />
         </CardContent>
       </Card>
 
