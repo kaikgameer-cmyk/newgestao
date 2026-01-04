@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { FeedbackModal } from "@/components/feedback/FeedbackModal";
+import { FeedbackErrorBoundary } from "@/components/feedback/FeedbackErrorBoundary";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
@@ -44,8 +45,10 @@ const App = () => {
         <Toaster />
         <Sonner />
         <InstallPrompt />
-        <FeedbackModal />
         <BrowserRouter>
+          <FeedbackErrorBoundary>
+            <FeedbackModal />
+          </FeedbackErrorBoundary>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
