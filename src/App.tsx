@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { FeedbackModal } from "@/components/feedback/FeedbackModal";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
@@ -43,6 +44,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <InstallPrompt />
+        <FeedbackModal />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
