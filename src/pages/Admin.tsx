@@ -15,6 +15,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { FeedbackAdminPanel } from "@/components/feedback/FeedbackAdminPanel";
+import { AnnouncementsAdminPanel } from "@/components/admin/AnnouncementsAdminPanel";
+import { RoleManagementModal } from "@/components/admin/RoleManagementModal";
+import { useAllUserRoles, ROLE_LABELS, ROLE_COLORS, AppRole } from "@/hooks/useRoles";
 import { 
   Shield, 
   Users, 
@@ -36,13 +39,12 @@ import {
   UserPlus,
   FlaskConical,
   Mail,
-  Copy,
-  Webhook,
-  ExternalLink,
-  Send
+  Send,
+  Tags
 } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { cn } from "@/lib/utils";
 
 interface Subscription {
   id: string;
@@ -113,6 +115,11 @@ export default function AdminPage() {
   const [createSubDialogOpen, setCreateSubDialogOpen] = useState(false);
   const [editSubDialogOpen, setEditSubDialogOpen] = useState(false);
   const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
+  const [roleManagementOpen, setRoleManagementOpen] = useState(false);
+  const [selectedUserForRoles, setSelectedUserForRoles] = useState<UserWithData | null>(null);
+
+  // Fetch all user roles
+  const { data: allUserRoles = [] } = useAllUserRoles();
   const [selectedUser, setSelectedUser] = useState<UserWithData | null>(null);
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null);
 
@@ -734,66 +741,10 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      {/* Webhook Kiwify Card */}
-      <Card className="bg-card/50 border-primary/20">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Webhook className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">Webhook Kiwify</CardTitle>
-              <CardDescription>Configuração do webhook para integração com Kiwify</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">URL do Webhook (com secret via query string)</Label>
-            <div className="flex gap-2">
-              <Input
-                readOnly
-                value={`https://bvondnxrfqizehlrcyhm.supabase.co/functions/v1/kiwify-webhook?secret=SEU_SECRET_AQUI`}
-                className="font-mono text-xs bg-muted/50"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  navigator.clipboard.writeText(`https://bvondnxrfqizehlrcyhm.supabase.co/functions/v1/kiwify-webhook?secret=SEU_SECRET_AQUI`);
-                  toast({ title: "URL copiada!", description: "Cole no painel da Kiwify." });
-                }}
-              >
-                <Copy className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-          
-          <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-            <div className="flex gap-2">
-              <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-yellow-500">Importante</p>
-                <p className="text-muted-foreground mt-1">
-                  1. O secret está configurado como <code className="px-1 py-0.5 rounded bg-muted font-mono text-xs">KIWIFY_WEBHOOK_SECRET</code> nas secrets do Supabase<br/>
-                  2. Substitua <code className="px-1 py-0.5 rounded bg-muted font-mono text-xs">SEU_SECRET_AQUI</code> pelo valor do secret<br/>
-                  3. Atualize a URL no painel da Kiwify
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => window.open("https://supabase.com/dashboard/project/bvondnxrfqizehlrcyhm/functions/kiwify-webhook/logs", "_blank")}
-            >
-              <ExternalLink className="w-4 h-4" />
-              Ver Logs no Supabase
-            </Button>
-          </div>
+      {/* Announcements Panel (replaced Webhook Kiwify) */}
+      <Card>
+        <CardContent className="p-4 md:p-6">
+          <AnnouncementsAdminPanel />
         </CardContent>
       </Card>
 
@@ -894,16 +845,38 @@ export default function AdminPage() {
                             ) : "-"}
                           </TableCell>
                           <TableCell>
-                            {user.isAdmin ? (
-                              <Badge className="bg-purple-500/20 text-purple-500 border-purple-500/30">
-                                <Shield className="w-3 h-3 mr-1" />Admin
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-muted-foreground">Usuário</Badge>
-                            )}
+                            <div className="flex flex-wrap gap-1">
+                              {(() => {
+                                const userRolesList = allUserRoles.filter(r => r.user_id === user.user_id);
+                                if (userRolesList.length === 0) {
+                                  return <Badge variant="outline" className="text-muted-foreground">Usuário</Badge>;
+                                }
+                                return userRolesList.map((r) => {
+                                  const colors = ROLE_COLORS[r.role as AppRole] || ROLE_COLORS.admin;
+                                  return (
+                                    <Badge key={r.id} className={cn(colors.bg, colors.text, colors.border, "text-xs")}>
+                                      {ROLE_LABELS[r.role as AppRole] || r.role}
+                                    </Badge>
+                                  );
+                                });
+                              })()}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-end gap-1">
+                              {/* Manage Roles */}
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedUserForRoles(user);
+                                  setRoleManagementOpen(true);
+                                }}
+                                title="Gerenciar cargos"
+                              >
+                                <Tags className="w-4 h-4" />
+                              </Button>
+
                               {/* Edit User */}
                               <Button 
                                 variant="ghost" 
@@ -1367,6 +1340,13 @@ export default function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Role Management Modal */}
+      <RoleManagementModal
+        open={roleManagementOpen}
+        onOpenChange={setRoleManagementOpen}
+        user={selectedUserForRoles}
+      />
     </div>
   );
 }

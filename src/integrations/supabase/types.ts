@@ -14,6 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcement_ack: {
+        Row: {
+          acked_at: string
+          announcement_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          acked_at?: string
+          announcement_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          acked_at?: string
+          announcement_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_ack_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcement_targets: {
+        Row: {
+          announcement_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_targets_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      announcements: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          message: string
+          status: string
+          target_mode: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          message: string
+          status?: string
+          target_mode?: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          message?: string
+          status?: string
+          target_mode?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
       bills_instances: {
         Row: {
           amount: number
@@ -1457,6 +1545,33 @@ export type Database = {
         }
         Relationships: []
       }
+      role_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          target_user_id: string
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           billing_interval: Database["public"]["Enums"]["billing_interval"]
@@ -2109,7 +2224,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "user" | "support"
+      app_role:
+        | "admin"
+        | "user"
+        | "support"
+        | "kiwify"
+        | "affiliate"
+        | "creuzin_team"
       billing_interval: "month" | "quarter" | "year"
       subscription_status: "active" | "past_due" | "canceled"
     }
@@ -2239,7 +2360,14 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user", "support"],
+      app_role: [
+        "admin",
+        "user",
+        "support",
+        "kiwify",
+        "affiliate",
+        "creuzin_team",
+      ],
       billing_interval: ["month", "quarter", "year"],
       subscription_status: ["active", "past_due", "canceled"],
     },
