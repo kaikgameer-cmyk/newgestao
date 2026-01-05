@@ -36,6 +36,7 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { UserMenu } from "@/components/user/UserMenu";
 import { UserAvatar } from "@/components/user/UserAvatar";
+import { AnnouncementPopup } from "@/components/announcements/AnnouncementPopup";
 
 export default function DashboardLayout() {
   const [user, setUser] = useState<User | null>(null);
@@ -241,6 +242,9 @@ export default function DashboardLayout() {
 
       {/* Onboarding Modal - takes priority over paywall */}
       {!loadingOnboarding && <OnboardingModal open={needsOnboarding} />}
+
+      {/* Announcement Popup - shows after paywall/onboarding are resolved */}
+      {!showPaywall && !needsOnboarding && <AnnouncementPopup />}
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
