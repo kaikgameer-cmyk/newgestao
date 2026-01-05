@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, DollarSign, Calendar, PlusCircle, Clock, Target, CheckCircle2, XCircle, Pencil } from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Calendar, PlusCircle, Clock, Target, CheckCircle2, XCircle, Pencil, Route, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useDashboardFilter } from "@/hooks/useDashboardFilter";
@@ -228,6 +228,15 @@ export default function Dashboard() {
 
   const hasData = totalRevenue > 0 || totalAllExpenses > 0;
 
+  // Format helper for time
+  const formatWorkedTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
+    if (hours > 0) return `${hours}h`;
+    return `${mins}m`;
+  };
+
   // Period view KPIs (for week/month/year modes)
   const periodKpis = [
     {
@@ -262,6 +271,14 @@ export default function Dashboard() {
       highlight: false,
     },
   ];
+
+  // Extended metrics for period view (trips, km, hours)
+  const periodExtendedMetrics = {
+    totalTrips: incomeDaysTotalTrips,
+    totalKm: incomeDaysTotalKm,
+    totalMinutes: incomeDaysTotalMinutes,
+    ticketMedio: incomeDaysTotalTrips > 0 ? totalRevenue / incomeDaysTotalTrips : 0,
+  };
 
   // === DAY MODE (single day or range with same UI) ===
   if (isDayMode) {
@@ -589,6 +606,48 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+
+      {/* Extended Metrics (Trips, KM, Hours) */}
+      {(periodExtendedMetrics.totalTrips > 0 || periodExtendedMetrics.totalKm > 0 || periodExtendedMetrics.totalMinutes > 0) && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Car className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Corridas</span>
+              </div>
+              <p className="text-lg font-bold">{periodExtendedMetrics.totalTrips}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Route className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Km Rodados</span>
+              </div>
+              <p className="text-lg font-bold">{periodExtendedMetrics.totalKm.toLocaleString("pt-BR")} km</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Tempo</span>
+              </div>
+              <p className="text-lg font-bold">{formatWorkedTime(periodExtendedMetrics.totalMinutes)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <DollarSign className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Ticket Médio</span>
+              </div>
+              <p className="text-lg font-bold">R$ {periodExtendedMetrics.ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Maintenance + Platform Revenue Grid */}
       <div className="grid lg:grid-cols-2 gap-6">
