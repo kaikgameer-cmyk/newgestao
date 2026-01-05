@@ -1,15 +1,27 @@
-const CACHE_NAME = "ng-static-v4";
+const CACHE_NAME = "ng-static-v5";
 
 const URLS_TO_CACHE = [
   "/",
   "/manifest.json",
   "/favicon-v2.png",
-  "/favicon.ico",
-  "/apple-touch-icon-v2.png.png",
   "/icon-192-v2.png",
   "/icon-512-v2.png",
   "/maskable-icon-512-v2.png",
+  "/apple-touch-icon-v2.png",
 ];
+
+// Files that should use network-first strategy (to avoid stale icons/manifest)
+const NETWORK_FIRST_PATTERNS = [
+  /\/manifest\.json$/,
+  /\/icon-.*\.png$/,
+  /\/maskable-.*\.png$/,
+  /\/favicon.*\.png$/,
+  /\/apple-touch-icon.*\.png$/,
+];
+
+function shouldUseNetworkFirst(pathname) {
+  return NETWORK_FIRST_PATTERNS.some((pattern) => pattern.test(pathname));
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -46,7 +58,6 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(req)
         .then((response) => {
-          // Cache the latest version
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
@@ -58,12 +69,27 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // For static assets (icons, images, etc.), use cache-first strategy
+  // For icons and manifest, use network-first to avoid stale cache
+  if (shouldUseNetworkFirst(url.pathname)) {
+    event.respondWith(
+      fetch(req)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // For other static assets, use cache-first strategy
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
       return fetch(req).then((response) => {
-        // Cache successful responses for static assets
         if (response.ok && (url.pathname.endsWith(".png") || url.pathname.endsWith(".ico") || url.pathname.endsWith(".json"))) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
