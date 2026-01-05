@@ -302,10 +302,12 @@ export default function Dashboard() {
       ? incomeDay.items.map(item => ({
           app: item.platform === "outro" && item.platform_label ? item.platform_label : item.platform,
           amount: item.amount,
+          trips: item.trips || 0,
         }))
       : Object.entries(incomeDaysPlatformBreakdown).map(([key, data]) => ({
           app: key,
           amount: data.amount,
+          trips: data.trips || 0,
         }));
 
     // Period label
