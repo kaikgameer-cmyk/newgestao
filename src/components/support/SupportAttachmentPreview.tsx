@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { ZoomIn, X, ExternalLink, ImageOff } from "lucide-react";
+import { ZoomIn, X, ExternalLink, ImageOff, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Attachment {
   url: string;
@@ -19,8 +20,53 @@ interface SupportAttachmentPreviewProps {
 export function SupportAttachmentPreview({ attachment, className }: SupportAttachmentPreviewProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  if (hasError) {
+  // Fetch fresh signed URL when component mounts or path changes
+  useEffect(() => {
+    async function fetchSignedUrl() {
+      setIsLoading(true);
+      setHasError(false);
+
+      // If we have a path, get a fresh signed URL
+      if (attachment.path) {
+        const { data, error } = await supabase.storage
+          .from("support-attachments")
+          .createSignedUrl(attachment.path, 3600); // 1 hour expiry
+
+        if (error || !data?.signedUrl) {
+          console.error("Error fetching signed URL:", error);
+          setHasError(true);
+          setIsLoading(false);
+          return;
+        }
+        setImageUrl(data.signedUrl);
+      } else {
+        // Fallback to stored URL (may be expired)
+        setImageUrl(attachment.url);
+      }
+      setIsLoading(false);
+    }
+
+    fetchSignedUrl();
+  }, [attachment.path, attachment.url]);
+
+  if (isLoading) {
+    return (
+      <div 
+        className={cn(
+          "flex items-center justify-center p-6 rounded-xl bg-muted/50 border border-border",
+          "w-[160px] h-[120px] md:w-[200px] md:h-[140px]",
+          className
+        )}
+      >
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (hasError || !imageUrl) {
     return (
       <div 
         className={cn(
@@ -48,7 +94,7 @@ export function SupportAttachmentPreview({ attachment, className }: SupportAttac
       >
         <div className="relative overflow-hidden rounded-xl border border-border/50 bg-background/80">
           <img
-            src={attachment.url}
+            src={imageUrl}
             alt={attachment.name}
             loading="lazy"
             onError={() => setHasError(true)}
@@ -96,7 +142,7 @@ export function SupportAttachmentPreview({ attachment, className }: SupportAttac
             
             {/* Open in new tab button */}
             <a
-              href={attachment.url}
+              href={imageUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
@@ -107,7 +153,7 @@ export function SupportAttachmentPreview({ attachment, className }: SupportAttac
 
             {/* Full size image */}
             <img
-              src={attachment.url}
+              src={imageUrl}
               alt={attachment.name}
               className="max-w-[95vw] max-h-[85vh] object-contain rounded-lg"
               onClick={(e) => e.stopPropagation()}
