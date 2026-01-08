@@ -185,13 +185,16 @@ export function TicketChat({ ticketId, userId, isAdmin }: TicketChatProps) {
 
             if (uploadError) throw uploadError;
 
-            const { data: urlData } = supabase.storage
+            // Use signed URL for private bucket (1 hour expiry)
+            const { data: signedData, error: signedError } = await supabase.storage
               .from("support-attachments")
-              .getPublicUrl(filePath);
+              .createSignedUrl(filePath, 3600);
+
+            if (signedError) throw signedError;
 
             return {
               path: filePath,
-              url: urlData.publicUrl,
+              url: signedData.signedUrl,
               type: att.file.type,
               size: att.file.size,
               name: att.file.name,
