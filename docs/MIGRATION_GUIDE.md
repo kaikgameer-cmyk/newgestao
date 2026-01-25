@@ -624,12 +624,14 @@ Execute cada cenário e marque como ✅ ou ❌:
 - [ ] **Responder ticket (admin)** - permissão ok
 - [ ] **Fechar ticket** - status atualiza
 
-#### Competições
+#### WhatsApp Bot
 
-- [ ] **Criar competição** - senha hasheada com bcrypt
-- [ ] **Entrar com código** - validação de senha
-- [ ] **Ver ranking** - dados aparecem
-- [ ] **Finalizar competição** - results calculados
+- [ ] **Conectar WhatsApp** - credenciais salvas
+- [ ] **Testar conexão** - validação funciona
+- [ ] **Mensagem duplicada** - não cria draft duplicado
+- [ ] **Draft expirado** - resposta SIM rejeitada
+- [ ] **Confirmação SIM** - lançamento salvo com source='whatsapp'
+- [ ] **Confirmação NÃO** - draft cancelado
 
 #### Admin
 

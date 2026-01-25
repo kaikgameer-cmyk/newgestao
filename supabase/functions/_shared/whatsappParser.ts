@@ -620,17 +620,20 @@ elétrico [data] [valor] [kwh] kwh km [km]`,
 
 /**
  * Check if message is a confirmation response
+ * IMPORTANT: Only strict SIM/NÃO accepted - no aliases like "ok", "confirmar", emoji
  */
 export function isConfirmation(text: string): 'yes' | 'no' | null {
   const normalized = text.toLowerCase().trim();
   
-  if (['sim', 's', 'yes', 'y', 'confirmar', 'ok', '1'].includes(normalized)) {
+  // Only accept explicit SIM or NÃO (strict production requirement)
+  if (['sim', 's'].includes(normalized)) {
     return 'yes';
   }
   
-  if (['não', 'nao', 'n', 'no', 'cancelar', 'cancel', '0'].includes(normalized)) {
+  if (['não', 'nao', 'n'].includes(normalized)) {
     return 'no';
   }
   
+  // Anything else (ok, confirmar, 👍, etc.) is NOT valid
   return null;
 }

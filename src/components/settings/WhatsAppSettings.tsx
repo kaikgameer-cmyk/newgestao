@@ -116,11 +116,11 @@ export function WhatsAppSettings() {
     
     switch (connection.status) {
       case "connected":
-        return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30"><CheckCircle2 className="w-3 h-3 mr-1" /> Conectado</Badge>;
+        return <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary"><CheckCircle2 className="w-3 h-3 mr-1" /> Conectado</Badge>;
       case "pending":
-        return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"><AlertTriangle className="w-3 h-3 mr-1" /> Pendente</Badge>;
+        return <Badge variant="outline" className="border-accent/30 bg-accent/10 text-accent-foreground"><AlertTriangle className="w-3 h-3 mr-1" /> Pendente</Badge>;
       case "error":
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><XCircle className="w-3 h-3 mr-1" /> Erro</Badge>;
+        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Erro</Badge>;
       default:
         return <Badge variant="outline"><Unplug className="w-3 h-3 mr-1" /> Desconectado</Badge>;
     }
@@ -141,7 +141,7 @@ export function WhatsAppSettings() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MessageCircle className="w-5 h-5 text-emerald-500" />
+            <MessageCircle className="w-5 h-5 text-primary" />
             <CardTitle className="text-lg">WhatsApp Bot</CardTitle>
           </div>
           {getStatusBadge()}
@@ -267,9 +267,9 @@ export function WhatsAppSettings() {
 
         {connection?.status === "pending" && (
           <div className="space-y-4">
-            <Alert className="bg-yellow-500/10 border-yellow-500/30">
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
-              <AlertDescription className="text-yellow-400">
+            <Alert className="bg-accent/10 border-accent/30">
+              <AlertTriangle className="h-4 w-4 text-accent-foreground" />
+              <AlertDescription className="text-accent-foreground">
                 Configure o webhook no Meta Developers para ativar a conexão.
               </AlertDescription>
             </Alert>
