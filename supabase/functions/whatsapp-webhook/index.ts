@@ -61,7 +61,8 @@ Deno.serve(async (req) => {
     // POST request: Incoming webhook events
     if (req.method === 'POST') {
       const payload = await req.json();
-      console.log('Webhook payload received:', JSON.stringify(payload).slice(0, 500));
+      // Only log minimal info - never log full payload with sensitive data
+      console.log('Webhook event received, entry count:', payload.entry?.length ?? 0);
 
       // Check if WhatsApp feature is enabled globally
       const { data: globalEnabled } = await supabase.rpc('is_whatsapp_enabled');
@@ -179,8 +180,42 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Check if this is a confirmation response
+      // Check if this is a confirmation response (strict SIM/NÃO only)
       const confirmation = isConfirmation(bodyText);
+      
+      // Check if there's a pending draft to handle invalid responses
+      const { data: pendingDraftForCheck } = await supabase
+        .from('whatsapp_drafts')
+        .select('id')
+        .eq('user_id', connection.user_id)
+        .eq('from_number', fromNumber)
+        .eq('status', 'awaiting_confirmation')
+        .gt('expires_at', new Date().toISOString())
+        .limit(1)
+        .maybeSingle();
+
+      // If there's a pending draft but response is not SIM/NÃO, ask explicitly
+      if (pendingDraftForCheck && confirmation === null) {
+        await sendAndLogMessage(
+          supabaseUrl,
+          supabaseServiceKey,
+          fullConnection,
+          fromNumber,
+          '⚠️ Responda apenas *SIM* para confirmar ou *NÃO* para cancelar.',
+          inbound.id
+        );
+        
+        await supabase
+          .from('whatsapp_inbound_messages')
+          .update({ processed: true })
+          .eq('id', inbound.id);
+          
+        return new Response(JSON.stringify({ status: 'ok' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       if (confirmation) {
         // Find pending draft for this user/number
         const { data: pendingDraft } = await supabase
@@ -195,12 +230,28 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (!pendingDraft) {
+          // Check if there's an expired draft
+          const { data: expiredDraft } = await supabase
+            .from('whatsapp_drafts')
+            .select('id')
+            .eq('user_id', connection.user_id)
+            .eq('from_number', fromNumber)
+            .eq('status', 'awaiting_confirmation')
+            .lte('expires_at', new Date().toISOString())
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const message = expiredDraft
+            ? '⏰ Lançamento expirado (30 minutos). Envie o comando novamente para criar um novo.'
+            : '❌ Não há nenhum lançamento pendente para confirmar.\n\nEnvie um novo comando para criar um lançamento.';
+
           await sendAndLogMessage(
             supabaseUrl,
             supabaseServiceKey,
             fullConnection,
             fromNumber,
-            '❌ Não há nenhum lançamento pendente para confirmar.\n\nEnvie um novo comando para criar um lançamento.',
+            message,
             inbound.id
           );
           return new Response(JSON.stringify({ status: 'ok' }), {

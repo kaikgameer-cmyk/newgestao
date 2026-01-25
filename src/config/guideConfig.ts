@@ -91,12 +91,12 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       {
         title: "Editar Perfil",
         description:
-          "Altere seu Nome, Sobrenome, WhatsApp, Cidade e Email. Lembre-se: o WhatsApp é usado para contato em competições.",
+          "Altere seu Nome, Sobrenome, WhatsApp, Cidade e Email.",
       },
       {
         title: "Foto de Perfil",
         description:
-          "Clique na foto para fazer upload de uma nova imagem. Ela aparecerá no menu lateral e no ranking de competições.",
+          "Clique na foto para fazer upload de uma nova imagem. Ela aparecerá no menu lateral.",
       },
       {
         title: "Dia de Início da Semana",
@@ -105,7 +105,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       },
     ],
     tips: [
-      { text: "Mantenha o WhatsApp atualizado - hosts de competições usam para contato sobre prêmios." },
+      { text: "Mantenha seus dados atualizados para melhor experiência." },
     ],
   },
 
@@ -435,19 +435,9 @@ export const GUIDE_SECTIONS: GuideSection[] = [
           "Apenas você tem acesso aos seus dados financeiros. Nem mesmo administradores podem ver seus lançamentos detalhados.",
       },
       {
-        title: "Dados em Competições",
+        title: "WhatsApp Bot",
         description:
-          "Em competições, apenas o TOTAL de receita é compartilhado no ranking. Detalhes (por plataforma, despesas) são privados.",
-      },
-      {
-        title: "Chave PIX",
-        description:
-          "Sua chave PIX só é visível para o host da competição, e somente quando você ganha.",
-      },
-      {
-        title: "WhatsApp",
-        description:
-          "Seu WhatsApp é usado apenas para contato sobre competições (prêmios, avisos).",
+          "O WhatsApp pode ser usado para criar lançamentos pelo chat. Configure em Configurações > WhatsApp.",
       },
     ],
     tips: [

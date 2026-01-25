@@ -37,7 +37,7 @@ import {
   BadgeCheck,
   Ban,
   UserPlus,
-  FlaskConical,
+  
   Mail,
   Send,
   Tags
@@ -619,15 +619,6 @@ export default function AdminPage() {
               <Mail className="w-4 h-4" />
             )}
             Testar Email
-          </Button>
-          <Button 
-            size="sm" 
-            onClick={() => navigate("/dashboard/admin/testes-competicoes")}
-            variant="outline"
-            className="w-fit gap-2"
-          >
-            <FlaskConical className="w-4 h-4" />
-            Testes de Competição
           </Button>
           <Button 
             size="sm" 
