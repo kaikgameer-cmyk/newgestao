@@ -22,6 +22,7 @@ import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { PlatformSettings } from "@/components/settings/PlatformSettings";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
+import { WhatsAppSettings } from "@/components/settings/WhatsAppSettings";
 
 import { ExpenseCategorySettings } from "@/components/settings/ExpenseCategorySettings";
 import { useVehicleType } from "@/hooks/useVehicleType";
@@ -465,6 +466,9 @@ export default function SettingsPage() {
 
       {/* Expense Category Settings */}
       <ExpenseCategorySettings />
+
+      {/* WhatsApp Bot Settings */}
+      <WhatsAppSettings />
 
       {/* Quick Stats */}
       <Card variant="elevated">
