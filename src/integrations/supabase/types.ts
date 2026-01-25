@@ -801,12 +801,14 @@ export type Database = {
           credit_card_id: string | null
           current_installment: number | null
           date: string
+          external_id: string | null
           fuel_log_id: string | null
           id: string
           installments: number | null
           invoice_id: string | null
           notes: string | null
           payment_method: string | null
+          source: string | null
           total_installments: number | null
           updated_at: string
           user_id: string
@@ -819,12 +821,14 @@ export type Database = {
           credit_card_id?: string | null
           current_installment?: number | null
           date: string
+          external_id?: string | null
           fuel_log_id?: string | null
           id?: string
           installments?: number | null
           invoice_id?: string | null
           notes?: string | null
           payment_method?: string | null
+          source?: string | null
           total_installments?: number | null
           updated_at?: string
           user_id: string
@@ -837,12 +841,14 @@ export type Database = {
           credit_card_id?: string | null
           current_installment?: number | null
           date?: string
+          external_id?: string | null
           fuel_log_id?: string | null
           id?: string
           installments?: number | null
           invoice_id?: string | null
           notes?: string | null
           payment_method?: string | null
+          source?: string | null
           total_installments?: number | null
           updated_at?: string
           user_id?: string
@@ -878,6 +884,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      feature_flags: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       feedback_campaigns: {
         Row: {
@@ -1003,12 +1033,14 @@ export type Database = {
           created_at: string
           credit_card_id: string | null
           date: string
+          external_id: string | null
           fuel_type: string
           id: string
           invoice_id: string | null
           liters: number
           odometer_km: number | null
           payment_method: string | null
+          source: string | null
           station: string | null
           total_value: number
           updated_at: string
@@ -1018,12 +1050,14 @@ export type Database = {
           created_at?: string
           credit_card_id?: string | null
           date: string
+          external_id?: string | null
           fuel_type: string
           id?: string
           invoice_id?: string | null
           liters: number
           odometer_km?: number | null
           payment_method?: string | null
+          source?: string | null
           station?: string | null
           total_value: number
           updated_at?: string
@@ -1033,12 +1067,14 @@ export type Database = {
           created_at?: string
           credit_card_id?: string | null
           date?: string
+          external_id?: string | null
           fuel_type?: string
           id?: string
           invoice_id?: string | null
           liters?: number
           odometer_km?: number | null
           payment_method?: string | null
+          source?: string | null
           station?: string | null
           total_value?: number
           updated_at?: string
@@ -1122,10 +1158,12 @@ export type Database = {
         Row: {
           created_at: string
           date: string
+          external_id: string | null
           hours_minutes: number
           id: string
           km_rodados: number
           notes: string | null
+          source: string | null
           trips: number
           updated_at: string
           user_id: string
@@ -1133,10 +1171,12 @@ export type Database = {
         Insert: {
           created_at?: string
           date: string
+          external_id?: string | null
           hours_minutes?: number
           id?: string
           km_rodados?: number
           notes?: string | null
+          source?: string | null
           trips?: number
           updated_at?: string
           user_id: string
@@ -1144,10 +1184,12 @@ export type Database = {
         Update: {
           created_at?: string
           date?: string
+          external_id?: string | null
           hours_minutes?: number
           id?: string
           km_rodados?: number
           notes?: string | null
+          source?: string | null
           trips?: number
           updated_at?: string
           user_id?: string
@@ -1851,6 +1893,219 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_connections: {
+        Row: {
+          access_token_encrypted: string | null
+          business_phone: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          phone_number_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          verify_token: string
+          waba_id: string | null
+          whatsapp_enabled: boolean
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          business_phone?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          phone_number_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          verify_token?: string
+          waba_id?: string | null
+          whatsapp_enabled?: boolean
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          business_phone?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          phone_number_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          verify_token?: string
+          waba_id?: string | null
+          whatsapp_enabled?: boolean
+        }
+        Relationships: []
+      }
+      whatsapp_drafts: {
+        Row: {
+          confirmed_at: string | null
+          created_at: string
+          draft_payload: Json
+          draft_type: string
+          expires_at: string
+          from_number: string
+          id: string
+          inbound_message_id: string | null
+          message_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          created_at?: string
+          draft_payload: Json
+          draft_type: string
+          expires_at?: string
+          from_number: string
+          id?: string
+          inbound_message_id?: string | null
+          message_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          created_at?: string
+          draft_payload?: Json
+          draft_type?: string
+          expires_at?: string
+          from_number?: string
+          id?: string
+          inbound_message_id?: string | null
+          message_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_drafts_inbound_message_id_fkey"
+            columns: ["inbound_message_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_inbound_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_inbound_messages: {
+        Row: {
+          body_text: string | null
+          connection_id: string | null
+          from_number: string
+          id: string
+          message_id: string
+          message_type: string
+          phone_number_id: string
+          processed: boolean
+          raw_payload: Json | null
+          received_at: string
+          user_id: string
+        }
+        Insert: {
+          body_text?: string | null
+          connection_id?: string | null
+          from_number: string
+          id?: string
+          message_id: string
+          message_type?: string
+          phone_number_id: string
+          processed?: boolean
+          raw_payload?: Json | null
+          received_at?: string
+          user_id: string
+        }
+        Update: {
+          body_text?: string | null
+          connection_id?: string | null
+          from_number?: string
+          id?: string
+          message_id?: string
+          message_type?: string
+          phone_number_id?: string
+          processed?: boolean
+          raw_payload?: Json | null
+          received_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_inbound_messages_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_inbound_messages_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_outbound_messages: {
+        Row: {
+          body_text: string
+          connection_id: string | null
+          error_message: string | null
+          id: string
+          meta_message_id: string | null
+          related_inbound_id: string | null
+          sent_at: string
+          status: string
+          to_number: string
+          user_id: string
+        }
+        Insert: {
+          body_text: string
+          connection_id?: string | null
+          error_message?: string | null
+          id?: string
+          meta_message_id?: string | null
+          related_inbound_id?: string | null
+          sent_at?: string
+          status?: string
+          to_number: string
+          user_id: string
+        }
+        Update: {
+          body_text?: string
+          connection_id?: string | null
+          error_message?: string | null
+          id?: string
+          meta_message_id?: string | null
+          related_inbound_id?: string | null
+          sent_at?: string
+          status?: string
+          to_number?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_outbound_messages_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_outbound_messages_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_connections_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_outbound_messages_related_inbound_id_fkey"
+            columns: ["related_inbound_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_inbound_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_session_pauses: {
         Row: {
           created_at: string
@@ -1946,6 +2201,51 @@ export type Database = {
           name: string | null
           updated_at: string | null
           user_id: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_connections_safe: {
+        Row: {
+          access_token_masked: string | null
+          business_phone: string | null
+          created_at: string | null
+          id: string | null
+          last_error: string | null
+          phone_number_id: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+          verify_token: string | null
+          waba_id: string | null
+          whatsapp_enabled: boolean | null
+        }
+        Insert: {
+          access_token_masked?: never
+          business_phone?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_error?: string | null
+          phone_number_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          verify_token?: string | null
+          waba_id?: string | null
+          whatsapp_enabled?: boolean | null
+        }
+        Update: {
+          access_token_masked?: never
+          business_phone?: string | null
+          created_at?: string | null
+          id?: string | null
+          last_error?: string | null
+          phone_number_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          verify_token?: string | null
+          waba_id?: string | null
+          whatsapp_enabled?: boolean | null
         }
         Relationships: []
       }
@@ -2109,6 +2409,16 @@ export type Database = {
           total_trips: number
         }[]
       }
+      get_whatsapp_connection_by_phone: {
+        Args: { p_phone_number_id: string }
+        Returns: {
+          access_token_encrypted: string
+          id: string
+          user_id: string
+          verify_token: string
+          whatsapp_enabled: boolean
+        }[]
+      }
       get_winner_payouts_for_host: {
         Args: { p_competition_id: string }
         Returns: Json
@@ -2141,6 +2451,7 @@ export type Database = {
         Args: { _competition_id: string; _user_id: string }
         Returns: boolean
       }
+      is_whatsapp_enabled: { Args: never; Returns: boolean }
       join_competition:
         | { Args: { p_code: string; p_password: string }; Returns: Json }
         | {
