@@ -17,7 +17,6 @@ const CRITICAL_ROUTE_PATTERNS = [
   /\/dashboard\/combustivel/,
   /\/dashboard\/eletrico/,
   /\/dashboard\/metas/,
-  /\/dashboard\/competicoes/,
   /\/dashboard\/suporte/,
   /\/dashboard\/manutencao/,
   /\/dashboard\/cartoes/,

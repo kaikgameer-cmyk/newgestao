@@ -22,7 +22,7 @@ import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { PlatformSettings } from "@/components/settings/PlatformSettings";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
-import { CompetitionHistory } from "@/components/settings/CompetitionHistory";
+
 import { ExpenseCategorySettings } from "@/components/settings/ExpenseCategorySettings";
 import { useVehicleType } from "@/hooks/useVehicleType";
 import { z } from "zod";
@@ -465,9 +465,6 @@ export default function SettingsPage() {
 
       {/* Expense Category Settings */}
       <ExpenseCategorySettings />
-
-      {/* Competition History */}
-      <CompetitionHistory />
 
       {/* Quick Stats */}
       <Card variant="elevated">

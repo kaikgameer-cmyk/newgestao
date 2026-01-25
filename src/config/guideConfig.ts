@@ -9,8 +9,6 @@ import {
   Shield, 
   UserCircle, 
   Layers, 
-  Trophy,
-  Bell,
   HelpCircle,
   Palette,
   Rocket
@@ -378,138 +376,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
     ],
   },
 
-  // 9. COMPETIÇÕES - SEÇÃO COMPLETA
-  {
-    id: "competicoes",
-    title: "Competições",
-    icon: Trophy,
-    description:
-      "Participe de competições de receita contra outros motoristas. Bata a meta, tenha a maior receita e ganhe prêmios!",
-    features: [
-      {
-        title: "O que são Competições",
-        description:
-          "Competições são desafios de RECEITA onde você compete com outros motoristas. Quem faturar mais dentro do período, ou bater a meta, ganha o prêmio.",
-      },
-      {
-        title: "Como Entrar",
-        description:
-          "Para entrar em uma competição, você precisa do Código + Senha fornecidos pelo criador (host). Não existe entrada por link.",
-      },
-      {
-        title: "Aba 'Disponíveis'",
-        description:
-          "Mostra competições públicas que você ainda não participa. Você pode entrar em qualquer uma que ainda não começou ou está em andamento.",
-      },
-      {
-        title: "Aba 'Minhas'",
-        description:
-          "Mostra competições que você criou + competições que você está participando. Aqui você acompanha seu progresso.",
-      },
-      {
-        title: "Aba 'Finalizadas'",
-        description:
-          "Competições encerradas (após o último dia às 23:59). Veja o resultado final e os vencedores.",
-      },
-      {
-        title: "Individual ou Times",
-        description:
-          "Competições podem ser individuais (cada um por si) ou em times (grupos competem entre si).",
-      },
-      {
-        title: "Compromisso de Transparência",
-        description:
-          "Ao entrar, você aceita o compromisso de transparência (checkbox obrigatório). Isso garante fair play.",
-      },
-      {
-        title: "Cadastrar Chave PIX",
-        description:
-          "Ao entrar, você informa sua Chave PIX e Tipo (CPF, Email, Telefone, Aleatória). Isso é necessário para receber o prêmio caso ganhe.",
-      },
-      {
-        title: "Ranking",
-        description:
-          "Dentro da competição, veja o ranking em tempo real com a receita de cada participante (ou time).",
-      },
-      {
-        title: "Progresso da Meta",
-        description:
-          "A barra de progresso mostra quanto da meta da competição você já atingiu.",
-      },
-    ],
-    rules: [
-      "A competição só encerra no último dia às 23:59:59.",
-      "Apenas receitas lançadas DENTRO do período da competição contam para o ranking.",
-      "Receitas lançadas após o término NÃO são contabilizadas.",
-      "O vencedor é quem tem a maior receita E bateu a meta (se houver).",
-      "Se ninguém bater a meta, não há vencedor.",
-    ],
-    commonErrors: [
-      {
-        error: "Minha receita não aparece no ranking",
-        solution: "Verifique se a data do lançamento está dentro do período da competição.",
-      },
-      {
-        error: "Não consigo entrar na competição",
-        solution: "Confirme o código e senha com o host. Verifique se a competição ainda aceita participantes.",
-      },
-    ],
-    tips: [
-      { text: "Lance suas receitas diariamente para manter o ranking atualizado." },
-      { text: "Mantenha sua chave PIX atualizada para receber prêmios." },
-      { text: "Acompanhe o ranking para saber sua posição." },
-    ],
-  },
-
-  // 10. MENSAGENS DE COMPETIÇÃO
-  {
-    id: "mensagens-notificacoes",
-    title: "Mensagens e Notificações",
-    icon: Bell,
-    description:
-      "O sistema envia mensagens automáticas sobre competições: vitória, derrota, meta não batida e instruções para hosts.",
-    features: [
-      {
-        title: "Mensagem de Vencedor (Individual)",
-        description:
-          "\"Parabéns! Você ganhou a competição! Você vai receber R$ X. O host da competição vai entrar em contato para combinar o pagamento do prêmio.\"",
-      },
-      {
-        title: "Mensagem de Vencedor (Time)",
-        description:
-          "\"Seu time ganhou a competição! Você vai receber R$ X (prêmio dividido entre os membros do time). O host vai entrar em contato...\"",
-      },
-      {
-        title: "Mensagem de Perdedor",
-        description:
-          "Quando outro participante/time vence, você recebe uma mensagem informando quem ganhou e incentivo para próximas competições.",
-      },
-      {
-        title: "Meta Não Batida",
-        description:
-          "Se ninguém atingir a meta, todos recebem: \"A competição terminou, mas ninguém atingiu a meta. Não houve vencedor desta vez.\"",
-      },
-      {
-        title: "Mensagem para o Host",
-        description:
-          "O criador da competição recebe lista dos ganhadores com: Nome, WhatsApp, Chave PIX e valor a pagar cada um.",
-      },
-      {
-        title: "Marcar como Lida",
-        description:
-          "Clique em 'Marcar como lida' ou no X para fechar. A mensagem não reaparece após marcada.",
-      },
-    ],
-    rules: [
-      "Mensagens marcadas como lidas não reaparecem.",
-      "O host é responsável por entrar em contato e realizar o pagamento.",
-    ],
-    tips: [
-      { text: "Verifique suas notificações após o fim de cada competição." },
-    ],
-  },
-
-  // 11. ASSINATURA E PLANOS
+  // 9. ASSINATURA E PLANOS
   {
     id: "assinatura",
     title: "Assinatura e Planos",
