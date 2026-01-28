@@ -1,6 +1,12 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { TrendingUp, TrendingDown, Wallet, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface Transaction {
   id: string;
@@ -28,6 +34,7 @@ interface DailySummaryCardProps {
 
 const categoryLabels: Record<string, string> = {
   combustivel: "Combustível",
+  eletrico: "Elétrico",
   manutencao: "Manutenção",
   lavagem: "Lavagem",
   pedagio: "Pedágio",
@@ -45,125 +52,155 @@ export function DailySummaryCard({
   totalExpenses,
   netProfit,
 }: DailySummaryCardProps) {
+  const [expensesOpen, setExpensesOpen] = useState(false);
+  const [revenuesOpen, setRevenuesOpen] = useState(false);
+
+  const hasExpenses = expenses.length > 0 || recurringTotal > 0;
+  const hasRevenues = revenues.length > 0;
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-          <Wallet className="w-4 h-4" />
-          Resumo do Dia
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Summary Stats - neutral cards with semantic values only */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="p-4 rounded-lg bg-secondary/50">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Receita</span>
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        {/* Horizontal Summary Row - Mobile First */}
+        <div className="grid grid-cols-3 divide-x divide-border">
+          {/* Revenue */}
+          <div className="p-3 sm:p-4 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <TrendingUp className="w-3 h-3 text-muted-foreground" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Receita</span>
             </div>
-            <p className="text-lg font-semibold text-positive">
-              R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            <p className="text-sm sm:text-lg font-bold text-positive truncate">
+              R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
-          <div className="p-4 rounded-lg bg-secondary/50">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingDown className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Despesas</span>
+
+          {/* Expenses */}
+          <div className="p-3 sm:p-4 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <TrendingDown className="w-3 h-3 text-muted-foreground" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Despesas</span>
             </div>
-            <p className="text-lg font-semibold text-negative">
-              R$ {totalExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            <p className="text-sm sm:text-lg font-bold text-negative truncate">
+              R$ {totalExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
-          <div className="p-4 rounded-lg bg-secondary/50">
-            <div className="flex items-center gap-2 mb-1">
-              <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Lucro</span>
+
+          {/* Profit */}
+          <div className="p-3 sm:p-4 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Wallet className="w-3 h-3 text-muted-foreground" />
+              <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Lucro</span>
             </div>
             <p className={cn(
-              "text-lg font-semibold",
+              "text-sm sm:text-lg font-bold truncate",
               netProfit >= 0 ? "text-primary" : "text-negative"
             )}>
-              R$ {netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              R$ {netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
         </div>
 
-        {/* Revenues List */}
-        {revenues.length > 0 && (
-          <div className="pt-3 border-t border-border">
-            <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-              <TrendingUp className="w-3 h-3" />
-              Receitas
-            </h4>
-            <div className="space-y-1 max-h-32 overflow-y-auto">
-              {revenues.map((revenue) => (
-                <div
-                  key={revenue.id}
-                  className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/30 text-sm"
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium capitalize break-words">{revenue.app}</span>
-                    {revenue.notes && (
-                      <span className="text-xs text-muted-foreground break-words max-w-[200px]">
-                        {revenue.notes}
-                      </span>
-                    )}
-                  </div>
-                  <span className="font-medium text-positive">
-                    +R$ {Number(revenue.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Expenses List */}
-        {(expenses.length > 0 || recurringTotal > 0) && (
-          <div className="pt-3 border-t border-border">
-            <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-              <TrendingDown className="w-3 h-3" />
-              Despesas
-            </h4>
-            <div className="space-y-1 max-h-32 overflow-y-auto">
-              {expenses.map((expense) => (
-                <div
-                  key={expense.id}
-                  className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/30 text-sm"
-                >
-                  <div className="flex flex-col">
-                    <span className="font-medium break-words">
-                      {expense.source === "fuel"
-                        ? "Combustível"
-                        : categoryLabels[expense.category || ""] || expense.category}
+        {/* Collapsible Revenue Details */}
+        {hasRevenues && (
+          <Collapsible open={revenuesOpen} onOpenChange={setRevenuesOpen}>
+            <CollapsibleTrigger asChild>
+              <button className="w-full flex items-center justify-between px-4 py-2.5 border-t border-border hover:bg-accent/50 transition-colors">
+                <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <TrendingUp className="w-3 h-3 text-positive" />
+                  Ver receitas ({revenues.length})
+                </span>
+                {revenuesOpen ? (
+                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="px-4 pb-3 space-y-1.5 max-h-40 overflow-y-auto">
+                {revenues.map((revenue) => (
+                  <div
+                    key={revenue.id}
+                    className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/40 text-sm"
+                  >
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-medium capitalize truncate">{revenue.app}</span>
+                      {revenue.notes && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          {revenue.notes}
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-medium text-positive ml-2 shrink-0">
+                      +R$ {Number(revenue.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </span>
-                    {expense.notes && (
-                      <span className="text-xs text-muted-foreground break-words max-w-[200px]">
-                        {expense.notes}
-                      </span>
-                    )}
                   </div>
-                  <span className="font-medium text-negative">
-                    -R$ {expense.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-              ))}
-              {recurringTotal > 0 && (
-                <div className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/30 text-sm">
-                  <span className="font-medium">Despesas Fixas</span>
-                  <span className="font-medium text-negative">
-                    -R$ {recurringTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
-        {revenues.length === 0 && expenses.length === 0 && recurringTotal === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            Nenhum lançamento neste dia
-          </p>
+        {/* Collapsible Expense Details */}
+        {hasExpenses && (
+          <Collapsible open={expensesOpen} onOpenChange={setExpensesOpen}>
+            <CollapsibleTrigger asChild>
+              <button className="w-full flex items-center justify-between px-4 py-2.5 border-t border-border hover:bg-accent/50 transition-colors">
+                <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <TrendingDown className="w-3 h-3 text-negative" />
+                  Ver despesas ({expenses.length + (recurringTotal > 0 ? 1 : 0)})
+                </span>
+                {expensesOpen ? (
+                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                )}
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="px-4 pb-3 space-y-1.5 max-h-40 overflow-y-auto">
+                {expenses.map((expense) => (
+                  <div
+                    key={expense.id}
+                    className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/40 text-sm"
+                  >
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="font-medium truncate">
+                        {expense.source === "fuel"
+                          ? "Combustível"
+                          : categoryLabels[expense.category || ""] || expense.category}
+                      </span>
+                      {expense.notes && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          {expense.notes}
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-medium text-negative ml-2 shrink-0">
+                      -R$ {expense.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                ))}
+                {recurringTotal > 0 && (
+                  <div className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/40 text-sm">
+                    <span className="font-medium">Despesas Fixas</span>
+                    <span className="font-medium text-negative">
+                      -R$ {recurringTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
+        {/* No data message */}
+        {!hasRevenues && !hasExpenses && (
+          <div className="px-4 py-6 border-t border-border">
+            <p className="text-sm text-muted-foreground text-center">
+              Nenhum lançamento neste dia
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>

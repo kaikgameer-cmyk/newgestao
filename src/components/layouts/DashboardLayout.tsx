@@ -33,7 +33,7 @@ import { SubscriptionPaywall } from "@/components/SubscriptionPaywall";
 import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { UserMenu } from "@/components/user/UserMenu";
+import { UserMenuDropdown } from "@/components/user/UserMenuDropdown";
 import { UserAvatar } from "@/components/user/UserAvatar";
 import { AnnouncementPopup } from "@/components/announcements/AnnouncementPopup";
 
@@ -212,7 +212,7 @@ export default function DashboardLayout() {
                   )}
                 >
                   <item.icon className={cn(
-                    "w-4 h-4",
+                    "w-4 h-4 shrink-0",
                     isItemActive ? "text-primary" : "text-muted-foreground"
                   )} />
                   {item.label}
@@ -221,14 +221,15 @@ export default function DashboardLayout() {
             })}
           </nav>
 
-          {/* User section */}
-          <div className="p-3 border-t border-sidebar-border">
-            <UserMenu
+          {/* User section - fixed at bottom */}
+          <div className="p-3 border-t border-sidebar-border shrink-0">
+            <UserMenuDropdown
               user={user}
               profile={profile}
               subscription={subscription}
               subscriptionIsActive={subscriptionIsActive}
               onLogout={handleLogout}
+              onNavigate={() => setSidebarOpen(false)}
               variant="sidebar"
             />
           </div>

@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useTicketMessages, useSendMessage, useMarkTicketRead, useUpdateTicketStatus, useTickets, SupportMessage } from "@/hooks/useSupport";
+import { useTicketMessages, useSendMessage, useMarkTicketRead, useUpdateTicketStatus, useTickets, useDeleteTicket, SupportMessage } from "@/hooks/useSupport";
 import { useSupportRole } from "@/hooks/useSupportAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -17,9 +16,10 @@ import {
 } from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Send, Image as ImageIcon, Loader2, AlertCircle, User, Headphones } from "lucide-react";
+import { Send, Image as ImageIcon, Loader2, AlertCircle, User, Headphones, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SupportAttachmentPreview } from "./SupportAttachmentPreview";
+import { TicketActions } from "./TicketActions";
 import { toast } from "@/hooks/use-toast";
 
 interface TicketChatProps {
@@ -83,6 +83,7 @@ export function TicketChat({ ticketId, userId, isAdmin }: TicketChatProps) {
   const sendMessage = useSendMessage();
   const markRead = useMarkTicketRead();
   const updateStatus = useUpdateTicketStatus();
+  const deleteTicket = useDeleteTicket();
 
   const [messageInput, setMessageInput] = useState("");
   const [attachments, setAttachments] = useState<Array<{ file: File; preview: string }>>([]);
@@ -92,7 +93,9 @@ export function TicketChat({ ticketId, userId, isAdmin }: TicketChatProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const ticket = tickets?.find((t) => t.id === ticketId);
-  const isClosed = ticket?.status === "resolved" || ticket?.status === "closed";
+  const isClosed = ticket?.status === "closed";
+  const isResolved = ticket?.status === "resolved";
+  const canSendMessage = !isClosed;
   const statusConfig = getStatusConfig(ticket?.status || "open");
 
   // Ticket owner info
@@ -156,10 +159,10 @@ export function TicketChat({ ticketId, userId, isAdmin }: TicketChatProps) {
 
   const handleSend = async () => {
     if (!messageInput.trim() && attachments.length === 0) return;
-    if (isClosed) {
+    if (!canSendMessage) {
       toast({
-        title: "Ticket finalizado",
-        description: "Não é possível enviar mensagens em um ticket fechado.",
+        title: "Ticket arquivado",
+        description: "Não é possível enviar mensagens em um ticket arquivado.",
         variant: "destructive",
       });
       return;
@@ -334,24 +337,36 @@ export function TicketChat({ ticketId, userId, isAdmin }: TicketChatProps) {
             </div>
           </div>
           
-          {/* Status changer for staff */}
+          {/* Actions for staff */}
           {isAdmin && ticket && (
-            <Select
-              value={ticket.status}
-              onValueChange={(value: any) =>
-                updateStatus.mutate({ ticketId, status: value })
-              }
-            >
-              <SelectTrigger className="w-32 h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="open">Aberto</SelectItem>
-                <SelectItem value="pending">Pendente</SelectItem>
-                <SelectItem value="resolved">Resolvido</SelectItem>
-                <SelectItem value="closed">Fechado</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select
+                value={ticket.status}
+                onValueChange={(value: any) =>
+                  updateStatus.mutate({ ticketId, status: value })
+                }
+              >
+                <SelectTrigger className="w-32 h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover z-50">
+                  <SelectItem value="open">Aberto</SelectItem>
+                  <SelectItem value="pending">Pendente</SelectItem>
+                  <SelectItem value="resolved">Resolvido</SelectItem>
+                  <SelectItem value="closed">Arquivado</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <TicketActions
+                ticketId={ticketId}
+                status={ticket.status}
+                onArchive={() => updateStatus.mutate({ ticketId, status: "closed" })}
+                onDelete={() => deleteTicket.mutate(ticketId)}
+                onReopen={() => updateStatus.mutate({ ticketId, status: "open" })}
+                onResolve={() => updateStatus.mutate({ ticketId, status: "resolved" })}
+                isDeleting={deleteTicket.isPending}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -443,13 +458,25 @@ export function TicketChat({ ticketId, userId, isAdmin }: TicketChatProps) {
       </div>
 
       {/* Input */}
-      {isClosed ? (
+      {!canSendMessage ? (
         <div className="p-4 border-t border-border bg-muted/50">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <AlertCircle className="h-4 w-4" />
-            <span className="text-sm">
-              Ticket finalizado. {!isAdmin && "Abra um novo ticket para continuar."}
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm">
+                {isClosed ? "Ticket arquivado." : "Ticket resolvido."} {!isAdmin && "Abra um novo ticket para continuar."}
+              </span>
+            </div>
+            {isAdmin && (isClosed || isResolved) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => updateStatus.mutate({ ticketId, status: "open" })}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reabrir
+              </Button>
+            )}
           </div>
         </div>
       ) : (

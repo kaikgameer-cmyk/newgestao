@@ -289,6 +289,8 @@ export function useUpdateTicketStatus() {
       const updateData: any = { status };
       if (status === "resolved" || status === "closed") {
         updateData.resolved_at = new Date().toISOString();
+      } else {
+        updateData.resolved_at = null;
       }
 
       const { data, error } = await supabase
@@ -312,6 +314,53 @@ export function useUpdateTicketStatus() {
       console.error("Error updating ticket status:", error);
       toast({
         title: "Erro ao atualizar status",
+        description: error.message || "Tente novamente.",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useDeleteTicket() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ticketId: string) => {
+      // First delete all messages
+      const { error: messagesError } = await supabase
+        .from("support_messages")
+        .delete()
+        .eq("ticket_id", ticketId);
+
+      if (messagesError) throw messagesError;
+
+      // Delete read records
+      const { error: readsError } = await supabase
+        .from("support_reads")
+        .delete()
+        .eq("ticket_id", ticketId);
+
+      if (readsError) throw readsError;
+
+      // Finally delete the ticket
+      const { error } = await supabase
+        .from("support_tickets")
+        .delete()
+        .eq("id", ticketId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["support-tickets"] });
+      toast({
+        title: "Ticket excluído",
+        description: "O ticket foi excluído permanentemente.",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Error deleting ticket:", error);
+      toast({
+        title: "Erro ao excluir ticket",
         description: error.message || "Tente novamente.",
         variant: "destructive",
       });
