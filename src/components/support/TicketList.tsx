@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useTickets } from "@/hooks/useSupport";
+import { useTickets, useUpdateTicketStatus, useDeleteTicket } from "@/hooks/useSupport";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,8 +8,9 @@ import { ptBR } from "date-fns/locale";
 import { Loader2, TicketIcon, ArrowUp, ArrowDown, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TicketActions } from "./TicketActions";
 
-type StatusFilter = "all" | "open" | "pending" | "resolved";
+type StatusFilter = "all" | "open" | "pending" | "resolved" | "closed";
 type SortOrder = "newest" | "oldest";
 
 interface TicketListProps {
@@ -35,10 +36,10 @@ function getInitials(name: string | null | undefined, firstName?: string | null,
 
 function getStatusConfig(status: string) {
   const configs: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive"; color: string }> = {
-    open: { label: "Aberto", variant: "default", color: "bg-green-500" },
-    pending: { label: "Pendente", variant: "secondary", color: "bg-yellow-500" },
-    resolved: { label: "Resolvido", variant: "outline", color: "bg-blue-500" },
-    closed: { label: "Fechado", variant: "outline", color: "bg-muted-foreground" },
+    open: { label: "Aberto", variant: "default", color: "bg-positive" },
+    pending: { label: "Pendente", variant: "secondary", color: "bg-warning" },
+    resolved: { label: "Resolvido", variant: "outline", color: "bg-primary" },
+    closed: { label: "Arquivado", variant: "outline", color: "bg-muted-foreground" },
   };
   return configs[status] || configs.open;
 }
@@ -50,6 +51,8 @@ export function TicketList({
   selectedTicketId,
 }: TicketListProps) {
   const { data: tickets, isLoading } = useTickets(userId, isAdmin);
+  const updateStatus = useUpdateTicketStatus();
+  const deleteTicket = useDeleteTicket();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
 
@@ -69,12 +72,13 @@ export function TicketList({
   }, [tickets, statusFilter, sortOrder]);
 
   const statusCounts = useMemo(() => {
-    if (!tickets) return { all: 0, open: 0, pending: 0, resolved: 0 };
+    if (!tickets) return { all: 0, open: 0, pending: 0, resolved: 0, closed: 0 };
     return {
       all: tickets.length,
       open: tickets.filter(t => t.status === "open").length,
       pending: tickets.filter(t => t.status === "pending").length,
-      resolved: tickets.filter(t => t.status === "resolved" || t.status === "closed").length,
+      resolved: tickets.filter(t => t.status === "resolved").length,
+      closed: tickets.filter(t => t.status === "closed").length,
     };
   }, [tickets]);
 
@@ -84,6 +88,28 @@ export function TicketList({
     { value: "pending", label: "Pendentes" },
     { value: "resolved", label: "Resolvidos" },
   ];
+
+  const handleArchive = (ticketId: string) => {
+    updateStatus.mutate({ ticketId, status: "closed" });
+    if (selectedTicketId === ticketId) {
+      onSelectTicket("");
+    }
+  };
+
+  const handleDelete = (ticketId: string) => {
+    deleteTicket.mutate(ticketId);
+    if (selectedTicketId === ticketId) {
+      onSelectTicket("");
+    }
+  };
+
+  const handleReopen = (ticketId: string) => {
+    updateStatus.mutate({ ticketId, status: "open" });
+  };
+
+  const handleResolve = (ticketId: string) => {
+    updateStatus.mutate({ ticketId, status: "resolved" });
+  };
 
   if (isLoading) {
     return (
@@ -119,7 +145,7 @@ export function TicketList({
               <TabsTrigger 
                 key={filter.value} 
                 value={filter.value}
-                className="text-xs gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                className="text-xs gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 {filter.label}
                 {statusCounts[filter.value] > 0 && (
@@ -171,7 +197,7 @@ export function TicketList({
               <Card
                 key={ticket.id}
                 className={cn(
-                  "p-3 cursor-pointer hover:bg-accent/50 transition-colors",
+                  "p-3 cursor-pointer hover:bg-accent/50 transition-colors group",
                   isSelected && "bg-accent border-primary ring-1 ring-primary/20"
                 )}
                 onClick={() => onSelectTicket(ticket.id)}
@@ -214,7 +240,7 @@ export function TicketList({
                       </p>
                     )}
                     
-                    {/* Footer: tempo + unread */}
+                    {/* Footer: tempo + unread + actions */}
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>
                         {formatDistanceToNow(new Date(ticket.last_message_at), {
@@ -222,11 +248,31 @@ export function TicketList({
                           locale: ptBR,
                         })}
                       </span>
-                      {ticket.unread_count && ticket.unread_count > 0 ? (
-                        <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-[10px]">
-                          {ticket.unread_count > 9 ? "9+" : ticket.unread_count}
-                        </Badge>
-                      ) : null}
+                      <div className="flex items-center gap-2">
+                        {ticket.unread_count && ticket.unread_count > 0 ? (
+                          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-[10px]">
+                            {ticket.unread_count > 9 ? "9+" : ticket.unread_count}
+                          </Badge>
+                        ) : null}
+                        
+                        {/* Actions dropdown for admin */}
+                        {isAdmin && (
+                          <div 
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <TicketActions
+                              ticketId={ticket.id}
+                              status={ticket.status}
+                              onArchive={handleArchive}
+                              onDelete={handleDelete}
+                              onReopen={handleReopen}
+                              onResolve={handleResolve}
+                              isDeleting={deleteTicket.isPending}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
