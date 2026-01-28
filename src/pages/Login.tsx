@@ -197,46 +197,46 @@ export default function Login() {
           <img
             src={heroCarImage}
             alt="Carro de app à noite"
-            className="w-full h-full object-cover opacity-60"
+            className="w-full h-full object-cover opacity-50"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
         </div>
         
         <div className="relative z-10 flex flex-col justify-center p-12">
-          <Link to="/" className="flex items-center gap-2 mb-12">
-            <img src="/logo-ng.png" alt="New Gestão" className="w-10 h-10" />
-            <span className="text-xl font-semibold">New Gestão</span>
+          {/* Logo only - no text */}
+          <Link to="/" className="flex items-center mb-12">
+            <img src="/logo-ng.png" alt="New Gestão" className="w-12 h-12" />
           </Link>
           
-          <h1 className="text-4xl font-bold mb-4">
+          <h1 className="text-3xl font-semibold mb-3 text-foreground">
             Seu painel financeiro de motorista
           </h1>
-          <p className="text-xl text-muted-foreground mb-12">
+          <p className="text-lg text-muted-foreground mb-10">
             Acompanhe seus ganhos e despesas de forma simples
           </p>
           
-          {/* Floating stats cards */}
-          <div className="space-y-4">
-            <Card className="inline-flex animate-float bg-card/90 backdrop-blur-sm">
+          {/* Floating stats cards - more subtle */}
+          <div className="space-y-3">
+            <Card className="inline-flex animate-float bg-card/80 backdrop-blur-sm border-border/50">
               <CardContent className="flex items-center gap-3 p-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-primary" />
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Lucro da semana</p>
-                  <p className="text-xl font-bold">R$ 1.250</p>
+                  <p className="text-xs text-muted-foreground">Lucro da semana</p>
+                  <p className="text-lg font-semibold">R$ 1.250</p>
                 </div>
               </CardContent>
             </Card>
             
-            <Card className="inline-flex animate-float ml-8 bg-card/90 backdrop-blur-sm" style={{ animationDelay: "1s" }}>
+            <Card className="inline-flex animate-float ml-8 bg-card/80 backdrop-blur-sm border-border/50" style={{ animationDelay: "1s" }}>
               <CardContent className="flex items-center gap-3 p-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                  <Fuel className="w-5 h-5 text-primary" />
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Fuel className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Combustível</p>
-                  <p className="text-xl font-bold">18% das despesas</p>
+                  <p className="text-xs text-muted-foreground">Combustível</p>
+                  <p className="text-lg font-semibold">18% das despesas</p>
                 </div>
               </CardContent>
             </Card>
@@ -245,24 +245,23 @@ export default function Login() {
       </div>
       
       {/* Right side - Login form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <div className="w-full max-w-md space-y-8">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
-            <img src="/logo-ng.png" alt="New Gestão" className="w-10 h-10" />
-            <span className="text-xl font-semibold">New Gestão</span>
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-8">
+          {/* Mobile logo - only icon, centered */}
+          <div className="lg:hidden flex items-center justify-center mb-8">
+            <img src="/logo-ng.png" alt="New Gestão" className="w-12 h-12" />
           </div>
           
           <div className="text-center lg:text-left">
-            <h2 className="text-3xl font-bold mb-2">Entrar</h2>
-            <p className="text-muted-foreground">
+            <h2 className="text-2xl font-semibold mb-2">Entrar</h2>
+            <p className="text-sm text-muted-foreground">
               Acesse sua conta para ver seus resultados
             </p>
           </div>
           
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-sm">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -273,12 +272,12 @@ export default function Login() {
                 className={errors.email ? "border-destructive" : ""}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
+                <p className="text-xs text-destructive">{errors.email}</p>
               )}
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
+              <Label htmlFor="password" className="text-sm">Senha</Label>
               <Input
                 id="password"
                 type="password"
@@ -290,20 +289,19 @@ export default function Login() {
                 className={errors.password ? "border-destructive" : ""}
               />
               {errors.password && (
-                <p className="text-sm text-destructive">{errors.password}</p>
+                <p className="text-xs text-destructive">{errors.password}</p>
               )}
             </div>
             
             <Button
               type="submit"
-              variant="hero"
-              size="xl"
               className="w-full"
+              size="lg"
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Entrando...
                 </>
               ) : (
@@ -321,12 +319,12 @@ export default function Login() {
                 }}
                 className="text-sm text-muted-foreground hover:text-primary transition-colors"
               >
-                Esqueci minha senha / Definir senha
+                Esqueci minha senha
               </button>
             </div>
           </form>
           
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground">
             Seu painel financeiro de motorista, em segundos.
           </p>
         </div>
@@ -337,17 +335,17 @@ export default function Login() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Mail className="w-5 h-5 text-primary" />
-              Definir Senha
+              <Mail className="w-4 h-4 text-primary" />
+              Recuperar Senha
             </DialogTitle>
             <DialogDescription>
-              Digite seu email para receber um link de definição de senha.
+              Digite seu email para receber um link de recuperação.
             </DialogDescription>
           </DialogHeader>
           
           <form onSubmit={handleForgotPassword} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="forgot-email">Email</Label>
+              <Label htmlFor="forgot-email" className="text-sm">Email</Label>
               <Input
                 id="forgot-email"
                 type="email"
@@ -358,7 +356,7 @@ export default function Login() {
                 autoFocus
               />
               {forgotError && (
-                <p className="text-sm text-destructive">{forgotError}</p>
+                <p className="text-xs text-destructive">{forgotError}</p>
               )}
             </div>
             

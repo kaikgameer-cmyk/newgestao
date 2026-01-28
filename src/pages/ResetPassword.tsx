@@ -210,17 +210,17 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <Link to="/" className="flex items-center justify-center gap-2 mb-4">
-            <img src="/logo-ng.png" alt="New Gestão" className="w-10 h-10" />
-            <span className="text-xl font-semibold">New Gestão</span>
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center space-y-4">
+          {/* Logo only - no text */}
+          <Link to="/" className="flex items-center justify-center">
+            <img src="/logo-ng.png" alt="New Gestão" className="w-12 h-12" />
           </Link>
           
           {mode === "request" && (
             <>
-              <CardTitle className="text-2xl">Esqueci minha senha</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-xl">Recuperar senha</CardTitle>
+              <CardDescription className="text-sm">
                 Digite seu email para receber um link de recuperação
               </CardDescription>
             </>
@@ -228,8 +228,8 @@ export default function ResetPassword() {
           
           {mode === "reset" && (
             <>
-              <CardTitle className="text-2xl">Definir nova senha</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-xl">Definir nova senha</CardTitle>
+              <CardDescription className="text-sm">
                 Crie uma senha segura para sua conta
               </CardDescription>
             </>
@@ -237,8 +237,8 @@ export default function ResetPassword() {
           
           {mode === "success" && (
             <>
-              <CardTitle className="text-2xl">Email enviado!</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-xl">Email enviado!</CardTitle>
+              <CardDescription className="text-sm">
                 Verifique sua caixa de entrada
               </CardDescription>
             </>
@@ -249,7 +249,7 @@ export default function ResetPassword() {
           {mode === "request" && (
             <form onSubmit={handleRequestReset} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -260,13 +260,12 @@ export default function ResetPassword() {
                   className={errors.email ? "border-destructive" : ""}
                 />
                 {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
+                  <p className="text-xs text-destructive">{errors.email}</p>
                 )}
               </div>
 
               <Button
                 type="submit"
-                variant="hero"
                 className="w-full"
                 disabled={isLoading}
               >
@@ -281,7 +280,7 @@ export default function ResetPassword() {
               </Button>
 
               <div className="text-center">
-                <Link to="/login" className="text-sm text-muted-foreground hover:text-primary">
+                <Link to="/login" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Voltar para o login
                 </Link>
               </div>
@@ -291,7 +290,7 @@ export default function ResetPassword() {
           {mode === "reset" && (
             <form onSubmit={handleUpdatePassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="password">Nova senha</Label>
+                <Label htmlFor="password" className="text-sm">Nova senha</Label>
                 <Input
                   id="password"
                   type="password"
@@ -302,12 +301,12 @@ export default function ResetPassword() {
                   className={errors.password ? "border-destructive" : ""}
                 />
                 {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
+                  <p className="text-xs text-destructive">{errors.password}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar senha</Label>
+                <Label htmlFor="confirmPassword" className="text-sm">Confirmar senha</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -318,13 +317,12 @@ export default function ResetPassword() {
                   className={errors.confirmPassword ? "border-destructive" : ""}
                 />
                 {errors.confirmPassword && (
-                  <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                  <p className="text-xs text-destructive">{errors.confirmPassword}</p>
                 )}
               </div>
 
               <Button
                 type="submit"
-                variant="hero"
                 className="w-full"
                 disabled={isLoading}
               >
@@ -346,13 +344,13 @@ export default function ResetPassword() {
           {mode === "success" && (
             <div className="text-center space-y-4">
               <div className="flex justify-center">
-                <CheckCircle2 className="w-16 h-16 text-primary" />
+                <CheckCircle2 className="w-14 h-14 text-primary" />
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Enviamos um link de recuperação para <strong>{email}</strong>.
                 Verifique sua caixa de entrada e clique no link para definir sua nova senha.
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Não recebeu? Verifique a pasta de spam ou{" "}
                 <button 
                   onClick={() => setMode("request")} 

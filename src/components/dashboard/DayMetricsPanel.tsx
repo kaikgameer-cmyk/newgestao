@@ -10,6 +10,7 @@ import {
   Gauge,
   Calculator
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DayMetricsPanelProps {
   totalTrips: number;
@@ -37,7 +38,7 @@ export function DayMetricsPanel({
 
   // Format currency
   const formatCurrency = (value: number | null): string => {
-    if (value === null) return "R$ —";
+    if (value === null) return "—";
     return `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
@@ -61,153 +62,153 @@ export function DayMetricsPanel({
   const profitPerHour = safeDivide(profit, workedHours);
   const profitPerKm = safeDivide(profit, kmRodados);
 
-  const metrics = [
-    // Row 1: Base data
-    {
-      title: "Viagens",
-      value: totalTrips > 0 ? totalTrips.toString() : "—",
-      icon: Car,
-      color: "text-primary",
-      bg: "bg-primary/10",
-    },
-    {
-      title: "Horas",
-      value: workedMinutes > 0 ? formatHours(workedMinutes) : "—",
-      icon: Clock,
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
-    },
-    {
-      title: "KM Rodados",
-      value: kmRodados > 0 ? `${kmRodados.toLocaleString("pt-BR")} km` : "—",
-      icon: MapPin,
-      color: "text-orange-500",
-      bg: "bg-orange-500/10",
-    },
-    // Row 2: Financials
-    {
-      title: "Receita",
-      value: formatCurrency(revenue > 0 ? revenue : null),
-      icon: DollarSign,
-      color: "text-green-500",
-      bg: "bg-green-500/10",
-    },
-    {
-      title: "Despesas",
-      value: formatCurrency(expenses > 0 ? expenses : null),
-      icon: TrendingDown,
-      color: "text-red-500",
-      bg: "bg-red-500/10",
-    },
-    {
-      title: "Lucro",
-      value: formatCurrency(profit !== 0 || (revenue > 0 || expenses > 0) ? profit : null),
-      icon: TrendingUp,
-      color: profit >= 0 ? "text-primary" : "text-red-500",
-      bg: profit >= 0 ? "bg-primary/10" : "bg-red-500/10",
-    },
-    // Row 3: Revenue derived metrics
-    {
-      title: "Faturamento/Viagem",
-      value: formatCurrency(revenuePerTrip),
-      icon: Car,
-      color: "text-green-500",
-      bg: "bg-green-500/5",
-      small: true,
-    },
-    {
-      title: "Faturamento/Hora",
-      value: formatCurrency(revenuePerHour),
-      icon: Timer,
-      color: "text-green-500",
-      bg: "bg-green-500/5",
-      small: true,
-    },
-    {
-      title: "Faturamento/KM",
-      value: formatCurrency(revenuePerKm),
-      icon: Gauge,
-      color: "text-green-500",
-      bg: "bg-green-500/5",
-      small: true,
-    },
-    // Row 4: Cost derived metrics
-    {
-      title: "Custo/Viagem",
-      value: formatCurrency(costPerTrip),
-      icon: Car,
-      color: "text-red-500",
-      bg: "bg-red-500/5",
-      small: true,
-    },
-    {
-      title: "Custo/Hora",
-      value: formatCurrency(costPerHour),
-      icon: Timer,
-      color: "text-red-500",
-      bg: "bg-red-500/5",
-      small: true,
-    },
-    {
-      title: "Custo/KM",
-      value: formatCurrency(costPerKm),
-      icon: Gauge,
-      color: "text-red-500",
-      bg: "bg-red-500/5",
-      small: true,
-    },
-    // Row 5: Profit derived metrics
-    {
-      title: "Lucro/Viagem",
-      value: formatCurrency(profitPerTrip),
-      icon: Calculator,
-      color: profitPerTrip !== null && profitPerTrip >= 0 ? "text-primary" : "text-red-500",
-      bg: profitPerTrip !== null && profitPerTrip >= 0 ? "bg-primary/5" : "bg-red-500/5",
-      small: true,
-    },
-    {
-      title: "Lucro/Hora",
-      value: formatCurrency(profitPerHour),
-      icon: Calculator,
-      color: profitPerHour !== null && profitPerHour >= 0 ? "text-primary" : "text-red-500",
-      bg: profitPerHour !== null && profitPerHour >= 0 ? "bg-primary/5" : "bg-red-500/5",
-      small: true,
-    },
-    {
-      title: "Lucro/KM",
-      value: formatCurrency(profitPerKm),
-      icon: Calculator,
-      color: profitPerKm !== null && profitPerKm >= 0 ? "text-primary" : "text-red-500",
-      bg: profitPerKm !== null && profitPerKm >= 0 ? "bg-primary/5" : "bg-red-500/5",
-      small: true,
-    },
-  ];
+  // Metric item component - consistent neutral styling
+  const MetricItem = ({ 
+    title, 
+    value, 
+    icon: Icon, 
+    valueClass = "text-foreground",
+    small = false 
+  }: { 
+    title: string; 
+    value: string; 
+    icon: any;
+    valueClass?: string;
+    small?: boolean;
+  }) => (
+    <div className="rounded-lg p-3 bg-secondary/40">
+      <div className="flex items-center gap-1.5 mb-1">
+        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">{title}</span>
+      </div>
+      <p className={cn(
+        "font-semibold break-words",
+        small ? "text-sm" : "text-base",
+        valueClass
+      )}>
+        {value}
+      </p>
+    </div>
+  );
 
   return (
-    <Card variant="elevated">
+    <Card>
       <CardContent className="p-4">
-        <h3 className="font-semibold mb-4 text-base">Métricas do Dia</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
-          {metrics.map((metric, index) => (
-            <div
-              key={metric.title}
-              className={`rounded-lg p-2 sm:p-3 ${metric.bg} ${metric.small ? "col-span-1" : ""}`}
-            >
-              <div className="flex items-center gap-1.5 mb-1">
-                <metric.icon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${metric.color}`} />
-                <span className="text-[10px] sm:text-xs text-muted-foreground break-words">
-                  {metric.title}
-                </span>
-              </div>
-              <p
-                className={`font-semibold ${
-                  metric.small ? "text-xs sm:text-sm" : "text-sm sm:text-base"
-                } ${metric.color} break-words`}
-              >
-                {metric.value}
-              </p>
-            </div>
-          ))}
+        <h3 className="text-sm font-medium text-muted-foreground mb-4">Métricas do Dia</h3>
+        
+        {/* Row 1: Base data */}
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <MetricItem 
+            title="Viagens" 
+            value={totalTrips > 0 ? totalTrips.toString() : "—"} 
+            icon={Car} 
+          />
+          <MetricItem 
+            title="Horas" 
+            value={workedMinutes > 0 ? formatHours(workedMinutes) : "—"} 
+            icon={Clock} 
+          />
+          <MetricItem 
+            title="KM Rodados" 
+            value={kmRodados > 0 ? `${kmRodados.toLocaleString("pt-BR")} km` : "—"} 
+            icon={MapPin} 
+          />
+        </div>
+
+        {/* Row 2: Financials */}
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <MetricItem 
+            title="Receita" 
+            value={formatCurrency(revenue > 0 ? revenue : null)} 
+            icon={DollarSign}
+            valueClass={revenue > 0 ? "text-positive" : "text-muted-foreground"}
+          />
+          <MetricItem 
+            title="Despesas" 
+            value={formatCurrency(expenses > 0 ? expenses : null)} 
+            icon={TrendingDown}
+            valueClass={expenses > 0 ? "text-negative" : "text-muted-foreground"}
+          />
+          <MetricItem 
+            title="Lucro" 
+            value={formatCurrency(profit !== 0 || (revenue > 0 || expenses > 0) ? profit : null)} 
+            icon={TrendingUp}
+            valueClass={profit >= 0 ? "text-primary" : "text-negative"}
+          />
+        </div>
+
+        {/* Derived metrics - smaller, more subtle */}
+        <div className="pt-3 border-t border-border">
+          <p className="text-xs text-muted-foreground mb-2">Por Viagem / Hora / KM</p>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <MetricItem 
+              title="Fat./Viagem" 
+              value={formatCurrency(revenuePerTrip)} 
+              icon={Car}
+              valueClass={revenuePerTrip !== null ? "text-positive" : "text-muted-foreground"}
+              small
+            />
+            <MetricItem 
+              title="Fat./Hora" 
+              value={formatCurrency(revenuePerHour)} 
+              icon={Timer}
+              valueClass={revenuePerHour !== null ? "text-positive" : "text-muted-foreground"}
+              small
+            />
+            <MetricItem 
+              title="Fat./KM" 
+              value={formatCurrency(revenuePerKm)} 
+              icon={Gauge}
+              valueClass={revenuePerKm !== null ? "text-positive" : "text-muted-foreground"}
+              small
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <MetricItem 
+              title="Custo/Viagem" 
+              value={formatCurrency(costPerTrip)} 
+              icon={Car}
+              valueClass={costPerTrip !== null ? "text-negative" : "text-muted-foreground"}
+              small
+            />
+            <MetricItem 
+              title="Custo/Hora" 
+              value={formatCurrency(costPerHour)} 
+              icon={Timer}
+              valueClass={costPerHour !== null ? "text-negative" : "text-muted-foreground"}
+              small
+            />
+            <MetricItem 
+              title="Custo/KM" 
+              value={formatCurrency(costPerKm)} 
+              icon={Gauge}
+              valueClass={costPerKm !== null ? "text-negative" : "text-muted-foreground"}
+              small
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <MetricItem 
+              title="Lucro/Viagem" 
+              value={formatCurrency(profitPerTrip)} 
+              icon={Calculator}
+              valueClass={profitPerTrip !== null && profitPerTrip >= 0 ? "text-primary" : profitPerTrip !== null ? "text-negative" : "text-muted-foreground"}
+              small
+            />
+            <MetricItem 
+              title="Lucro/Hora" 
+              value={formatCurrency(profitPerHour)} 
+              icon={Calculator}
+              valueClass={profitPerHour !== null && profitPerHour >= 0 ? "text-primary" : profitPerHour !== null ? "text-negative" : "text-muted-foreground"}
+              small
+            />
+            <MetricItem 
+              title="Lucro/KM" 
+              value={formatCurrency(profitPerKm)} 
+              icon={Calculator}
+              valueClass={profitPerKm !== null && profitPerKm >= 0 ? "text-primary" : profitPerKm !== null ? "text-negative" : "text-muted-foreground"}
+              small
+            />
+          </div>
         </div>
       </CardContent>
     </Card>

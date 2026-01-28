@@ -406,17 +406,17 @@ export default function DefinirSenha() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <Link to="/" className="flex items-center justify-center gap-2 mb-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center space-y-4">
+          {/* Logo only - no text */}
+          <Link to="/" className="flex items-center justify-center">
             <img src="/logo-ng.png" alt="New Gestão" className="w-12 h-12" />
-            <span className="text-xl font-semibold">New Gestão</span>
           </Link>
 
           {pageState === "loading" && (
             <>
-              <CardTitle className="text-2xl">Validando link...</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-xl">Validando link...</CardTitle>
+              <CardDescription className="text-sm">
                 Aguarde enquanto verificamos seu link de acesso.
               </CardDescription>
             </>
@@ -424,28 +424,28 @@ export default function DefinirSenha() {
 
           {pageState === "form" && (
             <>
-              <CardTitle className="text-2xl">Criar sua senha</CardTitle>
-              <CardDescription>
-                Defina sua senha para acessar o New Gestão.
+              <CardTitle className="text-xl">Criar sua senha</CardTitle>
+              <CardDescription className="text-sm">
+                Defina sua senha para acessar a plataforma.
               </CardDescription>
             </>
           )}
 
           {pageState === "success" && (
             <>
-              <CardTitle className="text-2xl text-primary">Senha criada com sucesso!</CardTitle>
-              <CardDescription>
-                Agora você já pode acessar o New Gestão.
+              <CardTitle className="text-xl text-primary">Senha criada!</CardTitle>
+              <CardDescription className="text-sm">
+                Agora você já pode acessar a plataforma.
               </CardDescription>
             </>
           )}
 
           {(pageState === "error" || pageState === "invalid") && (
             <>
-              <CardTitle className="text-2xl text-destructive">
-                {pageState === "invalid" ? "Link inválido" : "Ops! Algo deu errado"}
+              <CardTitle className="text-xl text-destructive">
+                {pageState === "invalid" ? "Link inválido" : "Algo deu errado"}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 {errorMessage || "Não foi possível definir sua senha."}
               </CardDescription>
             </>

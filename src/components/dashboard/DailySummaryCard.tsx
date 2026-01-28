@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Transaction {
   id: string;
@@ -45,34 +46,43 @@ export function DailySummaryCard({
   netProfit,
 }: DailySummaryCardProps) {
   return (
-    <Card variant="elevated">
+    <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Wallet className="w-4 h-4 text-primary" />
+        <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <Wallet className="w-4 h-4" />
           Resumo do Dia
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Summary Stats */}
+        {/* Summary Stats - neutral cards with semantic values only */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-center">
-            <TrendingUp className="w-4 h-4 text-success mx-auto mb-1" />
-            <p className="text-xs text-muted-foreground">Receita</p>
-            <p className="text-lg font-bold text-success">
+          <div className="p-4 rounded-lg bg-secondary/50">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Receita</span>
+            </div>
+            <p className="text-lg font-semibold text-positive">
               R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
           </div>
-          <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-center">
-            <TrendingDown className="w-4 h-4 text-destructive mx-auto mb-1" />
-            <p className="text-xs text-muted-foreground">Despesas</p>
-            <p className="text-lg font-bold text-destructive">
+          <div className="p-4 rounded-lg bg-secondary/50">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingDown className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Despesas</span>
+            </div>
+            <p className="text-lg font-semibold text-negative">
               R$ {totalExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
           </div>
-          <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-center">
-            <Wallet className="w-4 h-4 text-primary mx-auto mb-1" />
-            <p className="text-xs text-muted-foreground">Lucro</p>
-            <p className={`text-lg font-bold ${netProfit >= 0 ? "text-primary" : "text-destructive"}`}>
+          <div className="p-4 rounded-lg bg-secondary/50">
+            <div className="flex items-center gap-2 mb-1">
+              <Wallet className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Lucro</span>
+            </div>
+            <p className={cn(
+              "text-lg font-semibold",
+              netProfit >= 0 ? "text-primary" : "text-negative"
+            )}>
               R$ {netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
           </div>
@@ -81,25 +91,25 @@ export function DailySummaryCard({
         {/* Revenues List */}
         {revenues.length > 0 && (
           <div className="pt-3 border-t border-border">
-            <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5 text-success" />
+            <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+              <TrendingUp className="w-3 h-3" />
               Receitas
             </h4>
-            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+            <div className="space-y-1 max-h-32 overflow-y-auto">
               {revenues.map((revenue) => (
                 <div
                   key={revenue.id}
-                  className="flex items-center justify-between py-1.5 px-2 rounded bg-secondary/30 text-sm"
+                  className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/30 text-sm"
                 >
                   <div className="flex flex-col">
                     <span className="font-medium capitalize break-words">{revenue.app}</span>
                     {revenue.notes && (
-                      <span className="text-xs text-muted-foreground break-words max-w-[220px]">
+                      <span className="text-xs text-muted-foreground break-words max-w-[200px]">
                         {revenue.notes}
                       </span>
                     )}
                   </div>
-                  <span className="font-medium text-success">
+                  <span className="font-medium text-positive">
                     +R$ {Number(revenue.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -111,15 +121,15 @@ export function DailySummaryCard({
         {/* Expenses List */}
         {(expenses.length > 0 || recurringTotal > 0) && (
           <div className="pt-3 border-t border-border">
-            <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-              <TrendingDown className="w-3.5 h-3.5 text-destructive" />
+            <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+              <TrendingDown className="w-3 h-3" />
               Despesas
             </h4>
-            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+            <div className="space-y-1 max-h-32 overflow-y-auto">
               {expenses.map((expense) => (
                 <div
                   key={expense.id}
-                  className="flex items-center justify-between py-1.5 px-2 rounded bg-secondary/30 text-sm"
+                  className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/30 text-sm"
                 >
                   <div className="flex flex-col">
                     <span className="font-medium break-words">
@@ -128,20 +138,20 @@ export function DailySummaryCard({
                         : categoryLabels[expense.category || ""] || expense.category}
                     </span>
                     {expense.notes && (
-                      <span className="text-xs text-muted-foreground break-words max-w-[220px]">
+                      <span className="text-xs text-muted-foreground break-words max-w-[200px]">
                         {expense.notes}
                       </span>
                     )}
                   </div>
-                  <span className="font-medium text-destructive">
+                  <span className="font-medium text-negative">
                     -R$ {expense.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               ))}
               {recurringTotal > 0 && (
-                <div className="flex items-center justify-between py-1.5 px-2 rounded bg-secondary/30 text-sm">
+                <div className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/30 text-sm">
                   <span className="font-medium">Despesas Fixas</span>
-                  <span className="font-medium text-destructive">
+                  <span className="font-medium text-negative">
                     -R$ {recurringTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
