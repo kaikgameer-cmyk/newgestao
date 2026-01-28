@@ -165,20 +165,20 @@ export default function DashboardLayout() {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - refined, cleaner */}
       <aside
         className={cn(
-          "fixed lg:static inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "fixed lg:static inset-y-0 left-0 z-50 w-60 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="h-16 flex items-center justify-center border-b border-sidebar-border relative">
+          <div className="h-14 flex items-center justify-center border-b border-sidebar-border relative">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link to="/dashboard" className="flex items-center justify-center">
-                  <img src="/logo-ng.png" alt="New Gestão" className="w-9 h-9 transition-transform duration-200 hover:scale-110" />
+                  <img src="/logo-ng.png" alt="New Gestão" className="w-8 h-8 transition-transform duration-200 hover:scale-105" />
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right">
@@ -195,8 +195,8 @@ export default function DashboardLayout() {
             </Button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
+          {/* Navigation - refined styling */}
+          <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
             {navItems.map((item) => {
               const isItemActive = location.pathname === item.path;
               return (
@@ -205,13 +205,16 @@ export default function DashboardLayout() {
                   to={item.path}
                   onClick={() => setSidebarOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
                     isItemActive
-                      ? "bg-sidebar-accent text-sidebar-primary"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      ? "bg-sidebar-accent text-primary font-medium"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-foreground"
                   )}
                 >
-                  <item.icon className="w-5 h-5" />
+                  <item.icon className={cn(
+                    "w-4 h-4",
+                    isItemActive ? "text-primary" : "text-muted-foreground"
+                  )} />
                   {item.label}
                 </Link>
               );
@@ -246,8 +249,8 @@ export default function DashboardLayout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile header */}
-        <header className="lg:hidden h-16 flex items-center justify-between px-4 border-b border-border">
+        {/* Mobile header - refined */}
+        <header className="lg:hidden h-14 flex items-center justify-between px-4 border-b border-border bg-background">
           <Button
             variant="ghost"
             size="icon"
@@ -255,8 +258,8 @@ export default function DashboardLayout() {
           >
             <Menu className="w-5 h-5" />
           </Button>
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <img src="/logo-ng.png" alt="New Gestão" className="w-8 h-8" />
+          <Link to="/dashboard" className="flex items-center">
+            <img src="/logo-ng.png" alt="New Gestão" className="w-7 h-7" />
           </Link>
           <UserAvatar
             avatarUrl={avatarUrl}

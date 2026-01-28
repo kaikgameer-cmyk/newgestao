@@ -6,27 +6,33 @@
 @import "@fontsource/outfit/600.css";
 @import "@fontsource/outfit/700.css";
 
-/* New Gestão Design System - Dark Theme + Yellow Accents */
+/* New Gestão Design System - Premium Dark Theme */
+/* Refined: More neutral, elegant, professional */
 
 @layer base {
   :root {
-    /* Core background + surfaces */
-    --bg: 222 47% 6%; /* main app background (keep dark) */
-    --surface-1: 222 47% 10%; /* cards / panels base */
-    --surface-2: 222 47% 14%; /* elevated cards / modals */
+    /* Core background + surfaces - more homogeneous, less gradient */
+    --bg: 220 20% 5%; /* deeper, more neutral dark */
+    --surface-1: 220 18% 8%; /* cards / panels base - subtle difference */
+    --surface-2: 220 16% 11%; /* elevated cards / modals */
+    --surface-3: 220 14% 14%; /* hover states */
 
-    /* Text */
-    --text: 0 0% 98%;
-    --text-muted: 0 0% 65%;
+    /* Text - refined hierarchy */
+    --text: 0 0% 96%;
+    --text-muted: 220 10% 55%; /* more neutral gray */
+    --text-subtle: 220 8% 42%; /* for labels, secondary info */
 
-    /* Semantic colors */
-    --positive: 142 76% 36%; /* green - only for positive status */
-    --negative: 0 84% 60%;   /* red - only for negative status */
+    /* Semantic colors - reduced saturation, only for status */
+    --positive: 145 55% 42%; /* green - softer, only for positive values */
+    --positive-muted: 145 40% 18%; /* subtle green backgrounds */
+    --negative: 0 65% 55%;   /* red - softer, only for negative values */
+    --negative-muted: 0 45% 18%; /* subtle red backgrounds */
 
-    /* Action / focus (dark blue) */
-    --action: 222 84% 56%;
-    --action-hover: 222 84% 62%;
-    --focus-ring: 222 84% 60%;
+    /* Action / focus (dark blue) - refined */
+    --action: 220 70% 50%;
+    --action-hover: 220 70% 58%;
+    --action-muted: 220 50% 20%;
+    --focus-ring: 220 70% 55%;
 
     /* Map to shadcn tokens */
     --background: var(--bg);
@@ -39,12 +45,12 @@
     --popover-foreground: var(--text);
 
     --primary: var(--action);
-    --primary-foreground: var(--text);
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 16% 16%;
+    --secondary: 220 15% 12%;
     --secondary-foreground: var(--text);
 
-    --muted: 222 16% 18%;
+    --muted: 220 12% 14%;
     --muted-foreground: var(--text-muted);
 
     --accent: var(--action);
@@ -56,37 +62,38 @@
     --success: var(--positive);
     --success-foreground: var(--text);
 
-    --border: 222 16% 24%;
-    --border-strong: 222 18% 32%;
-    --input: 222 16% 22%;
+    --border: 220 12% 18%;
+    --border-strong: 220 14% 24%;
+    --input: 220 14% 14%;
     --ring: var(--focus-ring);
 
-    --radius: 0.75rem;
+    --radius: 0.625rem;
 
     /* Custom tokens */
     --card-elevated: var(--surface-2);
 
-    /* Gradients based on action blue */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--action)) 0%, hsl(222 84% 46%) 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(var(--bg)) 0%, hsl(222 47% 4%) 100%);
+    /* Gradients - subtle, not aggressive */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--action)) 0%, hsl(220 70% 42%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(var(--bg)) 0%, hsl(220 20% 3%) 100%);
     --gradient-card: linear-gradient(145deg, hsl(var(--surface-1)) 0%, hsl(var(--surface-2)) 100%);
     --gradient-hero: linear-gradient(135deg, hsl(var(--bg)) 0%, hsl(var(--surface-2)) 50%, hsl(var(--bg)) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--surface-1)) 0%, hsl(var(--surface-2)) 100%);
 
-    /* Shadows */
-    --shadow-sm: 0 2px 8px hsl(0 0% 0% / 0.3);
-    --shadow-md: 0 4px 16px hsl(0 0% 0% / 0.45);
-    --shadow-lg: 0 8px 32px hsl(0 0% 0% / 0.55);
-    --shadow-primary: 0 4px 24px hsl(222 84% 56% / 0.25);
-    --shadow-primary-hover: 0 8px 32px hsl(222 84% 56% / 0.35);
+    /* Shadows - softer, more elegant */
+    --shadow-sm: 0 1px 3px hsl(0 0% 0% / 0.25);
+    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.35);
+    --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.45);
+    --shadow-primary: 0 4px 16px hsl(220 70% 50% / 0.20);
+    --shadow-primary-hover: 0 6px 24px hsl(220 70% 50% / 0.28);
 
-    /* Sidebar (dark variant) */
-    --sidebar-background: 222 47% 5%;
-    --sidebar-foreground: 0 0% 85%;
+    /* Sidebar (dark variant) - more refined */
+    --sidebar-background: 220 20% 4%;
+    --sidebar-foreground: 220 10% 70%;
     --sidebar-primary: var(--action);
     --sidebar-primary-foreground: var(--text);
-    --sidebar-accent: 222 24% 16%;
+    --sidebar-accent: 220 18% 12%;
     --sidebar-accent-foreground: var(--text);
-    --sidebar-border: 222 16% 20%;
+    --sidebar-border: 220 14% 14%;
     --sidebar-ring: var(--focus-ring);
   }
 
@@ -138,7 +145,11 @@
     background-image: var(--gradient-hero);
   }
 
-  /* Semantic text helpers */
+  .bg-gradient-subtle {
+    background-image: var(--gradient-subtle);
+  }
+
+  /* Semantic text helpers - use sparingly */
   .text-positive {
     color: hsl(var(--positive));
   }
@@ -155,6 +166,14 @@
     background-color: hsl(var(--negative));
   }
 
+  .bg-positive-muted {
+    background-color: hsl(var(--positive-muted));
+  }
+
+  .bg-negative-muted {
+    background-color: hsl(var(--negative-muted));
+  }
+
   /* Action helpers */
   .bg-action {
     background-color: hsl(var(--action));
@@ -164,8 +183,16 @@
     background-color: hsl(var(--action-hover));
   }
 
+  .bg-action-muted {
+    background-color: hsl(var(--action-muted));
+  }
+
   .text-action {
     color: hsl(var(--action));
+  }
+
+  .text-subtle {
+    color: hsl(var(--text-subtle));
   }
 
   .border-action {
@@ -269,23 +296,23 @@
   }
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - more subtle */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(0 0% 7%);
+  background: hsl(220 20% 6%);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 20%);
-  border-radius: 4px;
+  background: hsl(220 12% 22%);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 30%);
+  background: hsl(220 12% 30%);
 }
 
 /* Markdown prose customization */

@@ -12,6 +12,7 @@ interface DailyGoalCardProps {
 /**
  * Compact card component displaying daily goal vs actual revenue
  * Shows progress bar and achievement status
+ * Design: Neutral card, semantic colors only on values
  */
 export function DailyGoalCard({ goal, revenue, label = 'Meta do Dia' }: DailyGoalCardProps) {
   const hasGoal = goal !== null && goal > 0;
@@ -27,14 +28,14 @@ export function DailyGoalCard({ goal, revenue, label = 'Meta do Dia' }: DailyGoa
 
   if (!hasGoal) {
     return (
-      <Card className="bg-card border-border">
+      <Card>
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-lg bg-secondary/60 flex items-center justify-center shrink-0">
               <Target className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-sm font-medium">{label}</p>
+              <p className="text-sm font-medium text-foreground">{label}</p>
               <p className="text-xs text-muted-foreground">
                 Nenhuma meta definida para este dia
               </p>
@@ -46,28 +47,19 @@ export function DailyGoalCard({ goal, revenue, label = 'Meta do Dia' }: DailyGoa
   }
 
   return (
-    <Card className={cn(
-      "bg-card border-border transition-all",
-      achieved && "border-green-500/50 bg-green-500/5"
-    )}>
+    <Card>
       <CardContent className="p-4 space-y-3">
         {/* Header with percentage */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-              achieved ? "bg-green-500/20" : "bg-primary/10"
-            )}>
-              <Target className={cn(
-                "h-5 w-5",
-                achieved ? "text-green-500" : "text-primary"
-              )} />
+            <div className="w-10 h-10 rounded-lg bg-secondary/60 flex items-center justify-center shrink-0">
+              <Target className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-sm font-medium">{label}</p>
+              <p className="text-sm font-medium text-foreground">{label}</p>
               <div className={cn(
                 "flex items-center gap-1 text-xs font-medium",
-                achieved ? "text-green-500" : "text-red-500"
+                achieved ? "text-positive" : "text-negative"
               )}>
                 {achieved ? (
                   <>
@@ -85,8 +77,8 @@ export function DailyGoalCard({ goal, revenue, label = 'Meta do Dia' }: DailyGoa
           </div>
           <div className="text-right">
             <p className={cn(
-              "text-lg font-bold",
-              achieved ? "text-green-500" : "text-foreground"
+              "text-lg font-semibold",
+              achieved ? "text-positive" : "text-foreground"
             )}>
               {percentage.toFixed(0)}%
             </p>
@@ -101,11 +93,16 @@ export function DailyGoalCard({ goal, revenue, label = 'Meta do Dia' }: DailyGoa
         <div className="flex items-center justify-between text-xs">
           <div>
             <span className="text-muted-foreground">Meta: </span>
-            <span className="font-medium">{formatCurrency(goal)}</span>
+            <span className="font-medium text-foreground">{formatCurrency(goal)}</span>
           </div>
           <div>
             <span className="text-muted-foreground">Faturado: </span>
-            <span className="font-medium">{formatCurrency(revenue)}</span>
+            <span className={cn(
+              "font-medium",
+              revenue >= goal ? "text-positive" : "text-foreground"
+            )}>
+              {formatCurrency(revenue)}
+            </span>
           </div>
         </div>
       </CardContent>
