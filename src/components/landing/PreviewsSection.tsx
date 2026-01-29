@@ -1,59 +1,60 @@
-import { Card } from "@/components/ui/card";
 import { BarChart3, Calendar, Fuel, CreditCard } from "lucide-react";
 
 const previews = [
   {
     icon: BarChart3,
-    title: "Dashboard Mensal",
-    description: "Visão geral de receitas, despesas e lucro do mês",
+    title: "Dashboard",
+    description: "Resumo completo de receitas, despesas e lucro",
   },
   {
     icon: Calendar,
-    title: "Relatório Semanal",
+    title: "Visão Semanal",
     description: "Acompanhe seu desempenho semana a semana",
   },
   {
     icon: Fuel,
-    title: "Controle de Combustível",
-    description: "Histórico e métricas de abastecimento",
+    title: "Combustível",
+    description: "Histórico de abastecimentos e métricas",
   },
   {
     icon: CreditCard,
-    title: "Gestão de Cartões",
-    description: "Faturas e gastos por cartão de crédito",
+    title: "Cartões",
+    description: "Controle de faturas e gastos",
   },
 ];
 
 export function PreviewsSection() {
   return (
-    <section className="py-24 relative">
-      <div className="absolute inset-0 bg-gradient-dark" />
-      
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center mb-16">
+    <section className="py-20 md:py-28 relative">
+      <div className="container mx-auto px-4">
+        {/* Header */}
+        <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Conheça as <span className="text-gradient-primary">telas</span>
+            Conheça as <span className="text-primary">telas</span>
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg">
             Interface limpa e objetiva para você focar no que importa
           </p>
         </div>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Previews grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto">
           {previews.map((preview, index) => (
-            <Card
+            <div
               key={index}
-              variant="elevated"
-              className="group overflow-hidden hover:border-primary/30 transition-all duration-300"
+              className="group rounded-xl bg-card border border-border overflow-hidden hover:border-border-strong transition-colors"
             >
-              <div className="aspect-[4/3] bg-secondary/30 flex items-center justify-center border-b border-border/50">
-                <preview.icon className="w-16 h-16 text-primary/30 group-hover:text-primary/50 transition-colors" />
+              {/* Preview area */}
+              <div className="aspect-[4/3] bg-secondary/50 flex items-center justify-center">
+                <preview.icon className="w-12 h-12 text-primary/30 group-hover:text-primary/50 transition-colors" />
               </div>
+              
+              {/* Info */}
               <div className="p-4">
                 <h3 className="font-semibold mb-1">{preview.title}</h3>
                 <p className="text-sm text-muted-foreground">{preview.description}</p>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       </div>

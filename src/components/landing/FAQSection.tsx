@@ -30,29 +30,31 @@ const faqs = [
 
 export function FAQSection() {
   return (
-    <section id="faq" className="py-24 relative">
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center mb-16">
+    <section id="faq" className="py-20 md:py-28 relative">
+      <div className="container mx-auto px-4">
+        {/* Header */}
+        <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Perguntas <span className="text-gradient-primary">frequentes</span>
+            Perguntas <span className="text-primary">frequentes</span>
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg">
             Tire suas dúvidas sobre o New Gestão
           </p>
         </div>
         
-        <div className="max-w-3xl mx-auto">
-          <Accordion type="single" collapsible className="space-y-4">
+        {/* FAQ Accordion */}
+        <div className="max-w-2xl mx-auto">
+          <Accordion type="single" collapsible className="space-y-3">
             {faqs.map((faq, index) => (
               <AccordionItem
                 key={index}
                 value={`item-${index}`}
-                className="bg-card border border-border rounded-xl px-6 data-[state=open]:border-primary/30"
+                className="bg-card border border-border rounded-xl px-5 data-[state=open]:border-primary/30"
               >
-                <AccordionTrigger className="text-left hover:text-primary hover:no-underline py-6">
+                <AccordionTrigger className="text-left hover:no-underline py-5 text-sm md:text-base">
                   {faq.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground pb-6">
+                <AccordionContent className="text-muted-foreground text-sm pb-5 leading-relaxed">
                   {faq.answer}
                 </AccordionContent>
               </AccordionItem>
