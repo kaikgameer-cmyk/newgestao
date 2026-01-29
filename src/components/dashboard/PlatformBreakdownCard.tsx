@@ -6,11 +6,10 @@ import { formatCurrencyBRL, formatPercent, roundCurrency } from "@/lib/format";
 interface PlatformData {
   name: string;
   total: number;
-  trips: number;
 }
 
 interface PlatformBreakdownCardProps {
-  revenues: Array<{ app: string; amount: number; trips?: number }>;
+  revenues: Array<{ app: string; amount: number }>;
 }
 
 export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) {
@@ -19,22 +18,18 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
   const platformData = revenues.reduce((acc, r) => {
     const platformName = r.app || "Outros";
     if (!acc[platformName]) {
-      acc[platformName] = { total: 0, trips: 0 };
+      acc[platformName] = { total: 0 };
     }
     acc[platformName].total += Number(r.amount);
-    acc[platformName].trips += r.trips || 0;
     return acc;
-  }, {} as Record<string, { total: number; trips: number }>);
+  }, {} as Record<string, { total: number }>);
 
   const platformsList: PlatformData[] = Object.entries(platformData)
     .map(([name, data]) => ({
       name,
       total: data.total,
-      trips: data.trips,
     }))
     .sort((a, b) => b.total - a.total);
-  
-  const totalTrips = platformsList.reduce((sum, p) => sum + p.trips, 0);
 
   const totalRevenue = platformsList.reduce((sum, p) => sum + p.total, 0);
 
@@ -89,28 +84,16 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
                     <p className="text-lg font-bold">
                       {formatCurrencyBRL(platform.total)}
                     </p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Car className="w-3 h-3" />
-                        {platform.trips > 0 ? platform.trips : "—"}
-                      </span>
-                      <span>{formatPercent(percentage, 0)}</span>
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {formatPercent(percentage, 0)} do faturamento
+                    </p>
                   </div>
                 );
               })}
             </div>
 
             <div className="pt-3 border-t border-border flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">Total do dia</span>
-                {totalTrips > 0 && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Car className="w-3 h-3" />
-                    {totalTrips} corrida{totalTrips !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
+              <span className="text-sm font-medium">Total do dia</span>
               <span className="font-bold text-lg text-primary">
                 {formatCurrencyBRL(totalRevenue)}
               </span>
