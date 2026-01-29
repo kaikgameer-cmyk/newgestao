@@ -770,7 +770,7 @@ export default function Dashboard() {
                         }}
                         formatter={(value: number, name: string) => [
                           formatCurrencyBRL(value), 
-                          name === "receita" ? "Receita" : "Despesa"
+                          name
                         ]}
                       />
                       <Bar dataKey="receita" fill="hsl(142, 76%, 36%)" stackId="a" name="Receita" />
