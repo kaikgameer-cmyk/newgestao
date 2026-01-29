@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrencyBRL } from "@/lib/format";
 import {
   Collapsible,
   CollapsibleContent,
@@ -70,7 +71,7 @@ export function DailySummaryCard({
               <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Receita</span>
             </div>
             <p className="text-sm sm:text-lg font-bold text-positive truncate">
-              R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatCurrencyBRL(totalRevenue)}
             </p>
           </div>
 
@@ -81,7 +82,7 @@ export function DailySummaryCard({
               <span className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">Despesas</span>
             </div>
             <p className="text-sm sm:text-lg font-bold text-negative truncate">
-              R$ {totalExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatCurrencyBRL(totalExpenses)}
             </p>
           </div>
 
@@ -95,7 +96,7 @@ export function DailySummaryCard({
               "text-sm sm:text-lg font-bold truncate",
               netProfit >= 0 ? "text-primary" : "text-negative"
             )}>
-              R$ {netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatCurrencyBRL(netProfit)}
             </p>
           </div>
         </div>
@@ -132,7 +133,7 @@ export function DailySummaryCard({
                       )}
                     </div>
                     <span className="font-medium text-positive ml-2 shrink-0">
-                      +R$ {Number(revenue.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      +{formatCurrencyBRL(revenue.amount)}
                     </span>
                   </div>
                 ))}
@@ -177,7 +178,7 @@ export function DailySummaryCard({
                       )}
                     </div>
                     <span className="font-medium text-negative ml-2 shrink-0">
-                      -R$ {expense.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      -{formatCurrencyBRL(expense.amount)}
                     </span>
                   </div>
                 ))}
@@ -185,7 +186,7 @@ export function DailySummaryCard({
                   <div className="flex items-center justify-between py-2 px-3 rounded-md bg-secondary/40 text-sm">
                     <span className="font-medium">Despesas Fixas</span>
                     <span className="font-medium text-negative">
-                      -R$ {recurringTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      -{formatCurrencyBRL(recurringTotal)}
                     </span>
                   </div>
                 )}

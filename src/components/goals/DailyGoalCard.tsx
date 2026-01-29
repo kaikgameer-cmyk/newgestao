@@ -2,6 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Target, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatCurrencyBRL } from '@/lib/format';
 
 interface DailyGoalCardProps {
   goal: number | null;
@@ -18,13 +19,6 @@ export function DailyGoalCard({ goal, revenue, label = 'Meta do Dia' }: DailyGoa
   const hasGoal = goal !== null && goal > 0;
   const percentage = hasGoal ? Math.min((revenue / goal) * 100, 100) : 0;
   const achieved = hasGoal && revenue >= goal;
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
 
   if (!hasGoal) {
     return (
@@ -93,7 +87,7 @@ export function DailyGoalCard({ goal, revenue, label = 'Meta do Dia' }: DailyGoa
         <div className="flex items-center justify-between text-xs">
           <div>
             <span className="text-muted-foreground">Meta: </span>
-            <span className="font-medium text-foreground">{formatCurrency(goal)}</span>
+            <span className="font-medium text-foreground">{formatCurrencyBRL(goal)}</span>
           </div>
           <div>
             <span className="text-muted-foreground">Faturado: </span>
@@ -101,7 +95,7 @@ export function DailyGoalCard({ goal, revenue, label = 'Meta do Dia' }: DailyGoa
               "font-medium",
               revenue >= goal ? "text-positive" : "text-foreground"
             )}>
-              {formatCurrency(revenue)}
+              {formatCurrencyBRL(revenue)}
             </span>
           </div>
         </div>
