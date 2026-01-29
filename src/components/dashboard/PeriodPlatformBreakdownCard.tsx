@@ -91,7 +91,7 @@ export function PeriodPlatformBreakdownCard({
                         {formatCurrencyBRL(revenue.total_amount)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatPercent(percentage, 0)} • {revenue.total_trips} viagens
+                        {formatPercent(percentage, 0)} do faturamento
                       </p>
                     </div>
                   </div>
