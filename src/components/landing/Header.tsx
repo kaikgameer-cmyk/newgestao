@@ -17,9 +17,8 @@ export function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5">
-          <img src="/logo-ng.png" alt="New Gestão" className="w-8 h-8" />
-          <span className="font-semibold text-foreground hidden sm:inline">New Gestão</span>
+        <Link to="/" className="flex items-center">
+          <img src="/logo-ng.png" alt="New Gestão" className="w-9 h-9" />
         </Link>
 
         {/* Desktop Navigation */}
@@ -42,11 +41,11 @@ export function Header() {
               Entrar
             </Button>
           </Link>
-          <Link to="/login">
+          <a href="#precos">
             <Button size="sm" className="h-9 px-4">
               Começar
             </Button>
-          </Link>
+          </a>
           
           {/* Mobile menu button */}
           <button

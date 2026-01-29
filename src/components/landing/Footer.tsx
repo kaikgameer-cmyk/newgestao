@@ -7,9 +7,8 @@ export function Footer() {
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5">
-            <img src="/logo-ng.png" alt="New Gestão" className="w-7 h-7" />
-            <span className="font-medium text-foreground">New Gestão</span>
+          <Link to="/" className="flex items-center">
+            <img src="/logo-ng.png" alt="New Gestão" className="w-8 h-8" />
           </Link>
           
           {/* Links */}
