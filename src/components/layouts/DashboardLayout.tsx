@@ -132,7 +132,7 @@ export default function DashboardLayout() {
     isFuel: profile.vehicle_type !== "electric" 
   } : { isElectric: false, isFuel: true };
 
-  // Build nav items - conditionally show Combustível or Elétrico based on vehicle type
+  // Build nav items - reorganized: removed Assinatura, Configurações, Guia from main menu
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
     { icon: Receipt, label: "Lançamentos", path: "/dashboard/lancamentos" },
@@ -144,16 +144,10 @@ export default function DashboardLayout() {
     { icon: Wrench, label: "Manutenção", path: "/dashboard/manutencao" },
     { icon: Repeat, label: "Despesas Fixas", path: "/dashboard/despesas-fixas" },
     { icon: Timer, label: "Timer", path: "/dashboard/timer" },
-    { icon: Crown, label: "Assinatura", path: "/dashboard/assinatura" },
-    { icon: Book, label: "Guia da Plataforma", path: "/dashboard/guia" },
     { icon: MessageCircleQuestion, label: "Suporte", path: "/dashboard/suporte" },
-    { icon: Settings, label: "Configurações", path: "/dashboard/configuracoes" },
+    // Admin only visible to admins
+    ...(adminFetched && isAdmin ? [{ icon: Shield, label: "Admin", path: "/dashboard/admin" }] : []),
   ];
-
-  // Add admin link if user is admin
-  if (adminFetched && isAdmin) {
-    navItems.push({ icon: Shield, label: "Admin", path: "/dashboard/admin" });
-  }
 
   return (
     <div className="min-h-screen w-full bg-background flex overflow-x-hidden">
@@ -250,7 +244,7 @@ export default function DashboardLayout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile header - refined */}
+        {/* Mobile header - refined with clickable avatar */}
         <header className="lg:hidden h-14 flex items-center justify-between px-4 border-b border-border bg-background">
           <Button
             variant="ghost"
@@ -262,13 +256,19 @@ export default function DashboardLayout() {
           <Link to="/dashboard" className="flex items-center">
             <img src="/logo-ng.png" alt="New Gestão" className="w-7 h-7" />
           </Link>
-          <UserAvatar
-            avatarUrl={avatarUrl}
-            firstName={profile?.first_name}
-            lastName={profile?.last_name}
-            email={user.email}
-            size="sm"
-          />
+          <Link 
+            to="/dashboard/configuracoes" 
+            className="cursor-pointer hover:opacity-80 transition-opacity"
+            aria-label="Ir para Perfil"
+          >
+            <UserAvatar
+              avatarUrl={avatarUrl}
+              firstName={profile?.first_name}
+              lastName={profile?.last_name}
+              email={user.email}
+              size="sm"
+            />
+          </Link>
         </header>
 
         {/* Page content */}

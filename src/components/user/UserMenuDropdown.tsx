@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User as UserType } from "@supabase/supabase-js";
-import { Crown, LogOut, Settings, User } from "lucide-react";
+import { Crown, LogOut, Settings, Book, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -54,63 +54,79 @@ export function UserMenuDropdown({
     navigate(path);
   };
 
+  const handleAvatarClick = (e: React.MouseEvent) => {
+    // Direct navigation to profile on avatar click
+    e.stopPropagation();
+    onNavigate?.();
+    navigate("/dashboard/configuracoes");
+  };
+
   const handleLogout = async () => {
     setOpen(false);
     await onLogout();
   };
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-3 h-auto py-2.5 px-3 hover:bg-sidebar-accent/50",
-            variant === "header" && "w-auto"
-          )}
-        >
-          <UserAvatar
-            avatarUrl={avatarUrl}
-            firstName={firstName}
-            lastName={lastName}
-            email={user.email}
-            size="sm"
-          />
-          {variant === "sidebar" && (
-            <div className="flex-1 text-left min-w-0">
+    <div className="flex items-center gap-2">
+      {/* Clickable Avatar - goes directly to profile */}
+      <button
+        onClick={handleAvatarClick}
+        className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background rounded-full"
+        aria-label="Ir para Perfil"
+      >
+        <UserAvatar
+          avatarUrl={avatarUrl}
+          firstName={firstName}
+          lastName={lastName}
+          email={user.email}
+          size="sm"
+        />
+      </button>
+
+      {/* Dropdown for secondary actions */}
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className={cn(
+              "flex-1 justify-start gap-2 h-auto py-2 px-2 hover:bg-sidebar-accent/50 text-left",
+              variant === "header" && "w-auto"
+            )}
+          >
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{fullName}</p>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Crown className="w-3 h-3" />
                 {planName}
               </p>
             </div>
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 bg-popover z-50">
-        <div className="px-3 py-2">
-          <p className="text-sm font-medium">{fullName}</p>
-          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-        </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => handleNavigate("/dashboard/configuracoes")}>
-          <User className="mr-2 h-4 w-4" />
-          Perfil
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleNavigate("/dashboard/assinatura")}>
-          <Crown className="mr-2 h-4 w-4" />
-          Assinatura
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleNavigate("/dashboard/configuracoes")}>
-          <Settings className="mr-2 h-4 w-4" />
-          Configurações
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-          <LogOut className="mr-2 h-4 w-4" />
-          Sair
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56 bg-popover z-50">
+          <div className="px-3 py-2">
+            <p className="text-sm font-medium">{fullName}</p>
+            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleNavigate("/dashboard/assinatura")}>
+            <Crown className="mr-2 h-4 w-4" />
+            Assinatura
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleNavigate("/dashboard/configuracoes")}>
+            <Settings className="mr-2 h-4 w-4" />
+            Configurações
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleNavigate("/dashboard/guia")}>
+            <Book className="mr-2 h-4 w-4" />
+            Guia da Plataforma
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+            <LogOut className="mr-2 h-4 w-4" />
+            Sair
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }

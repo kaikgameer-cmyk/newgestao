@@ -143,11 +143,11 @@ export default function Transactions() {
       
       if (itemsError) throw itemsError;
       
-      return days.map((day) => ({
-        ...day,
-        items: (items || [])
-          .filter((item) => item.income_day_id === day.id)
-          .map((item) => ({
+      return days.map((day) => {
+        const dayItems = (items || []).filter((item) => item.income_day_id === day.id);
+        return {
+          ...day,
+          items: dayItems.map((item) => ({
             id: item.id,
             platform: item.platform,
             platform_label: item.platform_label,
@@ -156,10 +156,11 @@ export default function Transactions() {
             payment_method: item.payment_method,
             notes: item.notes,
           })),
-        totalAmount: (items || [])
-          .filter((item) => item.income_day_id === day.id)
-          .reduce((sum, item) => sum + Number(item.amount), 0),
-      })) as (IncomeDay & { totalAmount: number })[];
+          totalAmount: dayItems.reduce((sum, item) => sum + Number(item.amount), 0),
+          // Calculate total trips from items (FIX for trips showing as 0)
+          trips: dayItems.reduce((sum, item) => sum + (item.trips || 0), 0),
+        };
+      }) as (IncomeDay & { totalAmount: number; trips: number })[];
     },
     enabled: !!user,
   });
@@ -1463,11 +1464,11 @@ export default function Transactions() {
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Car className="w-3 h-3" />
-                                {(transaction as any).trips || 0}
+                                {(transaction as any).trips > 0 ? (transaction as any).trips : "—"}
                               </span>
                               <span className="flex items-center gap-1">
                                 <Gauge className="w-3 h-3" />
-                                {(transaction as any).km_rodados || 0}km
+                                {(transaction as any).km_rodados > 0 ? `${(transaction as any).km_rodados}km` : "—"}
                               </span>
                             </div>
                           )}
