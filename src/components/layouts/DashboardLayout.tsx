@@ -159,10 +159,10 @@ export default function DashboardLayout() {
         />
       )}
 
-      {/* Sidebar - refined, cleaner */}
+      {/* Sidebar - fixed on all screen sizes for consistent UX */}
       <aside
         className={cn(
-          "fixed lg:static inset-y-0 left-0 z-50 w-60 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 w-60 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out lg:translate-x-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -242,8 +242,8 @@ export default function DashboardLayout() {
       {/* Announcement Popup - shows after paywall/onboarding are resolved */}
       {!showPaywall && !needsOnboarding && <AnnouncementPopup />}
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main content - offset for fixed sidebar on desktop */}
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-60">
         {/* Mobile header - refined with clickable avatar */}
         <header className="lg:hidden h-14 flex items-center justify-between px-4 border-b border-border bg-background">
           <Button
