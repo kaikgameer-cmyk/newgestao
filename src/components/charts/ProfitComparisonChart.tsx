@@ -28,6 +28,7 @@ import { useState } from "react";
 import { useCombinedExpenses } from "@/hooks/useCombinedExpenses";
 import { useRecurringExpenses, calculateDailyRecurringAmount } from "@/hooks/useRecurringExpenses";
 import { parseLocalDate } from "@/lib/dateUtils";
+import { formatCurrencyBRL, formatChartAxis, roundCurrency } from "@/lib/format";
 
 interface ProfitComparisonChartProps {
   userId: string | undefined;
@@ -111,12 +112,12 @@ export function ProfitComparisonChart({ userId }: ProfitComparisonChartProps) {
       return sum + calculateDailyRecurringAmount(recurringExpenses, day).total;
     }, 0);
 
-    const totalExpenses = periodExpenses + periodRecurring;
-    const profit = periodRevenues - totalExpenses;
+    const totalExpenses = roundCurrency(periodExpenses + periodRecurring);
+    const profit = roundCurrency(periodRevenues - totalExpenses);
 
     return {
       period: period.label,
-      receita: periodRevenues,
+      receita: roundCurrency(periodRevenues),
       despesa: totalExpenses,
       lucro: profit,
     };
@@ -151,25 +152,29 @@ export function ProfitComparisonChart({ userId }: ProfitComparisonChartProps) {
               />
               <YAxis
                 stroke="hsl(var(--muted-foreground))"
-                tick={{ fill: "hsl(var(--muted-foreground))" }}
-                tickFormatter={(value) => `R$${value}`}
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                tickFormatter={formatChartAxis}
+                width={65}
               />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--card))",
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "8px",
+                  fontSize: "13px",
                 }}
                 formatter={(value: number, name: string) => [
-                  `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                  formatCurrencyBRL(value),
                   name === "receita" ? "Receita" : name === "despesa" ? "Despesa" : "Lucro"
                 ]}
+                labelStyle={{ fontWeight: "bold", marginBottom: "4px" }}
               />
               <Legend 
                 formatter={(value) => 
                   value === "receita" ? "Receita" : value === "despesa" ? "Despesa" : "Lucro"
                 }
               />
+              {/* Semantic colors: green for revenue, red for expense, blue for profit */}
               <Bar 
                 dataKey="receita" 
                 fill="hsl(142, 76%, 36%)" 
@@ -184,7 +189,7 @@ export function ProfitComparisonChart({ userId }: ProfitComparisonChartProps) {
               />
               <Bar 
                 dataKey="lucro" 
-                fill="hsl(48, 96%, 53%)" 
+                fill="hsl(var(--primary))" 
                 radius={[4, 4, 0, 0]} 
                 name="lucro"
               />

@@ -39,7 +39,7 @@ import { DailySummaryCard } from "@/components/dashboard/DailySummaryCard";
 import { useRevenueByPlatform } from "@/hooks/useRevenueByPlatform";
 import { format, eachDayOfInterval, isSameDay, differenceInDays } from "date-fns";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
-import { formatCurrencyBRL, roundCurrency } from "@/lib/format";
+import { formatCurrencyBRL, roundCurrency, formatPercent, formatChartAxis, getPerUnitValue } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 
 const COLORS = [
@@ -438,7 +438,7 @@ export default function Dashboard() {
                         <XCircle className="w-4 h-4 text-muted-foreground" />
                       )}
                       <span className={`font-bold ${goalProgress >= 100 ? "text-success" : "text-foreground"}`}>
-                        {goalProgress.toFixed(1)}%
+                        {formatPercent(goalProgress)}
                       </span>
                     </div>
                   </div>
@@ -646,7 +646,11 @@ export default function Dashboard() {
                 <DollarSign className="w-4 h-4 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">Ticket Médio</span>
               </div>
-              <p className="text-lg font-bold">R$ {periodExtendedMetrics.ticketMedio.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-lg font-bold">
+                {getPerUnitValue(totalRevenue, periodExtendedMetrics.totalTrips) !== null 
+                  ? formatCurrencyBRL(getPerUnitValue(totalRevenue, periodExtendedMetrics.totalTrips)!)
+                  : "—"}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -715,18 +719,21 @@ export default function Dashboard() {
                       />
                       <YAxis
                         stroke="hsl(0, 0%, 50%)"
-                        tick={{ fill: "hsl(0, 0%, 60%)" }}
-                        tickFormatter={(value) => `R$${value}`}
+                        tick={{ fill: "hsl(0, 0%, 60%)", fontSize: 11 }}
+                        tickFormatter={formatChartAxis}
+                        width={60}
                       />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "hsl(var(--popover))",
                           border: "1px solid hsl(var(--border))",
                           borderRadius: "8px",
+                          fontSize: "13px",
                         }}
-                        formatter={(value: number) => [`R$ ${value.toFixed(2)}`, "Lucro"]}
+                        formatter={(value: number) => [formatCurrencyBRL(value), "Lucro"]}
                       />
-                      <Bar dataKey="lucro" fill="hsl(48, 96%, 53%)" radius={[4, 4, 0, 0]} />
+                      {/* Use primary blue for profit */}
+                      <Bar dataKey="lucro" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -748,13 +755,23 @@ export default function Dashboard() {
                         stroke="hsl(0, 0%, 50%)"
                         tick={{ fill: "hsl(0, 0%, 60%)", fontSize: 12 }}
                       />
-                      <YAxis stroke="hsl(0, 0%, 50%)" tick={{ fill: "hsl(0, 0%, 60%)" }} />
+                      <YAxis 
+                        stroke="hsl(0, 0%, 50%)" 
+                        tick={{ fill: "hsl(0, 0%, 60%)", fontSize: 11 }} 
+                        tickFormatter={formatChartAxis}
+                        width={60}
+                      />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: "hsl(var(--popover))",
                           border: "1px solid hsl(var(--border))",
                           borderRadius: "8px",
+                          fontSize: "13px",
                         }}
+                        formatter={(value: number, name: string) => [
+                          formatCurrencyBRL(value), 
+                          name === "receita" ? "Receita" : "Despesa"
+                        ]}
                       />
                       <Bar dataKey="receita" fill="hsl(142, 76%, 36%)" stackId="a" name="Receita" />
                       <Bar dataKey="despesa" fill="hsl(0, 84%, 60%)" stackId="a" radius={[4, 4, 0, 0]} name="Despesa" />
@@ -798,12 +815,12 @@ export default function Dashboard() {
                         <span className="text-muted-foreground">Progresso</span>
                         <div className="flex items-center gap-1">
                           {goalProgress >= 100 ? (
-                            <CheckCircle2 className="w-4 h-4 text-success" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-muted-foreground" />
-                          )}
-                          <span className={`font-bold ${goalProgress >= 100 ? "text-success" : "text-foreground"}`}>
-                            {goalProgress.toFixed(1)}%
+                          <CheckCircle2 className="w-4 h-4 text-success" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-muted-foreground" />
+                        )}
+                        <span className={`font-bold ${goalProgress >= 100 ? "text-success" : "text-foreground"}`}>
+                          {formatPercent(goalProgress)}
                           </span>
                         </div>
                       </div>

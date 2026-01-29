@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Inbox } from "lucide-react";
 import { PlatformRevenue } from "@/hooks/useRevenueByPlatform";
 import { usePlatforms } from "@/hooks/usePlatforms";
+import { formatCurrencyBRL, formatPercent } from "@/lib/format";
 
 interface PeriodPlatformBreakdownCardProps {
   platformRevenues: PlatformRevenue[];
@@ -87,13 +88,10 @@ export function PeriodPlatformBreakdownCard({
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-sm">
-                        R$ {revenue.total_amount.toLocaleString("pt-BR", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        {formatCurrencyBRL(revenue.total_amount)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {percentage.toFixed(0)}% • {revenue.total_trips} viagens
+                        {formatPercent(percentage, 0)} • {revenue.total_trips} viagens
                       </p>
                     </div>
                   </div>
@@ -104,10 +102,7 @@ export function PeriodPlatformBreakdownCard({
             <div className="pt-3 border-t border-border flex justify-between items-center">
               <span className="text-sm font-medium">Total do período</span>
               <span className="font-bold text-lg text-primary">
-                R$ {totalRevenue.toLocaleString("pt-BR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {formatCurrencyBRL(totalRevenue)}
               </span>
             </div>
           </div>

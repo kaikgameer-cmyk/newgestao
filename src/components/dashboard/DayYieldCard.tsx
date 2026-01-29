@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Gauge, DollarSign, Clock, Edit2, Plus } from "lucide-react";
 import { useDailyWorkSummary } from "@/hooks/useDailyWorkSummary";
 import { format } from "date-fns";
+import { getPerUnitValue, formatCurrencyBRL, roundCurrency } from "@/lib/format";
 
 interface DayYieldCardProps {
   date: Date;
@@ -25,8 +26,9 @@ export function DayYieldCard({ date, dayRevenue }: DayYieldCardProps) {
   const workedMinutes = summary?.worked_minutes ?? 0;
   const workedHours = workedMinutes / 60;
 
-  const revenuePerKm = kmDriven > 0 ? dayRevenue / kmDriven : 0;
-  const revenuePerHour = workedHours > 0 ? dayRevenue / workedHours : 0;
+  // Use global formatters for precision
+  const revenuePerKm = getPerUnitValue(dayRevenue, kmDriven);
+  const revenuePerHour = getPerUnitValue(dayRevenue, workedHours);
 
   const handleOpenModal = () => {
     setKmRodados(summary?.km_rodados?.toString() || "");
@@ -90,7 +92,7 @@ export function DayYieldCard({ date, dayRevenue }: DayYieldCardProps) {
               </div>
 
               {/* R$/KM */}
-              {kmDriven > 0 && dayRevenue > 0 && (
+              {revenuePerKm !== null && (
                 <div className="pt-2 border-t border-border">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                     <DollarSign className="w-3 h-3" />
@@ -98,17 +100,17 @@ export function DayYieldCard({ date, dayRevenue }: DayYieldCardProps) {
                   </div>
                   <div className="flex justify-between items-baseline">
                     <span className="text-sm text-muted-foreground">
-                      R$ {dayRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ÷ {kmDriven} km
+                      {formatCurrencyBRL(dayRevenue)} ÷ {kmDriven} km
                     </span>
-                    <span className="text-lg font-bold text-green-500">
-                      R$ {revenuePerKm.toFixed(2).replace(".", ",")}
+                    <span className="text-lg font-bold text-success">
+                      R$ {revenuePerKm.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
               )}
 
               {/* R$/hora */}
-              {workedHours > 0 && dayRevenue > 0 && (
+              {revenuePerHour !== null && (
                 <div className="pt-2 border-t border-border">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                     <Clock className="w-3 h-3" />
@@ -116,24 +118,24 @@ export function DayYieldCard({ date, dayRevenue }: DayYieldCardProps) {
                   </div>
                   <div className="flex justify-between items-baseline">
                     <span className="text-sm text-muted-foreground">
-                      {workedHours.toFixed(1).replace(".", ",")}h trabalhadas
+                      {roundCurrency(workedHours).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}h trabalhadas
                     </span>
-                    <span className="text-lg font-bold text-blue-500">
-                      R$ {revenuePerHour.toFixed(2).replace(".", ",")}
+                    <span className="text-lg font-bold text-primary">
+                      R$ {revenuePerHour.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
               )}
 
               {/* Empty state for metrics */}
-              {kmDriven === 0 && dayRevenue > 0 && (
+              {revenuePerKm === null && dayRevenue > 0 && (
                 <div className="pt-2 border-t border-border">
                   <p className="text-xs text-muted-foreground text-center">
                     Informe KM para calcular R$/KM
                   </p>
                 </div>
               )}
-              {workedMinutes === 0 && dayRevenue > 0 && (
+              {revenuePerHour === null && dayRevenue > 0 && (
                 <div className="pt-2 border-t border-border">
                   <p className="text-xs text-muted-foreground text-center">
                     Informe horas para calcular R$/hora
