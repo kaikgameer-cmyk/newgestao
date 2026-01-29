@@ -11,7 +11,7 @@ import {
   Calculator
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCurrencyBRL, roundCurrency } from "@/lib/format";
+import { formatCurrencyBRL, roundCurrency, getPerUnitValue } from "@/lib/format";
 
 interface DayMetricsPanelProps {
   totalTrips: number;
@@ -31,13 +31,7 @@ export function DayMetricsPanel({
   const profit = roundCurrency(revenue - expenses);
   const workedHours = workedMinutes / 60;
 
-  // Helper for safe division with rounding
-  const safeDivide = (num: number, den: number): number | null => {
-    if (den <= 0 || num === 0) return null;
-    return roundCurrency(num / den);
-  };
-
-  // Format currency using global formatter
+  // Format currency using global formatter - always 2 decimal places
   const formatCurrency = (value: number | null): string => {
     if (value === null) return "—";
     return formatCurrencyBRL(value);
@@ -50,18 +44,18 @@ export function DayMetricsPanel({
     return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
   };
 
-  // Calculate derived metrics
-  const revenuePerTrip = safeDivide(revenue, totalTrips);
-  const revenuePerHour = safeDivide(revenue, workedHours);
-  const revenuePerKm = safeDivide(revenue, kmRodados);
+  // Calculate derived metrics using global formatter
+  const revenuePerTrip = getPerUnitValue(revenue, totalTrips);
+  const revenuePerHour = getPerUnitValue(revenue, workedHours);
+  const revenuePerKm = getPerUnitValue(revenue, kmRodados);
 
-  const costPerTrip = safeDivide(expenses, totalTrips);
-  const costPerHour = safeDivide(expenses, workedHours);
-  const costPerKm = safeDivide(expenses, kmRodados);
+  const costPerTrip = getPerUnitValue(expenses, totalTrips);
+  const costPerHour = getPerUnitValue(expenses, workedHours);
+  const costPerKm = getPerUnitValue(expenses, kmRodados);
 
-  const profitPerTrip = safeDivide(profit, totalTrips);
-  const profitPerHour = safeDivide(profit, workedHours);
-  const profitPerKm = safeDivide(profit, kmRodados);
+  const profitPerTrip = getPerUnitValue(profit, totalTrips);
+  const profitPerHour = getPerUnitValue(profit, workedHours);
+  const profitPerKm = getPerUnitValue(profit, kmRodados);
 
   // Metric item component - consistent neutral styling
   const MetricItem = ({ 

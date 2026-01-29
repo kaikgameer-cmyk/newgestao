@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Inbox } from "lucide-react";
 import { usePlatforms } from "@/hooks/usePlatforms";
+import { formatCurrencyBRL, formatPercent, roundCurrency } from "@/lib/format";
 
 interface PlatformData {
   name: string;
@@ -86,17 +87,14 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
                       </span>
                     </div>
                     <p className="text-lg font-bold">
-                      R$ {platform.total.toLocaleString("pt-BR", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+                      {formatCurrencyBRL(platform.total)}
                     </p>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Car className="w-3 h-3" />
                         {platform.trips > 0 ? platform.trips : "—"}
                       </span>
-                      <span>{percentage.toFixed(0)}%</span>
+                      <span>{formatPercent(percentage, 0)}</span>
                     </div>
                   </div>
                 );
@@ -114,10 +112,7 @@ export function PlatformBreakdownCard({ revenues }: PlatformBreakdownCardProps) 
                 )}
               </div>
               <span className="font-bold text-lg text-primary">
-                R$ {totalRevenue.toLocaleString("pt-BR", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {formatCurrencyBRL(totalRevenue)}
               </span>
             </div>
           </div>

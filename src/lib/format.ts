@@ -103,3 +103,95 @@ export function centsToDecimal(cents: number): number {
 export function decimalToCents(decimal: number): number {
   return Math.round(decimal * 100);
 }
+
+/**
+ * PERCENTAGE FORMATTER
+ * Format a percentage with max 2 decimal places
+ * Removes unnecessary trailing zeros for cleaner display
+ * E.g., 12.34567 → "12,34%", 12.00 → "12%", 12.50 → "12,5%"
+ */
+export function formatPercent(value: number, maxDecimals: number = 2): string {
+  if (isNaN(value) || !isFinite(value)) return "0%";
+  
+  const rounded = Math.round(value * Math.pow(10, maxDecimals)) / Math.pow(10, maxDecimals);
+  
+  // Format with Brazilian locale, removing unnecessary decimal places
+  const formatted = rounded.toLocaleString("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxDecimals,
+  });
+  
+  return `${formatted}%`;
+}
+
+/**
+ * PER-UNIT METRIC FORMATTER
+ * Format a value per unit (km, hour, trip)
+ * Handles division by zero gracefully
+ * E.g., formatPerUnit(100, 50, "km") → "R$ 2,00/km"
+ */
+export function formatPerUnit(
+  numerator: number,
+  denominator: number,
+  unit: string
+): string {
+  if (!denominator || denominator === 0 || isNaN(denominator)) {
+    return "—";
+  }
+  
+  if (isNaN(numerator)) {
+    return "—";
+  }
+  
+  const result = roundCurrency(numerator / denominator);
+  
+  if (!isFinite(result)) {
+    return "—";
+  }
+  
+  return `R$ ${result.toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}/${unit}`;
+}
+
+/**
+ * RAW PER-UNIT VALUE
+ * Get the raw numeric value for a per-unit calculation
+ * Returns null if calculation is not possible
+ */
+export function getPerUnitValue(
+  numerator: number,
+  denominator: number
+): number | null {
+  if (!denominator || denominator === 0 || isNaN(denominator) || isNaN(numerator)) {
+    return null;
+  }
+  
+  const result = roundCurrency(numerator / denominator);
+  
+  if (!isFinite(result)) {
+    return null;
+  }
+  
+  return result;
+}
+
+/**
+ * CHART AXIS FORMATTER
+ * Format values for chart axes (compact version)
+ * E.g., 1234.56 → "R$1.235"
+ */
+export function formatChartAxis(value: number): string {
+  if (isNaN(value)) return "R$0";
+  return `R$${Math.round(value).toLocaleString("pt-BR")}`;
+}
+
+/**
+ * CHART TOOLTIP FORMATTER
+ * Format values for chart tooltips (full precision)
+ * E.g., 1234.56 → "R$ 1.234,56"
+ */
+export function formatChartTooltip(value: number): string {
+  return formatCurrencyBRL(value);
+}

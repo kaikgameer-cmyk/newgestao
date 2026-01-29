@@ -1,6 +1,7 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { formatCurrencyBRL, formatPercent } from "@/lib/format";
 
 interface ExpenseCategory {
   name: string;
@@ -88,11 +89,11 @@ export function ExpensesByCategoryChart({ data, compact = false }: ExpensesByCat
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "8px",
                     boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-                    fontSize: "12px",
+                    fontSize: "13px",
                   }}
                   labelStyle={{ color: "hsl(var(--popover-foreground))" }}
                   formatter={(value: number, name: string) => [
-                    `R$ ${value.toFixed(2)} (${((value / totalValue) * 100).toFixed(1)}%)`,
+                    `${formatCurrencyBRL(value)} (${formatPercent((value / totalValue) * 100)})`,
                     name,
                   ]}
                 />
@@ -103,7 +104,7 @@ export function ExpensesByCategoryChart({ data, compact = false }: ExpensesByCat
           {/* Legenda - responsiva com grid em mobile */}
           <div className={`${compact ? "flex-1" : "w-full md:w-1/2"} grid grid-cols-1 ${compact ? "" : "xs:grid-cols-2 md:grid-cols-1"} gap-2 sm:gap-3 overflow-auto ${compact ? "max-h-[130px]" : "max-h-[180px] sm:max-h-[220px] md:max-h-[250px]"} px-1`}>
             {chartData.map((category, index) => {
-              const percentage = ((category.value / totalValue) * 100).toFixed(1);
+              const percentage = (category.value / totalValue) * 100;
               return (
                 <div
                   key={index}
@@ -122,10 +123,10 @@ export function ExpensesByCategoryChart({ data, compact = false }: ExpensesByCat
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                     <span className="text-[10px] sm:text-xs text-muted-foreground hidden xs:inline">
-                      {percentage}%
+                      {formatPercent(percentage, 1)}
                     </span>
                     <span className="font-medium text-foreground text-xs sm:text-sm whitespace-nowrap">
-                      R$ {category.value.toFixed(0)}
+                      {formatCurrencyBRL(category.value)}
                     </span>
                   </div>
                 </div>
