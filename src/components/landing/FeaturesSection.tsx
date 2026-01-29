@@ -1,70 +1,66 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, Fuel, CreditCard, Calendar, Gauge, PieChart } from "lucide-react";
+import { TrendingUp, Fuel, CreditCard, Calendar, Gauge, Target } from "lucide-react";
 
 const features = [
   {
     icon: TrendingUp,
-    title: "Resumo semanal de lucros",
-    description: "Veja quanto realmente sobrou depois de todas as despesas.",
+    title: "Lucro real da semana",
+    description: "Veja quanto sobrou depois de descontar combustível, manutenção e outras despesas.",
   },
   {
     icon: Fuel,
     title: "Controle de combustível",
-    description: "Custo por km, consumo médio e histórico de abastecimentos.",
+    description: "Registre abastecimentos e saiba seu custo por km e consumo médio.",
   },
   {
     icon: CreditCard,
     title: "Gestão de cartões",
-    description: "Qual cartão foi usado, fatura atual e gastos por categoria.",
+    description: "Acompanhe gastos por cartão e saiba quanto vai fechar cada fatura.",
   },
   {
     icon: Calendar,
-    title: "Resumo mensal",
-    description: "Visão geral do lucro líquido do mês com comparativos.",
+    title: "Visão semanal e mensal",
+    description: "Compare semanas e meses para entender seu ritmo de ganhos.",
   },
   {
     icon: Gauge,
-    title: "Métricas em tempo real",
-    description: "KPIs atualizados automaticamente conforme você lança.",
+    title: "Métricas automáticas",
+    description: "R$/km, R$/hora e R$/viagem calculados automaticamente.",
   },
   {
-    icon: PieChart,
-    title: "Gráficos intuitivos",
-    description: "Visualize suas finanças de forma clara e objetiva.",
+    icon: Target,
+    title: "Metas diárias",
+    description: "Defina quanto quer ganhar por dia e acompanhe seu progresso.",
   },
 ];
 
 export function FeaturesSection() {
   return (
-    <section id="recursos" className="py-24 relative">
-      <div className="absolute inset-0 bg-gradient-dark" />
-      
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center mb-16">
+    <section id="recursos" className="py-20 md:py-28 relative">
+      <div className="container mx-auto px-4">
+        {/* Header */}
+        <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            O que você vê no <span className="text-gradient-primary">sistema</span>
+            Tudo o que você precisa para{" "}
+            <span className="text-primary">controlar suas finanças</span>
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Tudo o que você precisa para entender suas finanças como motorista de app
+          <p className="text-muted-foreground text-lg">
+            Funcionalidades pensadas para a rotina de quem dirige todo dia.
           </p>
         </div>
         
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Features grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-5xl mx-auto">
           {features.map((feature, index) => (
-            <Card
+            <div
               key={index}
-              variant="glass"
-              className="group hover:border-primary/30 hover:shadow-primary transition-all duration-300"
-              style={{ animationDelay: `${index * 0.1}s` }}
+              className="group p-5 md:p-6 rounded-xl bg-card border border-border hover:border-border-strong transition-colors"
             >
-              <CardContent className="p-6">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <feature.icon className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground text-sm">{feature.description}</p>
-              </CardContent>
-            </Card>
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <feature.icon className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="text-base font-semibold mb-2">{feature.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+            </div>
           ))}
         </div>
       </div>

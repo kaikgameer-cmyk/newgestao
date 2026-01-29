@@ -1,4 +1,4 @@
-import { Check, Zap, Sparkles, TrendingUp } from "lucide-react";
+import { Check, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PLANS_LIST } from "@/config/plans";
 
@@ -8,108 +8,93 @@ export function PricingSection() {
   };
 
   return (
-    <section id="precos" className="py-24 relative overflow-hidden">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+    <section id="precos" className="py-20 md:py-28 relative">
+      <div className="absolute inset-0 bg-secondary/30" />
       
       <div className="container mx-auto px-4 relative z-10">
-        <div className="text-center max-w-2xl mx-auto mb-16">
+        {/* Header */}
+        <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Escolha o <span className="text-gradient-primary">plano ideal</span> para você
+            Escolha seu <span className="text-primary">plano</span>
           </h2>
           <p className="text-muted-foreground text-lg">
             Todos os planos incluem acesso completo ao New Gestão
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        {/* Plans grid */}
+        <div className="grid md:grid-cols-3 gap-4 md:gap-6 max-w-4xl mx-auto">
           {PLANS_LIST.map((plan) => {
-            const showBestValueBadge = plan.bestValue;
-            const showPopularBadge = !plan.bestValue && plan.popular;
+            const isHighlighted = plan.bestValue || plan.popular;
 
             return (
               <div
                 key={plan.id}
-                onClick={() => handleSelectPlan(plan.checkoutUrl)}
                 className={cn(
-                  "relative group flex flex-col rounded-2xl p-6 cursor-pointer transition-all duration-300",
-                  "bg-card border border-border",
-                  "hover:border-primary/50 hover:shadow-lg hover:shadow-primary/10",
-                  plan.bestValue && "border-primary/30 scale-105"
+                  "relative flex flex-col rounded-xl p-5 md:p-6 transition-all duration-200",
+                  "bg-card border",
+                  isHighlighted 
+                    ? "border-primary/50 shadow-lg shadow-primary/5" 
+                    : "border-border hover:border-border-strong"
                 )}
               >
                 {/* Badge */}
-                {showBestValueBadge && (
+                {plan.bestValue && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground shadow-md">
-                      <TrendingUp className="w-3 h-3" />
-                      Mais Economia
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground">
+                      Mais economia
                     </span>
                   </div>
                 )}
                 
-                {showPopularBadge && (
+                {!plan.bestValue && plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground shadow-md">
-                      <Sparkles className="w-3 h-3" />
-                      Mais Popular
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground">
+                      Popular
                     </span>
                   </div>
                 )}
 
-                {/* Plan name */}
-                <h3 className="text-xl font-bold text-foreground text-center mt-2">
-                  {plan.displayName}
-                </h3>
-                <p className="text-sm text-muted-foreground text-center">{plan.subtitle}</p>
-
-                {/* Price section */}
-                <div className="flex items-center justify-center mt-6 mb-2">
-                  <span className="text-2xl font-bold text-foreground tracking-tight">
-                    {plan.priceLabel}
-                  </span>
+                {/* Plan info */}
+                <div className="text-center mb-6 pt-2">
+                  <h3 className="text-lg font-semibold mb-1">{plan.displayName}</h3>
+                  <p className="text-sm text-muted-foreground">{plan.subtitle}</p>
                 </div>
 
-                <div className="h-6" />
+                {/* Price */}
+                <div className="text-center mb-6">
+                  <span className="text-2xl font-bold">{plan.priceLabel}</span>
+                </div>
 
                 {/* Features */}
                 <ul className="space-y-3 mb-6 flex-1">
-                  <li className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    Dashboard completo
-                  </li>
-                  <li className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    Controle de combustível
-                  </li>
-                  <li className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    Gestão de despesas
-                  </li>
-                  <li className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    Metas e competições
-                  </li>
-                  <li className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    Atualizações inclusas
-                  </li>
+                  {[
+                    "Dashboard completo",
+                    "Controle de combustível",
+                    "Gestão de despesas",
+                    "Metas e competições",
+                    "Atualizações inclusas",
+                  ].map((feature) => (
+                    <li key={feature} className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                      <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
                 </ul>
 
-                {/* Action button */}
+                {/* CTA */}
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSelectPlan(plan.checkoutUrl);
-                  }}
+                  onClick={() => handleSelectPlan(plan.checkoutUrl)}
                   className={cn(
-                    "w-full py-3 px-4 rounded-xl text-sm font-medium transition-all duration-200",
+                    "w-full py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200",
                     "flex items-center justify-center gap-2",
-                    "bg-primary text-primary-foreground",
-                    "hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
+                    isHighlighted
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-secondary text-foreground hover:bg-secondary/80"
                   )}
                 >
-                  <Zap className="w-4 h-4" />
                   Começar agora
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             );
