@@ -2,18 +2,28 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSupportAccess } from "@/hooks/useSupportAccess";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft, RefreshCw } from "lucide-react";
 import { TicketList } from "@/components/support/TicketList";
 import { TicketChat } from "@/components/support/TicketChat";
 import { NewTicketModal } from "@/components/support/NewTicketModal";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Support() {
   const { user } = useAuth();
   const { hasSupportAccess } = useSupportAccess();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshChat = async () => {
+    if (!selectedTicketId) return;
+    setIsRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ["support-messages", selectedTicketId] });
+    setIsRefreshing(false);
+  };
 
   if (!user) return null;
 
@@ -58,7 +68,16 @@ export default function Support() {
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <h2 className="text-lg font-semibold">Ticket</h2>
+              <h2 className="text-lg font-semibold flex-1">Ticket</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshChat}
+                disabled={isRefreshing}
+                title="Atualizar mensagens"
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
             </div>
             <div className="flex-1 overflow-hidden">
               <TicketChat

@@ -2,15 +2,17 @@ import { useState, useMemo } from "react";
 import { useTickets, useUpdateTicketStatus, useDeleteTicket } from "@/hooks/useSupport";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2, TicketIcon, ArrowUp, ArrowDown, User } from "lucide-react";
+import { Loader2, TicketIcon, ArrowUp, ArrowDown, User, RefreshCw, Archive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TicketActions } from "./TicketActions";
+import { useQueryClient } from "@tanstack/react-query";
 
-type StatusFilter = "all" | "open" | "pending" | "resolved" | "closed";
+type StatusFilter = "active" | "open" | "pending" | "resolved" | "archived";
 type SortOrder = "newest" | "oldest";
 
 interface TicketListProps {
@@ -50,19 +52,33 @@ export function TicketList({
   onSelectTicket,
   selectedTicketId,
 }: TicketListProps) {
-  const { data: tickets, isLoading } = useTickets(userId, isAdmin);
+  const { data: tickets, isLoading, refetch, isFetching } = useTickets(userId, isAdmin);
   const updateStatus = useUpdateTicketStatus();
   const deleteTicket = useDeleteTicket();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const queryClient = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
 
   const filteredTickets = useMemo(() => {
     if (!tickets) return [];
-    let result = statusFilter === "all" 
-      ? [...tickets] 
-      : tickets.filter((ticket) => ticket.status === statusFilter);
     
-    result.sort((a, b) => {
+    let result: typeof tickets;
+    
+    switch (statusFilter) {
+      case "active":
+        // Show all non-archived tickets
+        result = tickets.filter((ticket) => ticket.status !== "closed");
+        break;
+      case "archived":
+        // Show only archived
+        result = tickets.filter((ticket) => ticket.status === "closed");
+        break;
+      default:
+        // Filter by specific status
+        result = tickets.filter((ticket) => ticket.status === statusFilter);
+    }
+    
+    result = [...result].sort((a, b) => {
       const dateA = new Date(a.last_message_at).getTime();
       const dateB = new Date(b.last_message_at).getTime();
       return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
@@ -72,35 +88,43 @@ export function TicketList({
   }, [tickets, statusFilter, sortOrder]);
 
   const statusCounts = useMemo(() => {
-    if (!tickets) return { all: 0, open: 0, pending: 0, resolved: 0, closed: 0 };
+    if (!tickets) return { active: 0, open: 0, pending: 0, resolved: 0, archived: 0 };
     return {
-      all: tickets.length,
+      active: tickets.filter(t => t.status !== "closed").length,
       open: tickets.filter(t => t.status === "open").length,
       pending: tickets.filter(t => t.status === "pending").length,
       resolved: tickets.filter(t => t.status === "resolved").length,
-      closed: tickets.filter(t => t.status === "closed").length,
+      archived: tickets.filter(t => t.status === "closed").length,
     };
   }, [tickets]);
 
   const statusFilters: { value: StatusFilter; label: string }[] = [
-    { value: "all", label: "Todos" },
+    { value: "active", label: "Ativos" },
     { value: "open", label: "Abertos" },
     { value: "pending", label: "Pendentes" },
     { value: "resolved", label: "Resolvidos" },
+    ...(isAdmin ? [{ value: "archived" as StatusFilter, label: "Arquivados" }] : []),
   ];
 
   const handleArchive = (ticketId: string) => {
-    updateStatus.mutate({ ticketId, status: "closed" });
-    if (selectedTicketId === ticketId) {
-      onSelectTicket("");
-    }
+    updateStatus.mutate({ ticketId, status: "closed" }, {
+      onSuccess: () => {
+        // If current filter is "active", the ticket will disappear from the list
+        if (selectedTicketId === ticketId) {
+          onSelectTicket("");
+        }
+      }
+    });
   };
 
   const handleDelete = (ticketId: string) => {
-    deleteTicket.mutate(ticketId);
-    if (selectedTicketId === ticketId) {
-      onSelectTicket("");
-    }
+    deleteTicket.mutate(ticketId, {
+      onSuccess: () => {
+        if (selectedTicketId === ticketId) {
+          onSelectTicket("");
+        }
+      }
+    });
   };
 
   const handleReopen = (ticketId: string) => {
@@ -109,6 +133,10 @@ export function TicketList({
 
   const handleResolve = (ticketId: string) => {
     updateStatus.mutate({ ticketId, status: "resolved" });
+  };
+
+  const handleRefresh = () => {
+    refetch();
   };
 
   if (isLoading) {
@@ -139,24 +167,41 @@ export function TicketList({
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Status Filters & Sort */}
       <div className="p-3 border-b border-border space-y-2">
-        <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)} className="w-full">
-          <TabsList className="w-full grid grid-cols-4 h-9">
-            {statusFilters.map((filter) => (
-              <TabsTrigger 
-                key={filter.value} 
-                value={filter.value}
-                className="text-xs gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              >
-                {filter.label}
-                {statusCounts[filter.value] > 0 && (
-                  <span className="text-[10px] opacity-70">
-                    ({statusCounts[filter.value]})
-                  </span>
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-2">
+          <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)} className="flex-1">
+            <TabsList className={cn("w-full grid h-9", isAdmin ? "grid-cols-5" : "grid-cols-4")}>
+              {statusFilters.map((filter) => (
+                <TabsTrigger 
+                  key={filter.value} 
+                  value={filter.value}
+                  className="text-xs gap-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  {filter.value === "archived" ? (
+                    <Archive className="h-3 w-3" />
+                  ) : null}
+                  <span className="hidden sm:inline">{filter.label}</span>
+                  {statusCounts[filter.value] > 0 && (
+                    <span className="text-[10px] opacity-70">
+                      ({statusCounts[filter.value]})
+                    </span>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          
+          {/* Refresh button */}
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            onClick={handleRefresh}
+            disabled={isFetching}
+            title="Atualizar lista"
+          >
+            <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
+          </Button>
+        </div>
         
         <button
           onClick={() => setSortOrder(prev => prev === "newest" ? "oldest" : "newest")}
@@ -177,7 +222,7 @@ export function TicketList({
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <TicketIcon className="h-10 w-10 text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground">
-              Nenhum ticket {statusFilter !== "all" ? `com status "${statusFilters.find(f => f.value === statusFilter)?.label}"` : "encontrado"}
+              Nenhum ticket {statusFilter !== "active" ? `com status "${statusFilters.find(f => f.value === statusFilter)?.label}"` : "ativo"}
             </p>
           </div>
         ) : (
