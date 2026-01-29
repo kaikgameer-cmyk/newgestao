@@ -1,12 +1,11 @@
-const CACHE_NAME = "ng-static-v5";
+const CACHE_NAME = "ng-static-v6";
 
 const URLS_TO_CACHE = [
   "/",
   "/manifest.json",
   "/favicon-v2.png",
   "/icon-192-v2.png",
-  "/icon-512-v2.png",
-  "/maskable-icon-512-v2.png",
+  "/icon-pwa-512.png",
   "/apple-touch-icon-v2.png",
 ];
 

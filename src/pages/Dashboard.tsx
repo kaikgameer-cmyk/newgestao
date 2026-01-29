@@ -39,6 +39,7 @@ import { DailySummaryCard } from "@/components/dashboard/DailySummaryCard";
 import { useRevenueByPlatform } from "@/hooks/useRevenueByPlatform";
 import { format, eachDayOfInterval, isSameDay, differenceInDays } from "date-fns";
 import { parseLocalDate, formatLocalDate } from "@/lib/dateUtils";
+import { formatCurrencyBRL, roundCurrency } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 
 const COLORS = [
@@ -241,19 +242,19 @@ export default function Dashboard() {
   const periodKpis = [
     {
       title: "Receita Total",
-      value: `R$ ${totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      value: formatCurrencyBRL(totalRevenue),
       icon: DollarSign,
       highlight: false,
     },
     {
       title: "Despesas",
-      value: `R$ ${totalAllExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      value: formatCurrencyBRL(totalAllExpenses),
       icon: TrendingDown,
       highlight: false,
     },
     {
       title: "Lucro Líquido",
-      value: `R$ ${netProfit.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      value: formatCurrencyBRL(netProfit),
       icon: TrendingUp,
       highlight: true,
       isNegative: netProfit < 0,
@@ -266,7 +267,7 @@ export default function Dashboard() {
     },
     {
       title: "Média/Dia",
-      value: `R$ ${avgPerDay.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      value: formatCurrencyBRL(avgPerDay),
       icon: Clock,
       highlight: false,
     },
@@ -277,7 +278,7 @@ export default function Dashboard() {
     totalTrips: incomeDaysTotalTrips,
     totalKm: incomeDaysTotalKm,
     totalMinutes: incomeDaysTotalMinutes,
-    ticketMedio: incomeDaysTotalTrips > 0 ? totalRevenue / incomeDaysTotalTrips : 0,
+    ticketMedio: incomeDaysTotalTrips > 0 ? roundCurrency(totalRevenue / incomeDaysTotalTrips) : 0,
   };
 
   // === DAY MODE (single day or range with same UI) ===
@@ -416,13 +417,13 @@ export default function Dashboard() {
                   <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Meta Total</p>
                     <p className="text-lg font-bold text-primary">
-                      R$ {totalGoalForPeriod.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      {formatCurrencyBRL(totalGoalForPeriod)}
                     </p>
                   </div>
                   <div className="p-3 rounded-lg bg-success/10 border border-success/20 text-center">
                     <p className="text-xs text-muted-foreground mb-1">Faturado</p>
                     <p className="text-lg font-bold text-success">
-                      R$ {totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      {formatCurrencyBRL(totalRevenue)}
                     </p>
                   </div>
                 </div>

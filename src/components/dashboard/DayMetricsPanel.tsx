@@ -11,6 +11,7 @@ import {
   Calculator
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrencyBRL, roundCurrency } from "@/lib/format";
 
 interface DayMetricsPanelProps {
   totalTrips: number;
@@ -27,19 +28,19 @@ export function DayMetricsPanel({
   revenue, 
   expenses 
 }: DayMetricsPanelProps) {
-  const profit = revenue - expenses;
+  const profit = roundCurrency(revenue - expenses);
   const workedHours = workedMinutes / 60;
 
-  // Helper for safe division
+  // Helper for safe division with rounding
   const safeDivide = (num: number, den: number): number | null => {
     if (den <= 0 || num === 0) return null;
-    return num / den;
+    return roundCurrency(num / den);
   };
 
-  // Format currency
+  // Format currency using global formatter
   const formatCurrency = (value: number | null): string => {
     if (value === null) return "—";
-    return `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return formatCurrencyBRL(value);
   };
 
   // Format hours

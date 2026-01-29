@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CategoryIcon } from "@/components/ui/category-icon";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { formatCurrencyBRL, roundCurrency } from "@/lib/format";
 
 interface IncomeDayFormProps {
   open: boolean;
@@ -33,7 +35,7 @@ interface IncomeDayFormProps {
 
 interface PlatformAmount {
   platform: Platform;
-  amount: string;
+  amount: number; // Store as number for precision
 }
 
 export function IncomeDayForm({
@@ -55,8 +57,8 @@ export function IncomeDayForm({
   const [trips, setTrips] = useState("");
   const [notes, setNotes] = useState("");
   
-  // Platform amounts - one input per enabled platform
-  const [platformAmounts, setPlatformAmounts] = useState<Record<string, string>>({});
+  // Platform amounts - one input per enabled platform (stored as numbers)
+  const [platformAmounts, setPlatformAmounts] = useState<Record<string, number>>({});
 
   // Get all platforms to show (enabled + any with existing data)
   const platformsToShow = useMemo(() => {
@@ -102,9 +104,9 @@ export function IncomeDayForm({
         setNotes(existingData.notes || "");
         
         // Populate platform amounts from existing items
-        const amounts: Record<string, string> = {};
+        const amounts: Record<string, number> = {};
         existingData.items.forEach((item) => {
-          amounts[item.platform] = item.amount.toString();
+          amounts[item.platform] = roundCurrency(item.amount);
         });
         setPlatformAmounts(amounts);
       } else {
@@ -134,7 +136,7 @@ export function IncomeDayForm({
     return Math.round(decimal * 60);
   };
 
-  const updatePlatformAmount = (platformKey: string, value: string) => {
+  const updatePlatformAmount = (platformKey: string, value: number) => {
     setPlatformAmounts((prev) => ({
       ...prev,
       [platformKey]: value,
@@ -145,7 +147,7 @@ export function IncomeDayForm({
     e.preventDefault();
 
     const totalTrips = parseInt(trips) || 0;
-    const platformCount = Object.values(platformAmounts).filter((v) => parseFloat(v) > 0).length;
+    const platformCount = Object.values(platformAmounts).filter((v) => v > 0).length;
     const tripsPerPlatform = platformCount > 0 ? Math.floor(totalTrips / platformCount) : 0;
     const remainder = platformCount > 0 ? totalTrips % platformCount : 0;
 
@@ -153,7 +155,7 @@ export function IncomeDayForm({
     let platformIndex = 0;
     const items: IncomeDayItem[] = platformsToShow
       .filter((p) => {
-        const amount = parseFloat(platformAmounts[p.key] || "0");
+        const amount = platformAmounts[p.key] || 0;
         return amount > 0;
       })
       .map((p) => {
@@ -163,7 +165,7 @@ export function IncomeDayForm({
         return {
           platform: p.key,
           platform_label: p.user_id ? p.name : null,
-          amount: parseFloat(platformAmounts[p.key] || "0"),
+          amount: roundCurrency(platformAmounts[p.key] || 0),
           trips: itemTrips,
           payment_method: null,
           notes: null,
@@ -187,16 +189,17 @@ export function IncomeDayForm({
     });
   };
 
-  // Calculate total
+  // Calculate total with proper rounding
   const totalAmount = useMemo(() => {
-    return Object.values(platformAmounts).reduce((sum, val) => {
-      return sum + (parseFloat(val) || 0);
+    const sum = Object.values(platformAmounts).reduce((sum, val) => {
+      return sum + (val || 0);
     }, 0);
+    return roundCurrency(sum);
   }, [platformAmounts]);
 
   // Validation
   const hasAtLeastOnePlatformWithValue = Object.values(platformAmounts).some(
-    (val) => parseFloat(val) > 0
+    (val) => val > 0
   );
   const isFormValid =
     parseInt(kmRodados) > 0 &&
@@ -348,14 +351,9 @@ export function IncomeDayForm({
                         {platform.name}
                       </Label>
                       <div className="flex-1">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                          value={platformAmounts[platform.key] || ""}
-                          onChange={(e) => updatePlatformAmount(platform.key, e.target.value)}
-                          className="text-right"
+                        <CurrencyInput
+                          value={platformAmounts[platform.key] || 0}
+                          onChange={(value) => updatePlatformAmount(platform.key, value)}
                         />
                       </div>
                     </div>
@@ -371,7 +369,7 @@ export function IncomeDayForm({
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Total do Dia</span>
                 <p className="text-xl font-bold text-primary">
-                  R$ {totalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  {formatCurrencyBRL(totalAmount)}
                 </p>
               </div>
             </CardContent>
