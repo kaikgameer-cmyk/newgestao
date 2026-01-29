@@ -17,6 +17,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { FeedbackAdminPanel } from "@/components/feedback/FeedbackAdminPanel";
 import { AnnouncementsAdminPanel } from "@/components/admin/AnnouncementsAdminPanel";
 import { RoleManagementModal } from "@/components/admin/RoleManagementModal";
+import { AdminToolCard } from "@/components/admin/AdminToolCard";
 import { useAllUserRoles, ROLE_LABELS, ROLE_COLORS, AppRole } from "@/hooks/useRoles";
 import { 
   Shield, 
@@ -34,13 +35,13 @@ import {
   RefreshCw,
   Calendar,
   User,
-  BadgeCheck,
   Ban,
   UserPlus,
-  
   Mail,
   Send,
-  Tags
+  Tags,
+  Megaphone,
+  MessageSquare
 } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -78,28 +79,20 @@ interface UserWithData {
 // Helper function to get months based on plan type
 const getMonthsForPlan = (plan: string): number => {
   switch (plan) {
-    case "month":
-      return 1;
-    case "quarter":
-      return 3;
-    case "year":
-      return 12;
-    default:
-      return 1;
+    case "month": return 1;
+    case "quarter": return 3;
+    case "year": return 12;
+    default: return 1;
   }
 };
 
 // Helper function to get plan name from interval
 const getPlanName = (plan: string): string => {
   switch (plan) {
-    case "month":
-      return "New Gestão - Mensal";
-    case "quarter":
-      return "New Gestão - Trimestral";
-    case "year":
-      return "New Gestão - Anual";
-    default:
-      return "New Gestão - Mensal";
+    case "month": return "New Gestão - Mensal";
+    case "quarter": return "New Gestão - Trimestral";
+    case "year": return "New Gestão - Anual";
+    default: return "New Gestão - Mensal";
   }
 };
 
@@ -148,7 +141,6 @@ export default function AdminPage() {
   const { data: usersWithData = [], isLoading: usersLoading, refetch: refetchUsers } = useQuery({
     queryKey: ["admin-users-full"],
     queryFn: async () => {
-      // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
@@ -156,14 +148,12 @@ export default function AdminPage() {
 
       if (profilesError) throw profilesError;
 
-      // Get all subscriptions
       const { data: subscriptions, error: subsError } = await supabase
         .from("subscriptions")
         .select("*");
 
       if (subsError) throw subsError;
 
-      // Get all admin roles
       const { data: adminRoles, error: rolesError } = await supabase
         .from("user_roles")
         .select("*")
@@ -171,7 +161,6 @@ export default function AdminPage() {
 
       if (rolesError) throw rolesError;
 
-      // Combine data
       const usersMap = new Map<string, UserWithData>();
       
       profiles?.forEach(profile => {
@@ -186,7 +175,7 @@ export default function AdminPage() {
       return Array.from(usersMap.values());
     },
     enabled: adminFetched && isAdmin,
-    staleTime: 0, // Always refetch
+    staleTime: 0,
     refetchOnMount: true,
   });
 
@@ -244,7 +233,7 @@ export default function AdminPage() {
     }
   });
 
-  // Create subscription mutation - FIXED: Auto-calculate renewal date based on plan
+  // Create subscription mutation
   const createSubMutation = useMutation({
     mutationFn: async ({ userId, plan, status }: { userId: string; plan: string; status: string }) => {
       const months = getMonthsForPlan(plan);
@@ -275,7 +264,7 @@ export default function AdminPage() {
     }
   });
 
-  // Update subscription mutation - FIXED: Auto-calculate renewal date when plan changes
+  // Update subscription mutation
   const updateSubMutation = useMutation({
     mutationFn: async ({ id, status, plan, resetPeriod }: { id: string; status: string; plan?: string; resetPeriod?: boolean }) => {
       const updateData: Record<string, unknown> = { 
@@ -283,7 +272,6 @@ export default function AdminPage() {
         updated_at: new Date().toISOString()
       };
       
-      // If plan is being changed or resetPeriod is true, recalculate the period end date
       if (plan) {
         const months = getMonthsForPlan(plan);
         const periodEnd = addMonths(new Date(), months);
@@ -293,7 +281,6 @@ export default function AdminPage() {
         updateData.current_period_end = periodEnd.toISOString();
         updateData.last_event = "admin_plan_change";
       } else if (resetPeriod) {
-        // Just reset the period based on current plan
         const { data: currentSub } = await supabase
           .from("subscriptions")
           .select("billing_interval")
@@ -343,14 +330,11 @@ export default function AdminPage() {
     }
   });
 
-  // Delete user data mutation (profile + subscription)
+  // Delete user data mutation
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Delete subscription first
       await supabase.from("subscriptions").delete().eq("user_id", userId);
-      // Delete roles
       await supabase.from("user_roles").delete().eq("user_id", userId);
-      // Delete profile
       const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
       if (error) throw error;
     },
@@ -363,7 +347,7 @@ export default function AdminPage() {
     }
   });
 
-  // Create user mutation (uses edge function with service_role)
+  // Create user mutation
   const createUserSchema = z.object({
     email: z.string().email("Email inválido"),
     password: z.string().min(6, "Mínimo 6 caracteres"),
@@ -379,31 +363,20 @@ export default function AdminPage() {
         body: { email, password, name, city },
       });
 
-      // Handle edge function errors with proper error codes
       if (response.error) {
-        // Try to parse error details from response
-        const errorMessage = response.error.message || "Erro ao criar usuário";
-        throw new Error(errorMessage);
+        throw new Error(response.error.message || "Erro ao criar usuário");
       }
       
-      // Check for application-level errors in response data
       if (response.data?.ok === false || response.data?.error) {
-        const code = response.data?.code;
-        const message = response.data?.error || "Erro ao criar usuário";
-        
-        // Throw error with code for specific handling
-        const err = new Error(message);
-        (err as any).code = code;
+        const err = new Error(response.data?.error || "Erro ao criar usuário");
+        (err as any).code = response.data?.code;
         throw err;
       }
       
       return response.data;
     },
     onSuccess: async () => {
-      // Wait for profile to be created by edge function, then refetch
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Force invalidate and refetch all user data
       await queryClient.invalidateQueries({ queryKey: ["admin-users-full"] });
       await refetchUsers();
       
@@ -416,14 +389,10 @@ export default function AdminPage() {
       setCreateUserErrors({});
     },
     onError: (error: Error & { code?: string }) => {
-      // Handle specific error codes with user-friendly messages
       let title = "Erro ao criar usuário";
       let description = error.message;
       
       if (error.code === "EMAIL_ALREADY_EXISTS" || error.message?.includes("já existe")) {
-        title = "E-mail já cadastrado";
-        description = "Já existe um usuário cadastrado com este e-mail. Use outro e-mail ou edite o usuário existente.";
-      } else if (error.message?.includes("already been registered")) {
         title = "E-mail já cadastrado";
         description = "Já existe um usuário cadastrado com este e-mail.";
       }
@@ -435,32 +404,16 @@ export default function AdminPage() {
   // Test email mutation
   const testEmailMutation = useMutation({
     mutationFn: async () => {
-      const response = await supabase.functions.invoke("send-test-email", {
-        body: {},
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || "Erro ao enviar email de teste");
-      }
-      
-      if (response.data?.error) {
-        throw new Error(response.data.error);
-      }
-      
+      const response = await supabase.functions.invoke("send-test-email", { body: {} });
+      if (response.error) throw new Error(response.error.message || "Erro ao enviar email");
+      if (response.data?.error) throw new Error(response.data.error);
       return response.data;
     },
     onSuccess: (data) => {
-      toast({ 
-        title: "Email de teste enviado!", 
-        description: data.message || "Verifique sua caixa de entrada."
-      });
+      toast({ title: "Email de teste enviado!", description: data.message || "Verifique sua caixa de entrada." });
     },
     onError: (error: Error) => {
-      toast({ 
-        title: "Erro ao enviar email de teste", 
-        description: error.message, 
-        variant: "destructive" 
-      });
+      toast({ title: "Erro ao enviar email", description: error.message, variant: "destructive" });
     }
   });
 
@@ -470,29 +423,15 @@ export default function AdminPage() {
       const response = await supabase.functions.invoke("resend-password-link", {
         body: { userId, skipSubscriptionCheck },
       });
-
-      if (response.error) {
-        throw new Error(response.error.message || "Erro ao enviar link");
-      }
-      
-      if (response.data?.error) {
-        throw new Error(response.data.error);
-      }
-      
+      if (response.error) throw new Error(response.error.message || "Erro ao enviar link");
+      if (response.data?.error) throw new Error(response.data.error);
       return response.data;
     },
     onSuccess: (data) => {
-      toast({ 
-        title: "Link enviado!", 
-        description: data.message || "O usuário receberá o email em breve."
-      });
+      toast({ title: "Link enviado!", description: data.message || "O usuário receberá o email." });
     },
     onError: (error: Error) => {
-      toast({ 
-        title: "Erro ao enviar link", 
-        description: error.message, 
-        variant: "destructive" 
-      });
+      toast({ title: "Erro ao enviar link", description: error.message, variant: "destructive" });
     }
   });
 
@@ -551,7 +490,7 @@ export default function AdminPage() {
       case "active":
         return <Badge className="bg-green-500/20 text-green-500 border-green-500/30"><CheckCircle className="w-3 h-3 mr-1" />Ativa</Badge>;
       case "past_due":
-        return <Badge className="bg-primary/10 text-primary border-primary/30"><AlertTriangle className="w-3 h-3 mr-1" />Pendente</Badge>;
+        return <Badge className="bg-yellow-500/20 text-yellow-500 border-yellow-500/30"><AlertTriangle className="w-3 h-3 mr-1" />Pendente</Badge>;
       case "canceled":
         return <Badge className="bg-red-500/20 text-red-500 border-red-500/30"><XCircle className="w-3 h-3 mr-1" />Cancelada</Badge>;
       default:
@@ -559,7 +498,6 @@ export default function AdminPage() {
     }
   };
 
-  // Calculate days remaining for a subscription
   const getDaysRemaining = (periodEnd: string): number => {
     const end = new Date(periodEnd);
     const now = new Date();
@@ -595,35 +533,32 @@ export default function AdminPage() {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-primary/10">
-            <Shield className="w-7 h-7 text-primary" />
+            <Shield className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Painel Administrativo</h1>
-            <p className="text-muted-foreground text-sm">Gerenciamento completo de usuários e assinaturas</p>
+            <h1 className="text-xl md:text-2xl font-bold">Painel Administrativo</h1>
+            <p className="text-muted-foreground text-sm">Gerenciamento de usuários e ferramentas</p>
           </div>
         </div>
+        
+        {/* Quick Actions */}
         <div className="flex gap-2 flex-wrap">
           <Button 
             size="sm" 
             onClick={() => testEmailMutation.mutate()}
             variant="outline"
-            className="w-fit gap-2"
+            className="gap-2"
             disabled={testEmailMutation.isPending}
           >
-            {testEmailMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Mail className="w-4 h-4" />
-            )}
+            {testEmailMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
             Testar Email
           </Button>
           <Button 
             size="sm" 
             onClick={() => setCreateUserDialogOpen(true)}
-            className="w-fit"
           >
             <UserPlus className="w-4 h-4 mr-2" />
             Novo Usuário
@@ -637,122 +572,106 @@ export default function AdminPage() {
               toast({ title: "Lista atualizada!" });
             }}
             disabled={usersLoading}
-            className="w-fit"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${usersLoading ? 'animate-spin' : ''}`} />
-            {usersLoading ? 'Atualizando...' : 'Atualizar'}
+            Atualizar
           </Button>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
+      {/* Stats Grid - Compact */}
+      <div className="grid gap-3 grid-cols-3 lg:grid-cols-6">
         <Card className="bg-card/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Users className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{totalUsers}</p>
-                <p className="text-xs text-muted-foreground">Usuários</p>
-              </div>
-            </div>
+          <CardContent className="p-3 text-center">
+            <Users className="w-5 h-5 text-primary mx-auto mb-1" />
+            <p className="text-xl font-bold">{totalUsers}</p>
+            <p className="text-xs text-muted-foreground">Usuários</p>
           </CardContent>
         </Card>
         
         <Card className="bg-card/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <CheckCircle className="w-5 h-5 text-green-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{activeSubscriptions}</p>
-                <p className="text-xs text-muted-foreground">Ativas</p>
-              </div>
-            </div>
+          <CardContent className="p-3 text-center">
+            <CheckCircle className="w-5 h-5 text-green-500 mx-auto mb-1" />
+            <p className="text-xl font-bold text-green-500">{activeSubscriptions}</p>
+            <p className="text-xs text-muted-foreground">Ativas</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-yellow-500/10">
-                <AlertTriangle className="w-5 h-5 text-yellow-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{pendingSubscriptions}</p>
-                <p className="text-xs text-muted-foreground">Pendentes</p>
-              </div>
-            </div>
+          <CardContent className="p-3 text-center">
+            <AlertTriangle className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
+            <p className="text-xl font-bold text-yellow-500">{pendingSubscriptions}</p>
+            <p className="text-xs text-muted-foreground">Pendentes</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-red-500/10">
-                <XCircle className="w-5 h-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{canceledSubscriptions}</p>
-                <p className="text-xs text-muted-foreground">Canceladas</p>
-              </div>
-            </div>
+          <CardContent className="p-3 text-center">
+            <XCircle className="w-5 h-5 text-red-500 mx-auto mb-1" />
+            <p className="text-xl font-bold text-red-500">{canceledSubscriptions}</p>
+            <p className="text-xs text-muted-foreground">Canceladas</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
-                <Ban className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{noSubscription}</p>
-                <p className="text-xs text-muted-foreground">Sem plano</p>
-              </div>
-            </div>
+          <CardContent className="p-3 text-center">
+            <Ban className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
+            <p className="text-xl font-bold">{noSubscription}</p>
+            <p className="text-xs text-muted-foreground">Sem plano</p>
           </CardContent>
         </Card>
 
         <Card className="bg-card/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <Shield className="w-5 h-5 text-purple-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{adminsCount}</p>
-                <p className="text-xs text-muted-foreground">Admins</p>
-              </div>
-            </div>
+          <CardContent className="p-3 text-center">
+            <Shield className="w-5 h-5 text-purple-500 mx-auto mb-1" />
+            <p className="text-xl font-bold text-purple-500">{adminsCount}</p>
+            <p className="text-xs text-muted-foreground">Admins</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Announcements Panel (replaced Webhook Kiwify) */}
-      <Card>
-        <CardContent className="p-4 md:p-6">
+      {/* Administrative Tools - Collapsible Cards */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Crown className="w-5 h-5 text-primary" />
+          Ferramentas Administrativas
+        </h2>
+
+        {/* Announcements Tool */}
+        <AdminToolCard
+          icon={<Megaphone className="w-5 h-5 text-primary" />}
+          title="Sistema de Avisos"
+          description="Envie mensagens broadcast para seus usuários"
+          metrics={[
+            { label: "Total", value: "—", variant: "default" },
+          ]}
+        >
           <AnnouncementsAdminPanel />
-        </CardContent>
-      </Card>
+        </AdminToolCard>
 
-      {/* Feedback/Avaliação Panel */}
-      <Card>
-        <CardContent className="p-4 md:p-6">
+        {/* Feedback Tool */}
+        <AdminToolCard
+          icon={<MessageSquare className="w-5 h-5 text-primary" />}
+          title="Sistema de Avaliação"
+          description="Colete feedback dos usuários com campanhas controladas"
+          metrics={[
+            { label: "Respondidos", value: "—", variant: "success" },
+          ]}
+        >
           <FeedbackAdminPanel />
-        </CardContent>
-      </Card>
+        </AdminToolCard>
+      </div>
 
-      {/* Main Content */}
+      {/* Users Table */}
       <Card>
         <CardHeader className="pb-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-xl">Usuários e Assinaturas</CardTitle>
-              <CardDescription>Lista completa de todos os usuários do sistema</CardDescription>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                Usuários e Assinaturas
+              </CardTitle>
+              <CardDescription>Lista completa de todos os usuários</CardDescription>
             </div>
             <div className="relative w-full md:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -776,19 +695,18 @@ export default function AdminPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Usuário</TableHead>
-                    <TableHead>Cidade</TableHead>
-                    <TableHead>Assinatura</TableHead>
+                    <TableHead className="hidden md:table-cell">Cidade</TableHead>
+                    <TableHead className="hidden lg:table-cell">Plano</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Válido até</TableHead>
-                    <TableHead>Dias Restantes</TableHead>
-                    <TableHead>Permissão</TableHead>
+                    <TableHead className="hidden md:table-cell">Dias</TableHead>
+                    <TableHead className="hidden lg:table-cell">Permissão</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                         <Users className="w-12 h-12 mx-auto mb-3 opacity-20" />
                         <p>Nenhum usuário encontrado</p>
                       </TableCell>
@@ -802,45 +720,38 @@ export default function AdminPage() {
                       return (
                         <TableRow key={user.user_id}>
                           <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                                 <User className="w-4 h-4 text-primary" />
                               </div>
                               <div className="min-w-0">
-                                <p className="font-medium truncate">{user.profile?.name || "Sem nome"}</p>
-                                <p className="text-xs text-muted-foreground truncate max-w-[180px]">{user.user_id}</p>
+                                <p className="font-medium truncate text-sm">{user.profile?.name || "Sem nome"}</p>
+                                <p className="text-xs text-muted-foreground truncate max-w-[120px] md:max-w-[180px]">{user.user_id}</p>
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell">
                             <span className="text-sm">{user.profile?.city || "-"}</span>
                           </TableCell>
-                          <TableCell>
-                            <span className="text-sm">{user.subscription?.plan_name || "-"}</span>
+                          <TableCell className="hidden lg:table-cell">
+                            <span className="text-sm truncate">{user.subscription?.plan_name?.replace("New Gestão - ", "") || "-"}</span>
                           </TableCell>
                           <TableCell>
                             {getStatusBadge(user.subscription?.status)}
                           </TableCell>
-                          <TableCell>
-                            {user.subscription?.current_period_end ? (
-                              <span className="text-sm">
-                                {format(new Date(user.subscription.current_period_end), "dd/MM/yyyy", { locale: ptBR })}
-                              </span>
-                            ) : "-"}
-                          </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell">
                             {user.subscription?.current_period_end ? (
                               <span className={`text-sm font-medium ${daysRemaining <= 7 ? "text-yellow-500" : daysRemaining <= 0 ? "text-red-500" : ""}`}>
-                                {daysRemaining} dias
+                                {daysRemaining}d
                               </span>
                             ) : "-"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden lg:table-cell">
                             <div className="flex flex-wrap gap-1">
                               {(() => {
                                 const userRolesList = allUserRoles.filter(r => r.user_id === user.user_id);
                                 if (userRolesList.length === 0) {
-                                  return <Badge variant="outline" className="text-muted-foreground">Usuário</Badge>;
+                                  return <Badge variant="outline" className="text-muted-foreground text-xs">Usuário</Badge>;
                                 }
                                 return userRolesList.map((r) => {
                                   const colors = ROLE_COLORS[r.role as AppRole] || ROLE_COLORS.admin;
@@ -855,10 +766,10 @@ export default function AdminPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-end gap-1">
-                              {/* Manage Roles */}
                               <Button 
                                 variant="ghost" 
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => {
                                   setSelectedUserForRoles(user);
                                   setRoleManagementOpen(true);
@@ -868,21 +779,21 @@ export default function AdminPage() {
                                 <Tags className="w-4 h-4" />
                               </Button>
 
-                              {/* Edit User */}
                               <Button 
                                 variant="ghost" 
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => handleEditUser(user)}
                                 title="Editar usuário"
                               >
                                 <UserCog className="w-4 h-4" />
                               </Button>
 
-                              {/* Create/Edit Subscription */}
                               {user.subscription ? (
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
+                                  className="h-8 w-8"
                                   onClick={() => handleEditSubscription(user.subscription!)}
                                   title="Editar assinatura"
                                 >
@@ -892,6 +803,7 @@ export default function AdminPage() {
                                 <Button 
                                   variant="ghost" 
                                   size="icon"
+                                  className="h-8 w-8"
                                   onClick={() => handleCreateSubscription(user)}
                                   title="Criar assinatura"
                                 >
@@ -899,10 +811,10 @@ export default function AdminPage() {
                                 </Button>
                               )}
 
-                              {/* Resend Password Link */}
                               <Button 
                                 variant="ghost" 
                                 size="icon"
+                                className="h-8 w-8"
                                 onClick={() => {
                                   resendPasswordLinkMutation.mutate({ 
                                     userId: user.user_id, 
@@ -919,13 +831,12 @@ export default function AdminPage() {
                                 )}
                               </Button>
 
-                              {/* Delete User */}
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button 
                                     variant="ghost" 
                                     size="icon"
-                                    className="text-destructive hover:text-destructive"
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
                                     title="Excluir usuário"
                                   >
                                     <Trash2 className="w-4 h-4" />
@@ -935,7 +846,7 @@ export default function AdminPage() {
                                   <AlertDialogHeader>
                                     <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                      Esta ação irá remover permanentemente o perfil, assinatura e permissões do usuário "{user.profile?.name || 'Sem nome'}". Esta ação não pode ser desfeita.
+                                      Esta ação irá remover permanentemente o perfil, assinatura e permissões do usuário.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
@@ -944,11 +855,7 @@ export default function AdminPage() {
                                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                       onClick={() => deleteUserMutation.mutate(user.user_id)}
                                     >
-                                      {deleteUserMutation.isPending ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                      ) : (
-                                        "Excluir"
-                                      )}
+                                      Excluir
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -974,26 +881,15 @@ export default function AdminPage() {
               <UserCog className="w-5 h-5" />
               Editar Usuário
             </DialogTitle>
-            <DialogDescription>
-              Alterar informações do perfil e permissões
-            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Nome</Label>
-              <Input
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="Nome do usuário"
-              />
+              <Input value={formName} onChange={(e) => setFormName(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Cidade</Label>
-              <Input
-                value={formCity}
-                onChange={(e) => setFormCity(e.target.value)}
-                placeholder="Cidade"
-              />
+              <Input value={formCity} onChange={(e) => setFormCity(e.target.value)} />
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2">
@@ -1007,21 +903,12 @@ export default function AdminPage() {
                   const newValue = !formIsAdmin;
                   setFormIsAdmin(newValue);
                   if (selectedUser) {
-                    toggleAdminMutation.mutate({ 
-                      userId: selectedUser.user_id, 
-                      makeAdmin: newValue 
-                    });
+                    toggleAdminMutation.mutate({ userId: selectedUser.user_id, makeAdmin: newValue });
                   }
                 }}
                 disabled={toggleAdminMutation.isPending}
               >
-                {toggleAdminMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : formIsAdmin ? (
-                  "Remover"
-                ) : (
-                  "Conceder"
-                )}
+                {toggleAdminMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : formIsAdmin ? "Remover" : "Conceder"}
               </Button>
             </div>
           </div>
@@ -1032,11 +919,7 @@ export default function AdminPage() {
             <Button
               onClick={() => {
                 if (selectedUser) {
-                  updateProfileMutation.mutate({
-                    userId: selectedUser.user_id,
-                    name: formName,
-                    city: formCity
-                  });
+                  updateProfileMutation.mutate({ userId: selectedUser.user_id, name: formName, city: formCity });
                 }
               }}
               disabled={updateProfileMutation.isPending}
@@ -1048,7 +931,7 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Create Subscription Dialog - SIMPLIFIED: Auto-calculates period based on plan */}
+      {/* Create Subscription Dialog */}
       <Dialog open={createSubDialogOpen} onOpenChange={setCreateSubDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1056,33 +939,24 @@ export default function AdminPage() {
               <Crown className="w-5 h-5 text-primary" />
               Criar Assinatura
             </DialogTitle>
-            <DialogDescription>
-              Para: {selectedUser?.profile?.name || "Usuário"}
-            </DialogDescription>
+            <DialogDescription>Para: {selectedUser?.profile?.name || "Usuário"}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Plano</Label>
               <Select value={formPlan} onValueChange={(v) => setFormPlan(v as typeof formPlan)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="month">New Gestão - Mensal (1 mês)</SelectItem>
-                  <SelectItem value="quarter">New Gestão - Trimestral (3 meses)</SelectItem>
-                  <SelectItem value="year">New Gestão - Anual (12 meses)</SelectItem>
+                  <SelectItem value="month">Mensal (1 mês)</SelectItem>
+                  <SelectItem value="quarter">Trimestral (3 meses)</SelectItem>
+                  <SelectItem value="year">Anual (12 meses)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                A data de renovação será calculada automaticamente: {getMonthsForPlan(formPlan)} mês(es) a partir de hoje
-              </p>
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
               <Select value={formStatus} onValueChange={(v) => setFormStatus(v as typeof formStatus)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Ativa</SelectItem>
                   <SelectItem value="past_due">Pendente</SelectItem>
@@ -1090,28 +964,17 @@ export default function AdminPage() {
                 </SelectContent>
               </Select>
             </div>
-            
-            {/* Preview of calculated date */}
-            <div className="p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="w-4 h-4 text-primary" />
-                <span className="font-medium">Data de renovação:</span>
-                <span>{format(addMonths(new Date(), getMonthsForPlan(formPlan)), "dd/MM/yyyy", { locale: ptBR })}</span>
-              </div>
+            <div className="p-3 rounded-lg bg-muted/50 flex items-center gap-2 text-sm">
+              <Calendar className="w-4 h-4 text-primary" />
+              <span>Renovação: {format(addMonths(new Date(), getMonthsForPlan(formPlan)), "dd/MM/yyyy", { locale: ptBR })}</span>
             </div>
           </div>
           <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
+            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
             <Button
               onClick={() => {
                 if (selectedUser) {
-                  createSubMutation.mutate({
-                    userId: selectedUser.user_id,
-                    plan: formPlan,
-                    status: formStatus,
-                  });
+                  createSubMutation.mutate({ userId: selectedUser.user_id, plan: formPlan, status: formStatus });
                 }
               }}
               disabled={createSubMutation.isPending}
@@ -1123,7 +986,7 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Subscription Dialog - IMPROVED: Shows current info and auto-updates date when plan changes */}
+      {/* Edit Subscription Dialog */}
       <Dialog open={editSubDialogOpen} onOpenChange={setEditSubDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1131,12 +994,8 @@ export default function AdminPage() {
               <Edit className="w-5 h-5" />
               Editar Assinatura
             </DialogTitle>
-            <DialogDescription>
-              {selectedSubscription?.plan_name}
-            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {/* Current subscription info */}
             {selectedSubscription && (
               <div className="p-3 rounded-lg bg-muted/30 space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -1145,15 +1004,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Válido até:</span>
-                  <span className="font-medium">
-                    {format(new Date(selectedSubscription.current_period_end), "dd/MM/yyyy", { locale: ptBR })}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Dias restantes:</span>
-                  <span className="font-medium">
-                    {getDaysRemaining(selectedSubscription.current_period_end)} dias
-                  </span>
+                  <span className="font-medium">{format(new Date(selectedSubscription.current_period_end), "dd/MM/yyyy", { locale: ptBR })}</span>
                 </div>
               </div>
             )}
@@ -1161,26 +1012,19 @@ export default function AdminPage() {
             <div className="space-y-2">
               <Label>Alterar Plano</Label>
               <Select value={formPlan} onValueChange={(v) => setFormPlan(v as typeof formPlan)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="month">New Gestão - Mensal (1 mês)</SelectItem>
-                  <SelectItem value="quarter">New Gestão - Trimestral (3 meses)</SelectItem>
-                  <SelectItem value="year">New Gestão - Anual (12 meses)</SelectItem>
+                  <SelectItem value="month">Mensal</SelectItem>
+                  <SelectItem value="quarter">Trimestral</SelectItem>
+                  <SelectItem value="year">Anual</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                Ao mudar o plano, a data de renovação será recalculada para {getMonthsForPlan(formPlan)} mês(es) a partir de hoje
-              </p>
             </div>
             
             <div className="space-y-2">
               <Label>Status</Label>
               <Select value={formStatus} onValueChange={(v) => setFormStatus(v as typeof formStatus)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Ativa</SelectItem>
                   <SelectItem value="past_due">Pendente</SelectItem>
@@ -1189,18 +1033,6 @@ export default function AdminPage() {
               </Select>
             </div>
             
-            {/* Preview of new date if plan changed */}
-            {selectedSubscription && formPlan !== selectedSubscription.billing_interval && (
-              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="w-4 h-4 text-primary" />
-                  <span className="font-medium">Nova data de renovação:</span>
-                  <span className="text-primary">{format(addMonths(new Date(), getMonthsForPlan(formPlan)), "dd/MM/yyyy", { locale: ptBR })}</span>
-                </div>
-              </div>
-            )}
-            
-            {/* Delete subscription option */}
             <div className="pt-4 border-t">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -1212,14 +1044,12 @@ export default function AdminPage() {
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Remover assinatura?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Esta ação irá remover permanentemente a assinatura. O usuário perderá acesso ao sistema.
-                    </AlertDialogDescription>
+                    <AlertDialogDescription>O usuário perderá acesso ao sistema.</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
                     <AlertDialogAction
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      className="bg-destructive text-destructive-foreground"
                       onClick={() => {
                         if (selectedSubscription) {
                           deleteSubMutation.mutate(selectedSubscription.id);
@@ -1235,9 +1065,7 @@ export default function AdminPage() {
             </div>
           </div>
           <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
+            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
             <Button
               onClick={() => {
                 if (selectedSubscription) {
@@ -1265,9 +1093,6 @@ export default function AdminPage() {
               <UserPlus className="w-5 h-5" />
               Criar Novo Usuário
             </DialogTitle>
-            <DialogDescription>
-              Adicionar um novo usuário ao sistema
-            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -1279,9 +1104,7 @@ export default function AdminPage() {
                 placeholder="email@exemplo.com"
                 className={createUserErrors.email ? "border-destructive" : ""}
               />
-              {createUserErrors.email && (
-                <p className="text-sm text-destructive">{createUserErrors.email}</p>
-              )}
+              {createUserErrors.email && <p className="text-sm text-destructive">{createUserErrors.email}</p>}
             </div>
             <div className="space-y-2">
               <Label>Senha *</Label>
@@ -1292,9 +1115,7 @@ export default function AdminPage() {
                 placeholder="Mínimo 6 caracteres"
                 className={createUserErrors.password ? "border-destructive" : ""}
               />
-              {createUserErrors.password && (
-                <p className="text-sm text-destructive">{createUserErrors.password}</p>
-              )}
+              {createUserErrors.password && <p className="text-sm text-destructive">{createUserErrors.password}</p>}
             </div>
             <div className="space-y-2">
               <Label>Nome *</Label>
@@ -1304,9 +1125,7 @@ export default function AdminPage() {
                 placeholder="Nome completo"
                 className={createUserErrors.name ? "border-destructive" : ""}
               />
-              {createUserErrors.name && (
-                <p className="text-sm text-destructive">{createUserErrors.name}</p>
-              )}
+              {createUserErrors.name && <p className="text-sm text-destructive">{createUserErrors.name}</p>}
             </div>
             <div className="space-y-2">
               <Label>Cidade</Label>
@@ -1318,13 +1137,8 @@ export default function AdminPage() {
             </div>
           </div>
           <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
-            </DialogClose>
-            <Button
-              onClick={handleCreateUser}
-              disabled={createUserMutation.isPending}
-            >
+            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+            <Button onClick={handleCreateUser} disabled={createUserMutation.isPending}>
               {createUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Criar Usuário
             </Button>
