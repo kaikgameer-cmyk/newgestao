@@ -8,6 +8,8 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { FeedbackModal } from "@/components/feedback/FeedbackModal";
 import { FeedbackErrorBoundary } from "@/components/feedback/FeedbackErrorBoundary";
+import { TimerProvider } from "@/contexts/TimerContext";
+import { GlobalTimer } from "@/components/timer/GlobalTimer";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
@@ -42,55 +44,58 @@ const App = () => {
         <Sonner />
         <InstallPrompt />
         <BrowserRouter>
-          <FeedbackErrorBoundary>
-            <FeedbackModal />
-          </FeedbackErrorBoundary>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/definir-senha" element={<DefinirSenha />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Dashboard />} />
+          <TimerProvider>
+            <FeedbackErrorBoundary>
+              <FeedbackModal />
+            </FeedbackErrorBoundary>
+            <GlobalTimer />
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/definir-senha" element={<DefinirSenha />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Dashboard />} />
 
-              <Route path="lancamentos" element={<Transactions />} />
-              <Route path="metas" element={<Goals />} />
-              <Route path="cartoes" element={<CreditCards />} />
-              <Route path="cartoes/:cardId/faturas" element={<CardInvoices />} />
-              <Route path="combustivel" element={<FuelControl />} />
-              <Route path="eletrico" element={<ElectricControl />} />
-              <Route path="manutencao" element={<Maintenance />} />
-              <Route path="despesas-fixas" element={<RecurringExpenses />} />
-              <Route path="timer" element={<TimerPage />} />
-              <Route path="configuracoes" element={<SettingsPage />} />
-              <Route path="assinatura" element={<SubscriptionPage />} />
-              <Route path="guia" element={<PlatformGuide />} />
-              <Route path="admin" element={<AdminPage />} />
-              <Route path="suporte" element={<Support />} />
-              
-              {/* Deprecated routes - redirect with message */}
-              <Route path="competicoes" element={<DeprecatedFeature />} />
-              <Route path="competicoes/*" element={<DeprecatedFeature />} />
-              <Route path="ranking" element={<DeprecatedFeature />} />
-              <Route path="admin/testes-competicoes" element={<DeprecatedFeature />} />
-            </Route>
-            <Route
-              path="/onboarding"
-              element={
-                <ProtectedRoute>
-                  <OnboardingPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+                <Route path="lancamentos" element={<Transactions />} />
+                <Route path="metas" element={<Goals />} />
+                <Route path="cartoes" element={<CreditCards />} />
+                <Route path="cartoes/:cardId/faturas" element={<CardInvoices />} />
+                <Route path="combustivel" element={<FuelControl />} />
+                <Route path="eletrico" element={<ElectricControl />} />
+                <Route path="manutencao" element={<Maintenance />} />
+                <Route path="despesas-fixas" element={<RecurringExpenses />} />
+                <Route path="timer" element={<TimerPage />} />
+                <Route path="configuracoes" element={<SettingsPage />} />
+                <Route path="assinatura" element={<SubscriptionPage />} />
+                <Route path="guia" element={<PlatformGuide />} />
+                <Route path="admin" element={<AdminPage />} />
+                <Route path="suporte" element={<Support />} />
+                
+                {/* Deprecated routes - redirect with message */}
+                <Route path="competicoes" element={<DeprecatedFeature />} />
+                <Route path="competicoes/*" element={<DeprecatedFeature />} />
+                <Route path="ranking" element={<DeprecatedFeature />} />
+                <Route path="admin/testes-competicoes" element={<DeprecatedFeature />} />
+              </Route>
+              <Route
+                path="/onboarding"
+                element={
+                  <ProtectedRoute>
+                    <OnboardingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </TimerProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
