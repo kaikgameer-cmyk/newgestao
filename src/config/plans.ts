@@ -1,4 +1,13 @@
-export type PlanId = "monthly" | "quarterly" | "yearly";
+/**
+ * Configuração de planos do New Gestão
+ * 
+ * NOTA: Sistema preparado para múltiplos planos no futuro.
+ * Atualmente, apenas o plano único (FULL) está ativo.
+ * Os planos legados (monthly, quarterly, yearly) foram mantidos
+ * para compatibilidade com assinaturas existentes.
+ */
+
+export type PlanId = "full" | "monthly" | "quarterly" | "yearly";
 export type BillingInterval = "month" | "quarter" | "year";
 
 export interface Plan {
@@ -12,20 +21,50 @@ export interface Plan {
   bestValue: boolean;
   billingInterval: BillingInterval;
   subtitle: string;
+  features: string[];
+  isActive: boolean; // Flag para controlar exibição
 }
 
+// Plano único oficial (FONTE DE VERDADE)
+export const SINGLE_PLAN: Plan = {
+  id: "full",
+  name: "New Gestão",
+  displayName: "Acesso Completo",
+  priceLabel: "R$ 39,90/mês",
+  checkoutUrl: "https://pay.kiwify.com.br/8N9LRSz",
+  highlight: true,
+  popular: false,
+  bestValue: false,
+  billingInterval: "month",
+  subtitle: "Assinatura mensal com acesso total",
+  features: [
+    "Dashboard completo",
+    "Lançamentos ilimitados",
+    "Controle de combustível e manutenção",
+    "Timer de trabalho",
+    "Suporte integrado",
+    "Atualizações contínuas",
+  ],
+  isActive: true,
+};
+
+// Planos legados (mantidos para compatibilidade com assinaturas existentes)
+// Sistema preparado para múltiplos planos no futuro
 export const PLANS: Record<PlanId, Plan> = {
+  full: SINGLE_PLAN,
   monthly: {
     id: "monthly",
     name: "New Gestão - Mensal",
     displayName: "Mensal",
     priceLabel: "R$ 39,90 / mês",
-    checkoutUrl: "https://pay.kiwify.com.br/51OuL2D",
+    checkoutUrl: "https://pay.kiwify.com.br/8N9LRSz",
     highlight: false,
     popular: false,
     bestValue: false,
     billingInterval: "month",
     subtitle: "Para quem quer testar",
+    features: SINGLE_PLAN.features,
+    isActive: false, // Desativado na UI
   },
   quarterly: {
     id: "quarterly",
@@ -38,6 +77,8 @@ export const PLANS: Record<PlanId, Plan> = {
     bestValue: false,
     billingInterval: "quarter",
     subtitle: "3x de R$ 32,01",
+    features: SINGLE_PLAN.features,
+    isActive: false, // Desativado na UI
   },
   yearly: {
     id: "yearly",
@@ -50,22 +91,25 @@ export const PLANS: Record<PlanId, Plan> = {
     bestValue: true,
     billingInterval: "year",
     subtitle: "12x de R$ 30,81",
+    features: SINGLE_PLAN.features,
+    isActive: false, // Desativado na UI
   },
 } as const;
 
-export const PLANS_LIST = Object.values(PLANS);
+// Lista apenas planos ativos para exibição
+export const PLANS_LIST = Object.values(PLANS).filter(plan => plan.isActive);
 
 // Map billing_interval from database to plan
 export function getPlanByInterval(interval: BillingInterval | string): Plan {
   switch (interval) {
     case "month":
-      return PLANS.monthly;
+      return SINGLE_PLAN; // Sempre retorna o plano único
     case "quarter":
       return PLANS.quarterly;
     case "year":
       return PLANS.yearly;
     default:
-      return PLANS.monthly;
+      return SINGLE_PLAN;
   }
 }
 
@@ -75,6 +119,9 @@ export function getPlanDisplayName(interval: BillingInterval | string): string {
 }
 
 // Legacy exports for backwards compatibility
-export const KIWIFY_CHECKOUT_MENSAL = PLANS.monthly.checkoutUrl;
+export const KIWIFY_CHECKOUT_MENSAL = SINGLE_PLAN.checkoutUrl;
 export const KIWIFY_CHECKOUT_TRIMESTRAL = PLANS.quarterly.checkoutUrl;
 export const KIWIFY_CHECKOUT_ANUAL = PLANS.yearly.checkoutUrl;
+
+// Link oficial do plano único
+export const KIWIFY_CHECKOUT_URL = SINGLE_PLAN.checkoutUrl;

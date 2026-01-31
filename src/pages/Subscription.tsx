@@ -16,7 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
-import { PLANS } from "@/config/plans";
+import { SINGLE_PLAN } from "@/config/plans";
 import { PlansSection } from "@/components/subscription/PlansSection";
 import {
   AlertDialog,
@@ -133,7 +133,7 @@ export default function SubscriptionPage() {
 
               <div className="flex flex-wrap gap-3">
                 {!isActive && (
-                  <Button onClick={() => handleUpgrade(PLANS.monthly.checkoutUrl)}>
+                  <Button onClick={() => handleUpgrade(SINGLE_PLAN.checkoutUrl)}>
                     <CreditCard className="w-4 h-4 mr-2" />
                     Reativar Assinatura
                   </Button>
