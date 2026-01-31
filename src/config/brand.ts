@@ -16,8 +16,16 @@ export const BRAND = {
   SUPPORT_EMAIL: "newgestao.contato@outlook.com",
   
   // Paths de assets
-  LOGO_PATH: "/logo-ng.png",
-  FAVICON_PATH: "/favicon-v2.png",
+  LOGO_PATH: "/icon-512.png",
+  FAVICON_PATH: "/favicon.png",
+  ICON_192: "/icon-192.png",
+  ICON_512: "/icon-512.png",
+  ICON_MASKABLE: "/icon-512-maskable.png",
+  APPLE_TOUCH_ICON: "/apple-touch-icon.png",
+  
+  // Cores do tema
+  THEME_COLOR: "#1657a0",
+  BACKGROUND_COLOR: "#1657a0",
   
   // Descrições para SEO
   DESCRIPTION: "Controle financeiro simples para motoristas de Uber, 99 e InDrive. Veja quanto entrou, quanto saiu e quanto sobrou no fim da semana.",
