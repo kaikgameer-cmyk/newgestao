@@ -1,12 +1,9 @@
-const CACHE_NAME = "ng-static-v6";
+const CACHE_NAME = "ng-static-v7";
 
 const URLS_TO_CACHE = [
   "/",
   "/manifest.json",
-  "/favicon-v2.png",
-  "/icon-192-v2.png",
-  "/icon-pwa-512.png",
-  "/apple-touch-icon-v2.png",
+  "/icon-ng-512.png",
 ];
 
 // Files that should use network-first strategy (to avoid stale icons/manifest)

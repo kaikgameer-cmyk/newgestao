@@ -4,15 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     
-    <link rel="icon" href="/favicon-v2.png" type="image/png" sizes="32x32" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon-v2.png" sizes="180x180" />
-    <link rel="icon" href="/icon-192-v2.png" type="image/png" sizes="192x192" />
-    <link rel="icon" href="/icon-512-v2.png" type="image/png" sizes="512x512" />
+    <link rel="icon" href="/icon-ng-512.png" type="image/png" sizes="any" />
+    <link rel="apple-touch-icon" href="/icon-ng-512.png" />
     <meta name="application-name" content="New Gestão" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="NewGestao" />
+    <meta name="apple-mobile-web-app-title" content="New Gestão" />
     <title>New Gestão - Controle Financeiro para Motoristas de App</title>
     <meta name="description" content="Controle financeiro simples para motoristas de Uber, 99 e InDrive. Veja quanto entrou, quanto saiu e quanto sobrou no fim da semana." />
     <meta name="author" content="New Gestão" />
@@ -20,12 +18,12 @@
     <meta property="og:description" content="Veja quanto entrou, quanto saiu e quanto sobrou. Simples assim." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://newgestao.app" />
-    <meta property="og:image" content="https://newgestao.app/logo-ng.png" />
+    <meta property="og:image" content="https://newgestao.app/icon-ng-512.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="New Gestão - Controle Financeiro para Motoristas" />
-    <meta name="twitter:image" content="https://newgestao.app/logo-ng.png" />
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="twitter:image" content="https://newgestao.app/icon-ng-512.png" />
+    <link rel="manifest" href="/manifest.json?v=7" />
+    <meta name="theme-color" content="#0B0F14" />
   </head>
   <body>
     <div id="root"></div>
@@ -34,7 +32,7 @@
       if ("serviceWorker" in navigator && window.location.hostname !== "localhost") {
         window.addEventListener("load", () => {
           navigator.serviceWorker
-            .register("/service-worker.js")
+            .register("/service-worker.js?v=7")
             .then((registration) => {
               console.log(
                 "ServiceWorker registration successful with scope: ",
