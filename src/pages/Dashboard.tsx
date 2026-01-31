@@ -180,13 +180,15 @@ export default function Dashboard() {
     };
   });
 
-  // Build period goals data for multi-day view
+  // Build period goals data for multi-day view (using incomeDays for accurate data)
   const periodGoalsData = isRange
     ? eachDayOfInterval({ start: periodStart, end: periodEnd }).map((day) => {
         const dateStr = formatLocalDate(day);
-        const dayRevenue = revenues
-          .filter((r) => r.date === dateStr)
-          .reduce((sum, r) => sum + Number(r.amount), 0);
+        // Use incomeDays data instead of legacy revenues table
+        const incomeDay = incomeDays.find((id) => id.date === dateStr);
+        const dayRevenue = incomeDay 
+          ? incomeDay.items.reduce((sum, item) => sum + item.amount, 0)
+          : 0;
         return {
           date: dateStr,
           goal: getGoalForDate(day),
@@ -201,16 +203,18 @@ export default function Dashboard() {
   const daysWithoutGoal = daysInPeriod - daysWithGoal;
   const hasGoalsInPeriod = daysWithGoal > 0;
 
-  // Calculate average per day based on days with revenue
-  const daysWithRevenue = new Set(revenues.map((r) => r.date)).size;
+  // Calculate average per day based on days with revenue (use incomeDays)
+  const daysWithRevenue = incomeDays.length;
   const avgPerDay = daysWithRevenue > 0 ? netProfit / daysWithRevenue : 0;
 
   // Daily profit data (for charts in non-day modes)
   const daysInterval = eachDayOfInterval({ start: periodStart, end: periodEnd });
   const dailyData = daysInterval.map((day) => {
-    const dayRevenues = revenues
-      .filter((r) => isSameDay(parseLocalDate(r.date), day))
-      .reduce((sum, r) => sum + Number(r.amount), 0);
+    const dateStr = formatLocalDate(day);
+    const incomeDay = incomeDays.find((id) => id.date === dateStr);
+    const dayRevenues = incomeDay 
+      ? incomeDay.items.reduce((sum, item) => sum + item.amount, 0)
+      : 0;
     const dayExpenses = combinedExpenses
       .filter((e) => isSameDay(parseLocalDate(e.date), day))
       .reduce((sum, e) => sum + e.amount, 0);
