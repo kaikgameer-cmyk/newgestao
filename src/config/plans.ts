@@ -28,20 +28,21 @@ export interface Plan {
 // Plano único oficial (FONTE DE VERDADE)
 export const SINGLE_PLAN: Plan = {
   id: "full",
-  name: "New Gestão",
+  name: "Plano Full New Gestão",
   displayName: "Acesso Completo",
-  priceLabel: "R$ 39,90/mês",
+  priceLabel: "R$ 19,90/mês",
   checkoutUrl: "https://pay.kiwify.com.br/8N9LRSz",
   highlight: true,
   popular: false,
   bestValue: false,
   billingInterval: "month",
-  subtitle: "Assinatura mensal com acesso total",
+  subtitle: "Assinatura mensal com acesso total à plataforma",
   features: [
     "Dashboard completo",
     "Lançamentos ilimitados",
     "Controle de combustível e manutenção",
-    "Timer de trabalho",
+    "Timer de trabalho inteligente",
+    "Relatórios financeiros",
     "Suporte integrado",
     "Atualizações contínuas",
   ],
@@ -56,13 +57,13 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "monthly",
     name: "New Gestão - Mensal",
     displayName: "Mensal",
-    priceLabel: "R$ 39,90 / mês",
+    priceLabel: "R$ 19,90/mês",
     checkoutUrl: "https://pay.kiwify.com.br/8N9LRSz",
     highlight: false,
     popular: false,
     bestValue: false,
     billingInterval: "month",
-    subtitle: "Para quem quer testar",
+    subtitle: "Acesso mensal",
     features: SINGLE_PLAN.features,
     isActive: false, // Desativado na UI
   },
@@ -103,7 +104,7 @@ export const PLANS_LIST = Object.values(PLANS).filter(plan => plan.isActive);
 export function getPlanByInterval(interval: BillingInterval | string): Plan {
   switch (interval) {
     case "month":
-      return SINGLE_PLAN; // Sempre retorna o plano único
+      return SINGLE_PLAN;
     case "quarter":
       return PLANS.quarterly;
     case "year":
