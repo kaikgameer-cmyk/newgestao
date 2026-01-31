@@ -101,6 +101,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   });
 
   // Auto-show minimized widget if there's an active session
+  // Always show as minimized (mini-widget), never auto-open full popup
   useEffect(() => {
     if (activeSession && popupState === "hidden") {
       setPopupState("minimized");
@@ -108,7 +109,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     if (!activeSession && popupState !== "hidden") {
       setPopupState("hidden");
     }
-  }, [activeSession?.id]);
+  }, [activeSession?.id, popupState]);
 
   // Calculate elapsed time using timestamp-based approach (drift-free)
   const calculateElapsed = useCallback(() => {
@@ -184,7 +185,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["work_sessions"] });
-      setPopupState("open");
+      // Show minimized widget instead of full popup
+      setPopupState("minimized");
       toast.success("Timer iniciado!");
     },
     onError: (error) => {
