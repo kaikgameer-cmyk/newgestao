@@ -61,20 +61,40 @@ export function ProfitComparisonChart({ userId }: ProfitComparisonChartProps) {
         };
       }).reverse();
 
-  // Fetch all revenues for the comparison period
-  const { data: allRevenues = [] } = useQuery({
-    queryKey: ["revenues-comparison", userId, mode],
+  // Fetch all income days with items for the comparison period
+  const { data: allIncomeDays = [] } = useQuery({
+    queryKey: ["income-days-comparison", userId, mode],
     queryFn: async () => {
       if (!userId) return [];
       const oldestDate = periods[0].start;
-      const { data, error } = await supabase
-        .from("revenues")
+      
+      // Fetch income_days
+      const { data: days, error: daysError } = await supabase
+        .from("income_days")
         .select("*")
         .eq("user_id", userId)
         .gte("date", format(oldestDate, "yyyy-MM-dd"))
         .lte("date", format(now, "yyyy-MM-dd"));
-      if (error) throw error;
-      return data || [];
+      
+      if (daysError) throw daysError;
+      if (!days || days.length === 0) return [];
+
+      const dayIds = days.map((d) => d.id);
+
+      // Fetch all items for these days
+      const { data: items, error: itemsError } = await supabase
+        .from("income_day_items")
+        .select("*")
+        .in("income_day_id", dayIds);
+
+      if (itemsError) throw itemsError;
+
+      return days.map((day) => ({
+        date: day.date,
+        amount: (items || [])
+          .filter((item) => item.income_day_id === day.id)
+          .reduce((sum, item) => sum + Number(item.amount), 0),
+      }));
     },
     enabled: !!userId,
   });
@@ -92,12 +112,12 @@ export function ProfitComparisonChart({ userId }: ProfitComparisonChartProps) {
 
   // Calculate data for each period
   const comparisonData = periods.map((period) => {
-    const periodRevenues = allRevenues
+    const periodRevenues = allIncomeDays
       .filter((r) => {
         const date = parseLocalDate(r.date);
         return date >= period.start && date <= period.end;
       })
-      .reduce((sum, r) => sum + Number(r.amount), 0);
+      .reduce((sum, r) => sum + r.amount, 0);
 
     const periodExpenses = allExpenses
       .filter((e) => {

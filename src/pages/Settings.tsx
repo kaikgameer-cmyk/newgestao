@@ -79,14 +79,14 @@ export default function SettingsPage() {
     queryFn: async () => {
       if (!user) return { totalTransactions: 0, totalProfit: 0 };
       
-      const [revenuesRes, expensesRes] = await Promise.all([
-        supabase.from("revenues").select("amount").eq("user_id", user.id),
+      const [incomeItemsRes, expensesRes] = await Promise.all([
+        supabase.from("income_day_items").select("amount").eq("user_id", user.id),
         supabase.from("expenses").select("amount").eq("user_id", user.id),
       ]);
 
-      const totalRevenues = (revenuesRes.data || []).reduce((sum, r) => sum + Number(r.amount), 0);
+      const totalRevenues = (incomeItemsRes.data || []).reduce((sum, r) => sum + Number(r.amount), 0);
       const totalExpenses = (expensesRes.data || []).reduce((sum, e) => sum + Number(e.amount), 0);
-      const totalTransactions = (revenuesRes.data?.length || 0) + (expensesRes.data?.length || 0);
+      const totalTransactions = (incomeItemsRes.data?.length || 0) + (expensesRes.data?.length || 0);
 
       return {
         totalTransactions,
