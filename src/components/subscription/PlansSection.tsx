@@ -51,16 +51,16 @@ export function PlansSection({ isActive, hasSubscription }: PlansSectionProps) {
             {SINGLE_PLAN.displayName}
           </h3>
 
-          {/* Price */}
+          {/* Price - Prominent */}
           <div className="flex items-center justify-center mt-4 mb-4">
-            <span className="text-2xl font-bold text-foreground tracking-tight">
+            <span className="text-2xl font-bold text-primary tracking-tight">
               {SINGLE_PLAN.priceLabel}
             </span>
           </div>
 
           {/* Features */}
           <ul className="space-y-2 mb-6">
-            {SINGLE_PLAN.features.slice(0, 4).map((feature) => (
+            {SINGLE_PLAN.features.slice(0, 5).map((feature) => (
               <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Check className="w-4 h-4 text-primary flex-shrink-0" />
                 {feature}

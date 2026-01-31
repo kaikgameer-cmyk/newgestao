@@ -17,7 +17,7 @@ export function PricingSection() {
             Acesso completo ao <span className="text-primary">New Gestão</span>
           </h2>
           <p className="text-muted-foreground text-lg">
-            Assinatura mensal com acesso total a todas as funcionalidades da plataforma.
+            {SINGLE_PLAN.subtitle}
           </p>
         </div>
 
@@ -35,12 +35,11 @@ export function PricingSection() {
             {/* Plan info */}
             <div className="text-center mb-6 pt-4">
               <h3 className="text-xl font-semibold mb-2">{SINGLE_PLAN.displayName}</h3>
-              <p className="text-sm text-muted-foreground">{SINGLE_PLAN.subtitle}</p>
             </div>
 
-            {/* Price */}
+            {/* Price - Prominent display */}
             <div className="text-center mb-8">
-              <span className="text-3xl md:text-4xl font-bold">{SINGLE_PLAN.priceLabel}</span>
+              <span className="text-4xl md:text-5xl font-bold text-primary">{SINGLE_PLAN.priceLabel}</span>
             </div>
 
             {/* Features */}
