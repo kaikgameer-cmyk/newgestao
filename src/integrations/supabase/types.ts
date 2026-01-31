@@ -1497,6 +1497,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_attempts: {
+        Row: {
+          attempts: number
+          blocked_until: string | null
+          first_attempt_at: string
+          id: string
+          key: string
+          last_attempt_at: string
+        }
+        Insert: {
+          attempts?: number
+          blocked_until?: string | null
+          first_attempt_at?: string
+          id?: string
+          key: string
+          last_attempt_at?: string
+        }
+        Update: {
+          attempts?: number
+          blocked_until?: string | null
+          first_attempt_at?: string
+          id?: string
+          key?: string
+          last_attempt_at?: string
+        }
+        Relationships: []
+      }
       recurring_expenses: {
         Row: {
           amount: number
@@ -1611,6 +1638,48 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           target_user_id?: string
+        }
+        Relationships: []
+      }
+      security_audit_logs: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          severity: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          severity?: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          severity?: string
+          user_agent?: string | null
         }
         Relationships: []
       }
@@ -2271,6 +2340,16 @@ export type Database = {
         Args: { p_competition_id: string }
         Returns: Json
       }
+      check_rate_limit: {
+        Args: {
+          p_block_minutes?: number
+          p_key: string
+          p_max_attempts?: number
+          p_window_minutes?: number
+        }
+        Returns: Json
+      }
+      cleanup_rate_limits: { Args: never; Returns: number }
       compute_closing_date: {
         Args: { p_closing_day: number; p_tx_date: string }
         Returns: string
@@ -2471,6 +2550,20 @@ export type Database = {
           p_pix_key_type: string
         }
         Returns: Json
+      }
+      log_security_event: {
+        Args: {
+          p_action: string
+          p_actor_role?: string
+          p_actor_user_id?: string
+          p_entity_id?: string
+          p_entity_type?: string
+          p_ip_address?: string
+          p_metadata?: Json
+          p_severity?: string
+          p_user_agent?: string
+        }
+        Returns: string
       }
       mark_finish_result_popup_shown: {
         Args: { p_competition_id: string }
