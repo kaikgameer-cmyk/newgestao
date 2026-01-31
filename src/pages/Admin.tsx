@@ -18,6 +18,7 @@ import { FeedbackAdminPanel } from "@/components/feedback/FeedbackAdminPanel";
 import { AnnouncementsAdminPanel } from "@/components/admin/AnnouncementsAdminPanel";
 import { RoleManagementModal } from "@/components/admin/RoleManagementModal";
 import { AdminToolCard } from "@/components/admin/AdminToolCard";
+import { SecurityPanel } from "@/components/admin/SecurityPanel";
 import { useAllUserRoles, ROLE_LABELS, ROLE_COLORS, AppRole } from "@/hooks/useRoles";
 import { 
   Shield, 
@@ -659,6 +660,19 @@ export default function AdminPage() {
           ]}
         >
           <FeedbackAdminPanel />
+        </AdminToolCard>
+
+        {/* Security Tool */}
+        <AdminToolCard
+          icon={<Shield className="w-5 h-5 text-primary" />}
+          title="Segurança"
+          description="Monitore eventos de segurança e auditoria do sistema"
+          metrics={[
+            { label: "Alertas", value: "—", variant: "warning" },
+          ]}
+          defaultOpen={false}
+        >
+          <SecurityPanel />
         </AdminToolCard>
       </div>
 
