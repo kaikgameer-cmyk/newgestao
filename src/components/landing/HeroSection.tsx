@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ChevronDown } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export function HeroSection() {
   return (
@@ -30,12 +31,12 @@ export function HeroSection() {
           
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <a href="#precos">
+            <Link to="/login">
               <Button size="lg" className="h-12 px-8 text-base font-medium gap-2">
-                Começar agora
+                Entrar
                 <ArrowRight className="w-4 h-4" />
               </Button>
-            </a>
+            </Link>
             <a href="#como-funciona">
               <Button variant="ghost" size="lg" className="h-12 px-8 text-base font-medium text-muted-foreground hover:text-foreground">
                 Como funciona
