@@ -36,16 +36,11 @@ export function Header() {
 
         {/* Login Button */}
         <div className="flex items-center gap-3">
-          <Link to="/login" className="hidden sm:block">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+          <Link to="/login">
+            <Button size="sm" className="h-9 px-4">
               Entrar
             </Button>
           </Link>
-          <a href="#precos">
-            <Button size="sm" className="h-9 px-4">
-              Começar
-            </Button>
-          </a>
           
           {/* Mobile menu button */}
           <button
