@@ -27,6 +27,16 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
     const [displayValue, setDisplayValue] = React.useState("");
     const inputRef = React.useRef<HTMLInputElement>(null);
 
+    // Never forward native constraint validation props for currency fields (iOS/Safari issue)
+    const {
+      pattern: _pattern,
+      required: _required,
+      min: _min,
+      max: _max,
+      step: _step,
+      ...inputProps
+    } = props;
+
     // Combine refs
     React.useImperativeHandle(ref, () => inputRef.current!);
 
@@ -110,6 +120,11 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
       ) {
         return;
       }
+
+      // Allow decimal separators (we ignore them but let the user type/paste naturally)
+      if (e.key === "," || e.key === ".") {
+        return;
+      }
       
       // Allow minus sign at start if allowNegative
       if (allowNegative && e.key === "-" && (inputRef.current?.selectionStart === 0 || !displayValue)) {
@@ -143,8 +158,8 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
         <input
           ref={inputRef}
           type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
+          inputMode="decimal"
+          enterKeyHint="done"
           autoComplete="off"
           className={cn(
             "flex h-11 w-full rounded-lg border border-border bg-secondary/40 py-2.5 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50 transition-colors text-right",
@@ -156,7 +171,7 @@ export const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputPro
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
           placeholder={placeholder}
-          {...props}
+          {...inputProps}
         />
       </div>
     );
