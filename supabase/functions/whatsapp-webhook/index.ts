@@ -1,16 +1,57 @@
 /**
- * WhatsApp Webhook Edge Function
+ * WhatsApp Webhook Edge Function - SaaS Mode
+ * 
  * Receives events from Meta WhatsApp Cloud API
+ * Uses centralized bot credentials - users connect via pairing code
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { parseWhatsAppMessage, isConfirmation } from '../_shared/whatsappParser.ts';
-import { sendAndLogMessage } from '../_shared/whatsappSend.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+/**
+ * Send WhatsApp message using centralized bot credentials
+ */
+async function sendBotMessage(
+  phoneNumberId: string,
+  accessToken: string,
+  toNumber: string,
+  message: string
+): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: toNumber,
+          type: 'text',
+          text: { body: message },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('WhatsApp API error:', errorData);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    return false;
+  }
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -20,6 +61,9 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const botPhoneNumberId = Deno.env.get('WHATSAPP_BOT_PHONE_NUMBER_ID');
+  const botAccessToken = Deno.env.get('WHATSAPP_BOT_ACCESS_TOKEN');
+  
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
@@ -35,34 +79,31 @@ Deno.serve(async (req) => {
         return new Response('Invalid verification request', { status: 400 });
       }
 
-      // Find connection with matching verify_token
-      const { data: connection } = await supabase
-        .from('whatsapp_connections')
-        .select('id, user_id')
-        .eq('verify_token', token)
-        .eq('status', 'pending')
-        .maybeSingle();
-
-      if (!connection) {
-        console.log('No pending connection found for verify_token');
+      // For SaaS mode, use a fixed verify token from env
+      const expectedToken = Deno.env.get('WHATSAPP_VERIFY_TOKEN') || 'newgestao_webhook_verify';
+      
+      if (token !== expectedToken) {
+        console.log('Invalid verify token');
         return new Response('Invalid verify token', { status: 403 });
       }
 
-      // Update connection status to connected
-      await supabase
-        .from('whatsapp_connections')
-        .update({ status: 'connected', updated_at: new Date().toISOString() })
-        .eq('id', connection.id);
-
-      console.log(`Connection ${connection.id} verified successfully`);
+      console.log('Webhook verified successfully');
       return new Response(challenge, { status: 200 });
     }
 
     // POST request: Incoming webhook events
     if (req.method === 'POST') {
       const payload = await req.json();
-      // Only log minimal info - never log full payload with sensitive data
       console.log('Webhook event received, entry count:', payload.entry?.length ?? 0);
+
+      // Check bot credentials
+      if (!botPhoneNumberId || !botAccessToken) {
+        console.error('Bot credentials not configured');
+        return new Response(JSON.stringify({ status: 'ok', message: 'Bot not configured' }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
       // Check if WhatsApp feature is enabled globally
       const { data: globalEnabled } = await supabase.rpc('is_whatsapp_enabled');
@@ -80,7 +121,6 @@ Deno.serve(async (req) => {
       const value = changes?.value;
 
       if (!value?.messages?.length) {
-        // Status update or other event, not a message
         return new Response(JSON.stringify({ status: 'ok' }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -88,13 +128,11 @@ Deno.serve(async (req) => {
       }
 
       const message = value.messages[0];
-      const phoneNumberId = value.metadata?.phone_number_id;
       const fromNumber = message.from;
       const messageId = message.id;
-      const messageType = message.type;
-      const bodyText = message.text?.body || '';
+      const bodyText = message.text?.body?.trim() || '';
 
-      if (!phoneNumberId || !fromNumber || !messageId) {
+      if (!fromNumber || !messageId) {
         console.error('Missing required message fields');
         return new Response(JSON.stringify({ status: 'ok' }), {
           status: 200,
@@ -102,15 +140,131 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Find connection for this phone_number_id
-      const { data: connectionData } = await supabase.rpc(
-        'get_whatsapp_connection_by_phone',
-        { p_phone_number_id: phoneNumberId }
-      );
+      // ============================================
+      // HANDLE CONNECT COMMAND (Pairing Flow)
+      // ============================================
+      if (bodyText.toUpperCase().startsWith('CONNECT ')) {
+        const code = bodyText.substring(8).trim().toUpperCase();
+        
+        if (!code) {
+          await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+            '❌ Código inválido.\n\nEnvie: CONNECT <SEU_CÓDIGO>\n\nGere um novo código no app em Configurações → WhatsApp.');
+          return new Response(JSON.stringify({ status: 'ok' }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
 
-      const connection = connectionData?.[0];
+        // Find valid pairing token
+        const { data: token, error: tokenError } = await supabase
+          .from('whatsapp_pairing_tokens')
+          .select('id, user_id, expires_at')
+          .eq('code', code)
+          .is('used_at', null)
+          .maybeSingle();
+
+        if (tokenError || !token) {
+          await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+            '❌ Código não encontrado ou já utilizado.\n\nGere um novo código no app em Configurações → WhatsApp.');
+          return new Response(JSON.stringify({ status: 'ok' }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Check if expired
+        if (new Date(token.expires_at) < new Date()) {
+          await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+            '⏰ Código expirado.\n\nGere um novo código no app em Configurações → WhatsApp.');
+          return new Response(JSON.stringify({ status: 'ok' }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Check if this phone is already connected to another user
+        const { data: existingConnection } = await supabase
+          .from('whatsapp_connections')
+          .select('id, user_id')
+          .eq('wa_phone', fromNumber)
+          .eq('status', 'connected')
+          .maybeSingle();
+
+        if (existingConnection && existingConnection.user_id !== token.user_id) {
+          await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+            '⚠️ Este número já está conectado a outra conta.\n\nDesconecte primeiro no app ou use outro número.');
+          return new Response(JSON.stringify({ status: 'ok' }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Mark token as used
+        await supabase
+          .from('whatsapp_pairing_tokens')
+          .update({ used_at: new Date().toISOString() })
+          .eq('id', token.id);
+
+        // Create or update connection
+        const { error: connectionError } = await supabase
+          .from('whatsapp_connections')
+          .upsert({
+            user_id: token.user_id,
+            wa_phone: fromNumber,
+            status: 'connected',
+            whatsapp_enabled: true,
+            connected_at: new Date().toISOString(),
+            last_seen_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+
+        if (connectionError) {
+          console.error('Failed to create connection:', connectionError);
+          await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+            '❌ Erro ao conectar. Tente novamente.');
+          return new Response(JSON.stringify({ status: 'ok' }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Send success message
+        await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+          '✅ *WhatsApp conectado com sucesso!*\n\n' +
+          'Agora você pode criar lançamentos por mensagem:\n\n' +
+          '📥 *Receita:*\nreceita hoje uber 250 km 120 horas 8 corridas 12\n\n' +
+          '📤 *Despesa:*\ndespesa ontem alimentacao 45.90\n\n' +
+          '⛽ *Combustível:*\ncombustivel hoje gasolina 200 litros 40\n\n' +
+          '⚡ *Elétrico:*\neletrico hoje 50 kwh 25\n\n' +
+          'Após enviar, confirme com *SIM* ou cancele com *NÃO*.');
+
+        console.log(`User ${token.user_id} connected phone ${fromNumber}`);
+        return new Response(JSON.stringify({ status: 'ok', connected: true }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // ============================================
+      // FIND USER CONNECTION BY PHONE NUMBER
+      // ============================================
+      const { data: connection } = await supabase
+        .from('whatsapp_connections')
+        .select('id, user_id, whatsapp_enabled, status')
+        .eq('wa_phone', fromNumber)
+        .eq('status', 'connected')
+        .maybeSingle();
+
       if (!connection) {
-        console.log(`No connected account for phone_number_id: ${phoneNumberId}`);
+        // User not connected, send help
+        await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+          '👋 Olá! Este número não está conectado ao New Gestão.\n\n' +
+          'Para usar o bot:\n' +
+          '1. Acesse o app New Gestão\n' +
+          '2. Vá em Configurações → WhatsApp\n' +
+          '3. Clique em "Conectar"\n' +
+          '4. Envie o código aqui\n\n' +
+          '📱 https://newgestao.app');
         return new Response(JSON.stringify({ status: 'ok' }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -119,14 +273,21 @@ Deno.serve(async (req) => {
 
       // Check if user has WhatsApp enabled
       if (!connection.whatsapp_enabled) {
-        console.log(`User ${connection.user_id} has WhatsApp disabled`);
+        await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+          '⚠️ Seu bot está desativado.\n\nAtive em Configurações → WhatsApp no app.');
         return new Response(JSON.stringify({ status: 'ok' }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Check for duplicate message (deduplication)
+      // Update last_seen_at
+      await supabase
+        .from('whatsapp_connections')
+        .update({ last_seen_at: new Date().toISOString() })
+        .eq('id', connection.id);
+
+      // Check for duplicate message
       const { data: existingMessage } = await supabase
         .from('whatsapp_inbound_messages')
         .select('id')
@@ -147,10 +308,10 @@ Deno.serve(async (req) => {
         .insert({
           user_id: connection.user_id,
           connection_id: connection.id,
-          phone_number_id: phoneNumberId,
+          phone_number_id: botPhoneNumberId,
           from_number: fromNumber,
           message_id: messageId,
-          message_type: messageType,
+          message_type: message.type || 'text',
           body_text: bodyText,
           raw_payload: value,
         })
@@ -165,45 +326,27 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Get full connection for sending replies
-      const { data: fullConnection } = await supabase
-        .from('whatsapp_connections')
-        .select('id, user_id, phone_number_id, access_token_encrypted')
-        .eq('id', connection.id)
-        .single();
-
-      if (!fullConnection?.access_token_encrypted) {
-        console.error('Connection missing access token');
-        return new Response(JSON.stringify({ status: 'ok' }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-
-      // Check if this is a confirmation response (strict SIM/NÃO only)
+      // ============================================
+      // HANDLE CONFIRMATION (SIM/NÃO)
+      // ============================================
       const confirmation = isConfirmation(bodyText);
       
-      // Check if there's a pending draft to handle invalid responses
-      const { data: pendingDraftForCheck } = await supabase
+      // Check for pending draft
+      const { data: pendingDraft } = await supabase
         .from('whatsapp_drafts')
-        .select('id')
+        .select('*')
         .eq('user_id', connection.user_id)
         .eq('from_number', fromNumber)
         .eq('status', 'awaiting_confirmation')
         .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      // If there's a pending draft but response is not SIM/NÃO, ask explicitly
-      if (pendingDraftForCheck && confirmation === null) {
-        await sendAndLogMessage(
-          supabaseUrl,
-          supabaseServiceKey,
-          fullConnection,
-          fromNumber,
-          '⚠️ Responda apenas *SIM* para confirmar ou *NÃO* para cancelar.',
-          inbound.id
-        );
+      // If there's a pending draft but response is not SIM/NÃO
+      if (pendingDraft && confirmation === null) {
+        await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+          '⚠️ Responda apenas *SIM* para confirmar ou *NÃO* para cancelar.');
         
         await supabase
           .from('whatsapp_inbound_messages')
@@ -216,21 +359,9 @@ Deno.serve(async (req) => {
         });
       }
 
-      if (confirmation) {
-        // Find pending draft for this user/number
-        const { data: pendingDraft } = await supabase
-          .from('whatsapp_drafts')
-          .select('*')
-          .eq('user_id', connection.user_id)
-          .eq('from_number', fromNumber)
-          .eq('status', 'awaiting_confirmation')
-          .gt('expires_at', new Date().toISOString())
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
+      if (confirmation !== null) {
         if (!pendingDraft) {
-          // Check if there's an expired draft
+          // Check for expired draft
           const { data: expiredDraft } = await supabase
             .from('whatsapp_drafts')
             .select('id')
@@ -238,22 +369,14 @@ Deno.serve(async (req) => {
             .eq('from_number', fromNumber)
             .eq('status', 'awaiting_confirmation')
             .lte('expires_at', new Date().toISOString())
-            .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
 
-          const message = expiredDraft
-            ? '⏰ Lançamento expirado (30 minutos). Envie o comando novamente para criar um novo.'
-            : '❌ Não há nenhum lançamento pendente para confirmar.\n\nEnvie um novo comando para criar um lançamento.';
+          const msg = expiredDraft
+            ? '⏰ Lançamento expirado (30 minutos). Envie o comando novamente.'
+            : '❌ Não há lançamento pendente.\n\nEnvie um novo comando para criar.';
 
-          await sendAndLogMessage(
-            supabaseUrl,
-            supabaseServiceKey,
-            fullConnection,
-            fromNumber,
-            message,
-            inbound.id
-          );
+          await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber, msg);
           return new Response(JSON.stringify({ status: 'ok' }), {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -261,54 +384,32 @@ Deno.serve(async (req) => {
         }
 
         if (confirmation === 'yes') {
-          // Process the draft and create actual transaction
+          // Process and save
           const result = await processConfirmation(supabaseUrl, supabaseServiceKey, pendingDraft);
           
           if (result.success) {
             await supabase
               .from('whatsapp_drafts')
-              .update({
-                status: 'confirmed',
-                confirmed_at: new Date().toISOString(),
-              })
+              .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
               .eq('id', pendingDraft.id);
 
-            await sendAndLogMessage(
-              supabaseUrl,
-              supabaseServiceKey,
-              fullConnection,
-              fromNumber,
-              '✅ Lançamento salvo com sucesso!\n\nO registro já aparece em Lançamentos no app.',
-              inbound.id
-            );
+            await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+              '✅ Lançamento salvo com sucesso!\n\nO registro já aparece em Lançamentos no app.');
           } else {
-            await sendAndLogMessage(
-              supabaseUrl,
-              supabaseServiceKey,
-              fullConnection,
-              fromNumber,
-              `❌ Erro ao salvar: ${result.error}\n\nTente novamente.`,
-              inbound.id
-            );
+            await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+              `❌ Erro ao salvar: ${result.error}\n\nTente novamente.`);
           }
         } else {
-          // Cancel the draft
+          // Cancel
           await supabase
             .from('whatsapp_drafts')
             .update({ status: 'canceled' })
             .eq('id', pendingDraft.id);
 
-          await sendAndLogMessage(
-            supabaseUrl,
-            supabaseServiceKey,
-            fullConnection,
-            fromNumber,
-            '❌ Lançamento cancelado.\n\nSe quiser, envie um novo comando.',
-            inbound.id
-          );
+          await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+            '❌ Lançamento cancelado.\n\nSe quiser, envie um novo comando.');
         }
 
-        // Mark message as processed
         await supabase
           .from('whatsapp_inbound_messages')
           .update({ processed: true })
@@ -320,26 +421,20 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Parse the message as a command
+      // ============================================
+      // PARSE NEW COMMAND
+      // ============================================
       const parsed = parseWhatsAppMessage(bodyText);
 
       if ('error' in parsed) {
-        // Parsing failed, send help message
         let response = parsed.message;
         if (parsed.examples?.length) {
           response += '\n\n' + parsed.examples.join('\n');
         }
 
-        await sendAndLogMessage(
-          supabaseUrl,
-          supabaseServiceKey,
-          fullConnection,
-          fromNumber,
-          response,
-          inbound.id
-        );
+        await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber, response);
       } else {
-        // Create draft and ask for confirmation
+        // Create draft
         const { error: draftError } = await supabase
           .from('whatsapp_drafts')
           .insert({
@@ -354,28 +449,14 @@ Deno.serve(async (req) => {
 
         if (draftError) {
           console.error('Failed to create draft:', draftError);
-          await sendAndLogMessage(
-            supabaseUrl,
-            supabaseServiceKey,
-            fullConnection,
-            fromNumber,
-            '❌ Erro interno. Tente novamente.',
-            inbound.id
-          );
+          await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber,
+            '❌ Erro interno. Tente novamente.');
         } else {
-          const confirmMessage = `${parsed.summary}\n\n✅ Confirma? Responda *SIM* para salvar ou *NÃO* para cancelar.`;
-          await sendAndLogMessage(
-            supabaseUrl,
-            supabaseServiceKey,
-            fullConnection,
-            fromNumber,
-            confirmMessage,
-            inbound.id
-          );
+          const confirmMessage = `${parsed.summary}\n\n✅ Confirma? Responda *SIM* ou *NÃO*.`;
+          await sendBotMessage(botPhoneNumberId, botAccessToken, fromNumber, confirmMessage);
         }
       }
 
-      // Mark message as processed
       await supabase
         .from('whatsapp_inbound_messages')
         .update({ processed: true })
@@ -390,7 +471,6 @@ Deno.serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
   } catch (error) {
     console.error('Webhook error:', error);
-    // Always return 200 to Meta to prevent retries
     return new Response(JSON.stringify({ status: 'error', message: 'Internal error' }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -428,20 +508,16 @@ async function processConfirmation(
           date?: string;
         };
 
-        // Check for duplicate
         const { data: existing } = await supabase
           .from('income_days')
           .select('id')
           .eq('external_id', externalId)
           .maybeSingle();
 
-        if (existing) {
-          return { success: true }; // Already exists, consider success
-        }
+        if (existing) return { success: true };
 
         const date = payload.date || new Date().toISOString().split('T')[0];
 
-        // Create income_day
         const { data: incomeDay, error: incomeError } = await supabase
           .from('income_days')
           .insert({
@@ -458,7 +534,6 @@ async function processConfirmation(
 
         if (incomeError) throw incomeError;
 
-        // Create income_day_item
         await supabase.from('income_day_items').insert({
           user_id,
           income_day_id: (incomeDay as { id: string }).id,
@@ -477,16 +552,13 @@ async function processConfirmation(
           date?: string;
         };
 
-        // Check for duplicate
         const { data: existing } = await supabase
           .from('expenses')
           .select('id')
           .eq('external_id', externalId)
           .maybeSingle();
 
-        if (existing) {
-          return { success: true };
-        }
+        if (existing) return { success: true };
 
         const date = payload.date || new Date().toISOString().split('T')[0];
 
@@ -511,20 +583,16 @@ async function processConfirmation(
           date?: string;
         };
 
-        // Check for duplicate
         const { data: existing } = await supabase
           .from('fuel_logs')
           .select('id')
           .eq('external_id', externalId)
           .maybeSingle();
 
-        if (existing) {
-          return { success: true };
-        }
+        if (existing) return { success: true };
 
         const date = payload.date || new Date().toISOString().split('T')[0];
 
-        // Create fuel_log
         const { data: fuelLog, error: fuelError } = await supabase
           .from('fuel_logs')
           .insert({
@@ -542,7 +610,6 @@ async function processConfirmation(
 
         if (fuelError) throw fuelError;
 
-        // Create expense for extrato
         await supabase.from('expenses').insert({
           user_id,
           date,
@@ -564,20 +631,16 @@ async function processConfirmation(
           date?: string;
         };
 
-        // Check for duplicate expense
         const { data: existing } = await supabase
           .from('expenses')
           .select('id')
           .eq('external_id', externalId)
           .maybeSingle();
 
-        if (existing) {
-          return { success: true };
-        }
+        if (existing) return { success: true };
 
         const date = payload.date || new Date().toISOString().split('T')[0];
 
-        // For electric, we create an expense with category 'eletrico'
         await supabase.from('expenses').insert({
           user_id,
           date,
