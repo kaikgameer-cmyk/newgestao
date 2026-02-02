@@ -6,6 +6,8 @@ export interface WhatsAppConnection {
   id: string;
   user_id: string;
   status: "disconnected" | "pending" | "connected" | "error";
+  wa_phone: string | null;
+  wa_contact_id: string | null;
   waba_id: string | null;
   phone_number_id: string | null;
   business_phone: string | null;
@@ -13,15 +15,24 @@ export interface WhatsAppConnection {
   verify_token: string;
   whatsapp_enabled: boolean;
   last_error: string | null;
+  connected_at: string | null;
+  last_seen_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface PairingCodeResponse {
+  code: string;
+  expires_at: string;
+  wa_link: string;
+  bot_phone: string;
 }
 
 export function useWhatsAppConnection() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: connection, isLoading } = useQuery({
+  const { data: connection, isLoading, refetch } = useQuery({
     queryKey: ["whatsapp-connection", user?.id],
     queryFn: async () => {
       if (!user) return null;
@@ -38,45 +49,24 @@ export function useWhatsAppConnection() {
     enabled: !!user,
   });
 
-  const createConnection = useMutation({
-    mutationFn: async (params: {
-      waba_id: string;
-      phone_number_id: string;
-      access_token: string;
-    }) => {
-      if (!user) throw new Error("Not authenticated");
-
-      const { error } = await supabase
-        .from("whatsapp_connections")
-        .upsert({
-          user_id: user.id,
-          waba_id: params.waba_id,
-          phone_number_id: params.phone_number_id,
-          access_token_encrypted: params.access_token,
-          status: "pending",
-        }, { onConflict: "user_id" });
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["whatsapp-connection"] });
-    },
-  });
-
-  const testConnection = useMutation({
-    mutationFn: async () => {
+  const createPairingCode = useMutation({
+    mutationFn: async (): Promise<PairingCodeResponse> => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
 
-      const response = await supabase.functions.invoke("whatsapp-test-connection", {
+      const response = await supabase.functions.invoke("create-pairing-code", {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      if (response.error) throw response.error;
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["whatsapp-connection"] });
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to create pairing code");
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      return response.data as PairingCodeResponse;
     },
   });
 
@@ -88,7 +78,9 @@ export function useWhatsAppConnection() {
         .from("whatsapp_connections")
         .update({ 
           status: "disconnected",
-          access_token_encrypted: null,
+          wa_phone: null,
+          wa_contact_id: null,
+          whatsapp_enabled: false,
           updated_at: new Date().toISOString(),
         })
         .eq("user_id", user.id);
@@ -122,8 +114,8 @@ export function useWhatsAppConnection() {
   return {
     connection,
     isLoading,
-    createConnection,
-    testConnection,
+    refetch,
+    createPairingCode,
     disconnect,
     toggleEnabled,
   };

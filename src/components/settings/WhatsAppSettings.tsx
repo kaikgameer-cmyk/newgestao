@@ -1,98 +1,106 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
 import { 
   MessageCircle, 
   Loader2, 
   CheckCircle2, 
   XCircle, 
-  AlertTriangle,
   Copy,
   ExternalLink,
-  Unplug
+  Unplug,
+  RefreshCw,
+  Smartphone
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWhatsAppConnection } from "@/hooks/useWhatsAppConnection";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function WhatsAppSettings() {
   const { toast } = useToast();
   const { 
     connection, 
     isLoading, 
-    createConnection, 
-    testConnection, 
+    createPairingCode,
     disconnect,
-    toggleEnabled 
+    toggleEnabled,
+    refetch
   } = useWhatsAppConnection();
 
-  const [wabaId, setWabaId] = useState("");
-  const [phoneNumberId, setPhoneNumberId] = useState("");
-  const [accessToken, setAccessToken] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [showPairingModal, setShowPairingModal] = useState(false);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [pairingExpiry, setPairingExpiry] = useState<Date | null>(null);
+  const [waLink, setWaLink] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
-
-  const handleConnect = async () => {
-    if (!wabaId || !phoneNumberId || !accessToken) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha todos os campos para conectar.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await createConnection.mutateAsync({
-        waba_id: wabaId,
-        phone_number_id: phoneNumberId,
-        access_token: accessToken,
-      });
+  // Countdown timer
+  useEffect(() => {
+    if (!pairingExpiry) return;
+    
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.floor((pairingExpiry.getTime() - Date.now()) / 1000));
+      setCountdown(remaining);
       
-      toast({
-        title: "Conexão criada",
-        description: "Agora teste a conexão para validar as credenciais.",
-      });
-      
-      setShowForm(false);
-      setAccessToken("");
-    } catch {
-      toast({
-        title: "Erro ao conectar",
-        description: "Não foi possível salvar a conexão.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleTest = async () => {
-    try {
-      const result = await testConnection.mutateAsync();
-      if (result.success) {
-        toast({
-          title: "Conexão validada!",
-          description: `Número: ${result.phone_number || result.verified_name}`,
-        });
-      } else {
-        toast({
-          title: "Falha na validação",
-          description: result.error,
-          variant: "destructive",
-        });
+      if (remaining === 0) {
+        clearInterval(interval);
       }
-    } catch {
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [pairingExpiry]);
+
+  // Poll for connection status while modal is open
+  useEffect(() => {
+    if (!showPairingModal || !pairingCode) return;
+
+    const pollInterval = setInterval(async () => {
+      await refetch();
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [showPairingModal, pairingCode, refetch]);
+
+  // Close modal when connected
+  useEffect(() => {
+    if (connection?.status === 'connected' && showPairingModal) {
+      setShowPairingModal(false);
       toast({
-        title: "Erro no teste",
-        description: "Não foi possível testar a conexão.",
-        variant: "destructive",
+        title: "WhatsApp conectado!",
+        description: "Agora você pode criar lançamentos por mensagem.",
       });
     }
-  };
+  }, [connection?.status, showPairingModal, toast]);
+
+  const handleGenerateCode = useCallback(async () => {
+    setIsGenerating(true);
+    try {
+      const result = await createPairingCode.mutateAsync();
+      setPairingCode(result.code);
+      setPairingExpiry(new Date(result.expires_at));
+      setWaLink(result.wa_link);
+      setShowPairingModal(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao gerar código";
+      toast({
+        title: "Erro",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [createPairingCode, toast]);
 
   const handleDisconnect = async () => {
     try {
@@ -111,6 +119,12 @@ export function WhatsAppSettings() {
     toast({ title: `${label} copiado!` });
   };
 
+  const formatCountdown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const getStatusBadge = () => {
     if (!connection) return null;
     
@@ -118,7 +132,7 @@ export function WhatsAppSettings() {
       case "connected":
         return <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary"><CheckCircle2 className="w-3 h-3 mr-1" /> Conectado</Badge>;
       case "pending":
-        return <Badge variant="outline" className="border-accent/30 bg-accent/10 text-accent-foreground"><AlertTriangle className="w-3 h-3 mr-1" /> Pendente</Badge>;
+        return <Badge variant="outline" className="border-accent/30 bg-accent/10 text-accent-foreground"><Smartphone className="w-3 h-3 mr-1" /> Pendente</Badge>;
       case "error":
         return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" /> Erro</Badge>;
       default:
@@ -137,188 +151,177 @@ export function WhatsAppSettings() {
   }
 
   return (
-    <Card variant="elevated">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageCircle className="w-5 h-5 text-primary" />
-            <CardTitle className="text-lg">WhatsApp Bot</CardTitle>
+    <>
+      <Card variant="elevated">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-primary" />
+              <CardTitle className="text-lg">WhatsApp Bot</CardTitle>
+            </div>
+            {getStatusBadge()}
           </div>
-          {getStatusBadge()}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Feature description */}
-        <Alert className="bg-muted/50 border-muted-foreground/20">
-          <MessageCircle className="h-4 w-4" />
-          <AlertDescription className="text-sm">
-            Conecte seu WhatsApp para criar lançamentos por mensagem. 
-            Envie comandos como "receita hoje uber 250 km 120 horas 8 corridas 12" e confirme com SIM.
-          </AlertDescription>
-        </Alert>
-
-        {connection?.status === "connected" && (
-          <>
-            {/* Enable/disable toggle */}
-            <div className="flex items-center justify-between py-2">
-              <div>
-                <Label>Bot ativo</Label>
-                <p className="text-xs text-muted-foreground">Receber e processar mensagens</p>
-              </div>
-              <Switch
-                checked={connection.whatsapp_enabled}
-                onCheckedChange={(checked) => toggleEnabled.mutate(checked)}
-                disabled={toggleEnabled.isPending}
-              />
-            </div>
-
-            {/* Connected info */}
-            {connection.business_phone && (
-              <div className="p-3 rounded-lg bg-muted/30 space-y-1">
-                <p className="text-sm font-medium">Número conectado</p>
-                <p className="text-lg">{connection.business_phone}</p>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleTest}
-                disabled={testConnection.isPending}
-              >
-                {testConnection.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Testar conexão"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDisconnect}
-                disabled={disconnect.isPending}
-                className="text-destructive hover:text-destructive"
-              >
-                Desconectar
-              </Button>
-            </div>
-          </>
-        )}
-
-        {connection?.status === "error" && connection.last_error && (
-          <Alert variant="destructive">
-            <XCircle className="h-4 w-4" />
-            <AlertDescription>{connection.last_error}</AlertDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Feature description */}
+          <Alert className="bg-muted/50 border-muted-foreground/20">
+            <MessageCircle className="h-4 w-4" />
+            <AlertDescription className="text-sm">
+              Conecte seu WhatsApp para criar lançamentos por mensagem. 
+              Envie comandos como "receita hoje uber 250 km 120 horas 8 corridas 12" e confirme com SIM.
+            </AlertDescription>
           </Alert>
-        )}
 
-        {(!connection || connection.status === "disconnected" || connection.status === "error") && (
-          <>
-            {!showForm ? (
-              <Button onClick={() => setShowForm(true)} className="w-full">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Conectar WhatsApp
-              </Button>
-            ) : (
-              <div className="space-y-4 pt-2">
-                <div className="space-y-2">
-                  <Label htmlFor="waba_id">WABA ID</Label>
-                  <Input
-                    id="waba_id"
-                    value={wabaId}
-                    onChange={(e) => setWabaId(e.target.value)}
-                    placeholder="WhatsApp Business Account ID"
-                  />
+          {connection?.status === "connected" && (
+            <>
+              {/* Enable/disable toggle */}
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <Label>Bot ativo</Label>
+                  <p className="text-xs text-muted-foreground">Receber e processar mensagens</p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone_number_id">Phone Number ID</Label>
-                  <Input
-                    id="phone_number_id"
-                    value={phoneNumberId}
-                    onChange={(e) => setPhoneNumberId(e.target.value)}
-                    placeholder="ID do número de telefone"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="access_token">Access Token</Label>
-                  <Input
-                    id="access_token"
-                    type="password"
-                    value={accessToken}
-                    onChange={(e) => setAccessToken(e.target.value)}
-                    placeholder="Token de acesso permanente"
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleConnect}
-                    disabled={createConnection.isPending}
-                    className="flex-1"
-                  >
-                    {createConnection.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar"}
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowForm(false)}>
-                    Cancelar
-                  </Button>
-                </div>
+                <Switch
+                  checked={connection.whatsapp_enabled}
+                  onCheckedChange={(checked) => toggleEnabled.mutate(checked)}
+                  disabled={toggleEnabled.isPending}
+                />
               </div>
-            )}
-          </>
-        )}
 
-        {connection?.status === "pending" && (
-          <div className="space-y-4">
-            <Alert className="bg-accent/10 border-accent/30">
-              <AlertTriangle className="h-4 w-4 text-accent-foreground" />
-              <AlertDescription className="text-accent-foreground">
-                Configure o webhook no Meta Developers para ativar a conexão.
-              </AlertDescription>
+              {/* Connected info */}
+              {connection.wa_phone && (
+                <div className="p-3 rounded-lg bg-muted/30 space-y-1">
+                  <p className="text-sm font-medium">Número conectado</p>
+                  <p className="text-lg font-mono">+{connection.wa_phone}</p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDisconnect}
+                  disabled={disconnect.isPending}
+                  className="text-destructive hover:text-destructive"
+                >
+                  {disconnect.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Desconectar"}
+                </Button>
+              </div>
+            </>
+          )}
+
+          {connection?.status === "error" && connection.last_error && (
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>{connection.last_error}</AlertDescription>
             </Alert>
+          )}
 
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">URL do Webhook</Label>
-                <div className="flex gap-2">
-                  <Input value={webhookUrl} readOnly className="text-xs" />
-                  <Button size="icon" variant="outline" onClick={() => copyToClipboard(webhookUrl, "URL")}>
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+          {(!connection || connection.status === "disconnected" || connection.status === "error") && (
+            <Button onClick={handleGenerateCode} disabled={isGenerating} className="w-full">
+              {isGenerating ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <MessageCircle className="w-4 h-4 mr-2" />
+              )}
+              Conectar WhatsApp
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Verify Token</Label>
-                <div className="flex gap-2">
-                  <Input value={connection.verify_token} readOnly className="text-xs font-mono" />
-                  <Button size="icon" variant="outline" onClick={() => copyToClipboard(connection.verify_token, "Token")}>
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
+      {/* Pairing Modal */}
+      <Dialog open={showPairingModal} onOpenChange={setShowPairingModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-primary" />
+              Conectar WhatsApp
+            </DialogTitle>
+            <DialogDescription>
+              Envie o código abaixo para o nosso bot no WhatsApp
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Pairing Code */}
+            <div className="text-center space-y-2">
+              <p className="text-xs text-muted-foreground">Seu código de conexão</p>
+              <div className="flex items-center justify-center gap-2">
+                <code className="text-3xl font-mono font-bold tracking-wider px-4 py-3 bg-muted rounded-lg">
+                  {pairingCode}
+                </code>
+                <Button 
+                  size="icon" 
+                  variant="outline" 
+                  onClick={() => pairingCode && copyToClipboard(pairingCode, "Código")}
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
               </div>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTest}
-              disabled={testConnection.isPending}
-              className="w-full"
-            >
-              {testConnection.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Testar conexão
-            </Button>
+            {/* Countdown */}
+            {countdown > 0 ? (
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">
+                  Expira em <span className="font-mono font-medium text-foreground">{formatCountdown(countdown)}</span>
+                </p>
+              </div>
+            ) : (
+              <div className="text-center">
+                <p className="text-sm text-destructive mb-2">Código expirado</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleGenerateCode}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Gerar novo código
+                </Button>
+              </div>
+            )}
 
-            <a
-              href="https://developers.facebook.com/apps"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Abrir Meta Developers
-            </a>
+            {/* Instructions */}
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <p className="text-sm font-medium">Como conectar:</p>
+              <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                <li>Clique no botão abaixo para abrir o WhatsApp</li>
+                <li>Envie a mensagem que já estará preenchida</li>
+                <li>Aguarde a confirmação de conexão</li>
+              </ol>
+            </div>
+
+            {/* WhatsApp Button */}
+            {waLink && countdown > 0 && (
+              <Button 
+                className="w-full" 
+                onClick={() => window.open(waLink, '_blank')}
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Abrir WhatsApp
+              </Button>
+            )}
+
+            {/* Copy command manually */}
+            {pairingCode && countdown > 0 && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => copyToClipboard(`CONNECT ${pairingCode}`, "Comando")}
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copiar comando completo
+              </Button>
+            )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
