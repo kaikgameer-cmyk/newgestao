@@ -2316,42 +2316,54 @@ export type Database = {
         Row: {
           access_token_masked: string | null
           business_phone: string | null
+          connected_at: string | null
           created_at: string | null
           id: string | null
           last_error: string | null
+          last_seen_at: string | null
           phone_number_id: string | null
           status: string | null
           updated_at: string | null
           user_id: string | null
           verify_token: string | null
+          wa_contact_id: string | null
+          wa_phone: string | null
           waba_id: string | null
           whatsapp_enabled: boolean | null
         }
         Insert: {
           access_token_masked?: never
           business_phone?: string | null
+          connected_at?: string | null
           created_at?: string | null
           id?: string | null
           last_error?: string | null
+          last_seen_at?: string | null
           phone_number_id?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string | null
           verify_token?: string | null
+          wa_contact_id?: string | null
+          wa_phone?: string | null
           waba_id?: string | null
           whatsapp_enabled?: boolean | null
         }
         Update: {
           access_token_masked?: never
           business_phone?: string | null
+          connected_at?: string | null
           created_at?: string | null
           id?: string | null
           last_error?: string | null
+          last_seen_at?: string | null
           phone_number_id?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string | null
           verify_token?: string | null
+          wa_contact_id?: string | null
+          wa_phone?: string | null
           waba_id?: string | null
           whatsapp_enabled?: boolean | null
         }
