@@ -1966,42 +1966,54 @@ export type Database = {
         Row: {
           access_token_encrypted: string | null
           business_phone: string | null
+          connected_at: string | null
           created_at: string
           id: string
           last_error: string | null
+          last_seen_at: string | null
           phone_number_id: string | null
           status: string
           updated_at: string
           user_id: string
           verify_token: string
+          wa_contact_id: string | null
+          wa_phone: string | null
           waba_id: string | null
           whatsapp_enabled: boolean
         }
         Insert: {
           access_token_encrypted?: string | null
           business_phone?: string | null
+          connected_at?: string | null
           created_at?: string
           id?: string
           last_error?: string | null
+          last_seen_at?: string | null
           phone_number_id?: string | null
           status?: string
           updated_at?: string
           user_id: string
           verify_token?: string
+          wa_contact_id?: string | null
+          wa_phone?: string | null
           waba_id?: string | null
           whatsapp_enabled?: boolean
         }
         Update: {
           access_token_encrypted?: string | null
           business_phone?: string | null
+          connected_at?: string | null
           created_at?: string
           id?: string
           last_error?: string | null
+          last_seen_at?: string | null
           phone_number_id?: string | null
           status?: string
           updated_at?: string
           user_id?: string
           verify_token?: string
+          wa_contact_id?: string | null
+          wa_phone?: string | null
           waba_id?: string | null
           whatsapp_enabled?: boolean
         }
@@ -2174,6 +2186,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_pairing_tokens: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       work_session_pauses: {
         Row: {
