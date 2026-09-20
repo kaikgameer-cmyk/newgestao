@@ -2371,6 +2371,12 @@ export type Database = {
       }
     }
     Functions: {
+      __dump_table:
+        | { Args: { tablename: string }; Returns: string[] }
+        | {
+            Args: { p_limit?: number; p_offset?: number; tablename: string }
+            Returns: string
+          }
       admin_clear_competition_notifications: {
         Args: { p_competition_id: string }
         Returns: Json
